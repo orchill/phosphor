@@ -340,3 +340,41 @@ def test_audio_mode_drops_video_fields(client, monkeypatch):
     assert captured["height"] is None
     assert captured["format_ids"] is None
     assert captured["prefer_h264"] is False
+
+
+# ------------------------------------------------------- lifecycle hardening
+def test_shutdown_awaits_running_tasks():
+    async def go():
+        cfg = _test_cfg("shutdown_await")
+        cfg.ensure_dirs()
+        tm = TaskManager(cfg.history_path, 5, 2)
+        started = asyncio.Event()
+
+        async def runner(rec):
+            started.set()
+            await asyncio.sleep(30)
+            return {}
+
+        tid = tm.submit("unit", "slow runner", runner)
+        await started.wait()
+        await asyncio.wait_for(tm.shutdown(), timeout=5)
+        assert tm.get(tid).status in ("cancelled", "failed"), tm.get(tid).status
+
+    asyncio.run(go())
+
+
+def test_kill_process_tree_kills_child_processes():
+    import subprocess as sp
+    import sys as _sys
+    from backend.app.utils import kill_process_tree
+    # child spawns its own child; killing the tree must end both
+    proc = sp.Popen([_sys.executable, "-c",
+                     "import subprocess, sys, time;"
+                     "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']);"
+                     "time.sleep(60)"])
+    try:
+        kill_process_tree(proc)
+        assert proc.wait(timeout=10) is not None
+    finally:
+        if proc.poll() is None:
+            proc.kill()

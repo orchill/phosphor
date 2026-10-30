@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 import time
 
 from fastapi import APIRouter, HTTPException, Request
@@ -14,6 +15,10 @@ from ..services import cookie_store, media_service
 from ..tasks import TaskManager
 
 router = APIRouter()
+
+# Serializes cookie-file writes/deletes: two concurrent PUTs must never
+# interleave through the shared cookies.txt.tmp staging file.
+_cookie_file_lock = threading.Lock()
 
 
 def _tm(request: Request) -> TaskManager:
@@ -87,12 +92,13 @@ async def put_cookies(body: CookiePrefsIn):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name("cookies.txt.tmp")
     try:
-        tmp.write_text(content, encoding="utf-8")
-        os.replace(tmp, path)
-        try:
-            path.chmod(0o600)
-        except OSError:
-            pass  # Windows: ACLs apply instead
+        with _cookie_file_lock:
+            tmp.write_text(content, encoding="utf-8")
+            os.replace(tmp, path)
+            try:
+                path.chmod(0o600)
+            except OSError:
+                pass  # Windows: NTFS ACLs govern access; chmod is best-effort
     except OSError as exc:
         raise HTTPException(500, f"Could not store the cookies file: {exc}")
     cfg.set_cookie_prefs("file")
@@ -104,11 +110,12 @@ async def delete_cookies():
     """Forget stored cookies entirely (file deleted, sign-in disabled)."""
     cfg = get_config()
     try:
-        if cfg.cookies_path.is_file():
-            cfg.cookies_path.unlink()
-        tmp = cfg.cookies_path.with_name("cookies.txt.tmp")
-        if tmp.is_file():
-            tmp.unlink()
+        with _cookie_file_lock:
+            if cfg.cookies_path.is_file():
+                cfg.cookies_path.unlink()
+            tmp = cfg.cookies_path.with_name("cookies.txt.tmp")
+            if tmp.is_file():
+                tmp.unlink()
     except OSError as exc:
         raise HTTPException(500, f"Could not delete the cookies file: {exc}")
     cfg.set_cookie_prefs("none")

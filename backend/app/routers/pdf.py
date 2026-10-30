@@ -115,7 +115,7 @@ async def merge_pdf(request: Request, body: MergeIn):
         paths.append(p)
     return _submit(request, "pdf_merge", f"Merge {len(paths)} PDFs",
                    pdf_service.merge_task, (paths, get_config().output_dir),
-                   meta={"inputs": [p.name for p in paths]})
+                   meta={"inputs": [p.name for p in paths], "file_ids": list(body.file_ids)})
 
 
 @router.post("/pdf/images-to-pdf")
@@ -137,7 +137,8 @@ async def images_to_pdf(request: Request, body: ImagesToPdfIn):
             "jpeg_quality": body.jpeg_quality}
     return _submit(request, "pdf_images", f"Convert {len(items)} images to PDF",
                    pdf_service.images_to_pdf_task,
-                   (items, opts, get_config().output_dir))
+                   (items, opts, get_config().output_dir),
+                   meta={"file_ids": [it.id for it in body.items]})
 
 
 @router.post("/pdf/pages")
@@ -157,7 +158,8 @@ async def edit_pages(request: Request, body: EditPagesIn):
                    pdf_service.edit_pages_task,
                    (src, order, rotate_map, get_config().output_dir,
                     _clean_output_name(body.output_name), meta.data["name"]),
-                   meta={"source": meta.data["name"], "kept": len(order), "total": n})
+                   meta={"source": meta.data["name"], "kept": len(order), "total": n,
+          "file_ids": [body.file_id]})
 
 
 @router.post("/pdf/split")
@@ -176,7 +178,7 @@ async def split_pdf(request: Request, body: SplitIn):
                    pdf_service.split_task,
                    (src, body.mode, body.ranges, body.every_n, body.pages,
                     get_config().output_dir, meta.data["name"]),
-                   meta={"source": meta.data["name"]})
+                   meta={"source": meta.data["name"], "file_ids": [body.file_id]})
 
 
 @router.post("/pdf/compress")
@@ -186,7 +188,7 @@ async def compress_pdf(request: Request, body: CompressIn):
                    pdf_service.compress_task,
                    (src, body.quality, body.dpi_cap, get_config().output_dir,
                     meta.data["name"]),
-                   meta={"source": meta.data["name"]})
+                   meta={"source": meta.data["name"], "file_ids": [body.file_id]})
 
 
 @router.post("/pdf/extract-images")
@@ -195,7 +197,7 @@ async def extract_images(request: Request, body: SimpleOpIn):
     return _submit(request, "pdf_extract_images", f"Extract images from {meta.data['name']}",
                    pdf_service.extract_images_task,
                    (src, get_config().output_dir, meta.data["name"]),
-                   meta={"source": meta.data["name"]})
+                   meta={"source": meta.data["name"], "file_ids": [body.file_id]})
 
 
 @router.post("/pdf/to-images")
@@ -206,7 +208,8 @@ async def to_images(request: Request, body: ToImagesIn):
                    pdf_service.to_images_task,
                    (src, fmt, body.dpi, body.pages, get_config().output_dir,
                     meta.data["name"]),
-                   meta={"source": meta.data["name"], "format": fmt, "dpi": body.dpi})
+                   meta={"source": meta.data["name"], "format": fmt, "dpi": body.dpi,
+          "file_ids": [body.file_id]})
 
 
 # ---------------------------------------------------------- page previews

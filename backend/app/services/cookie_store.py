@@ -111,10 +111,22 @@ def _parse_netscape(text: str) -> list[str]:
 
 
 def _parse_header_line(text: str, domain: str) -> list[str]:
-    """Convert a raw ``Cookie:`` header line into Netscape-format entries."""
-    if "\n" in text.strip() and _looks_like_netscape(text):
+    """Convert a raw ``Cookie:`` header line into Netscape-format entries.
+
+    Accepted shapes (all seen in real devtools exports):
+    - with or without a leading ``Cookie:`` prefix
+    - folded across lines (continuation lines start with whitespace)
+    - one NAME=VALUE pair per line
+    """
+    text = text.strip()
+    if "\n" in text and _looks_like_netscape(text):
         return _parse_netscape(text)
-    pairs = [p.strip() for p in text.strip().split(";") if p.strip()]
+    prefix = re.match(r"(?is)^cookie\s*:\s*(.*)$", text)
+    if prefix:
+        text = prefix.group(1).strip()
+    text = re.sub(r"\r?\n[ \t]+", " ", text)          # unfold folded continuations
+    text = re.sub(r"[ \t]*\r?\n[ \t]*", "; ", text)   # one pair per line -> joined
+    pairs = [p.strip() for p in text.split(";") if p.strip()]
     if not pairs:
         raise _err("Cookie text is empty")
     expiry = str(int(time.time()) + 2 * 365 * 24 * 3600)

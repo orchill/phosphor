@@ -176,8 +176,10 @@ def test_cookies_api_roundtrip(client):
     stored = get_config().cookies_path.read_text(encoding="utf-8")
     assert "g.000test" in stored and "secret1" in stored
 
-    # config exposes only the source, not any values
-    assert client.get("/api/settings").json()["cookie_source"] == "file"
+    # the dedicated cookies endpoint exposes only the source, not any values;
+    # the generic settings payload carries no cookie preferences at all
+    assert client.get("/api/media/cookies").json()["source"] == "file"
+    assert "cookie_source" not in client.get("/api/settings").json()
 
     # generic settings PATCH must NOT be able to change cookie prefs
     r = client.put("/api/settings", json={"patch": {"cookie_source": "browser"}})
@@ -295,3 +297,26 @@ def _free_port() -> int:
     port = s.getsockname()[1]
     s.close()
     return port
+
+
+# ------------------------------------------------- header paste robustness
+def test_header_paste_accepts_prefix_folding_and_lines():
+    from backend.app.services.cookie_store import parse_cookie_input
+    base = "SID=g.000test; SAPISID=secret1; HSID=secret2"
+
+    # plain pairs
+    out = parse_cookie_input(base)
+    assert "SID" in out and "g.000test" in out and "secret1" in out
+
+    # with the literal "Cookie:" prefix copied from devtools
+    out2 = parse_cookie_input("Cookie: " + base)
+    assert out2 == out
+
+    # folded across lines (HTTP header continuation)
+    out3 = parse_cookie_input(
+        "Cookie: SID=g.000test;\n   SAPISID=secret1;\n  HSID=secret2")
+    assert out3 == out
+
+    # one pair per line
+    out4 = parse_cookie_input("SID=g.000test\nSAPISID=secret1\nHSID=secret2")
+    assert out4 == out

@@ -6,8 +6,10 @@ sidecar only and sanitized before reuse - they never touch the filesystem.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -19,10 +21,12 @@ from PIL import Image, UnidentifiedImageError
 from ..config import get_config
 from ..security import ValidationError, ensure_within
 from ..services import pdf_service
-from ..utils import new_id, now_iso, sanitize_stem
+from ..utils import atomic_write_text, new_id, now_iso, sanitize_stem
 
 log = logging.getLogger("pms.files")
 router = APIRouter()
+
+MAX_FILES_PER_REQUEST = 24
 
 IMAGE_FORMATS = {"PNG", "JPEG", "WEBP", "GIF", "BMP", "TIFF"}
 IMAGE_MIME = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp",
@@ -81,11 +85,17 @@ async def upload(request: Request, files: list[UploadFile] = File(...)):
     cfg = get_config()
     cfg.ensure_dirs()
     max_bytes = cfg.max_upload_bytes
+    if len(files) > MAX_FILES_PER_REQUEST:
+        raise HTTPException(413, f"Too many files in one request (limit {MAX_FILES_PER_REQUEST})")
+    declared = request.headers.get("content-length")
+    if declared:
+        try:
+            if int(declared) > max_bytes * (len(files) + 2):
+                raise HTTPException(413, f"Request too large (limit {cfg.get('max_upload_mb')} MB)")
+        except ValueError:
+            pass
     results = []
-    for file in files[:24]:  # hard cap per request
-        declared = request.headers.get("content-length")
-        if declared and int(declared) > max_bytes * (len(files) + 2):
-            raise HTTPException(413, f"Request too large (limit {cfg.get('max_upload_mb')} MB)")
+    for file in files:
         raw_name = file.filename or "upload"
         fid = new_id()
         dest = cfg.uploads_dir / f"{fid}.bin"
@@ -142,8 +152,8 @@ async def upload(request: Request, files: list[UploadFile] = File(...)):
                      "orig_name": raw_name[:200], "size": size,
                      "ext": Path(raw_name).suffix.lower()[:10],
                      "uploaded_at": now_iso()})
-        (cfg.uploads_dir / f"{fid}.json").write_text(
-            json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+        atomic_write_text(cfg.uploads_dir / f"{fid}.json",
+                          json.dumps(meta, ensure_ascii=False))
         results.append(meta)
         log.info("uploaded %s kind=%s size=%d", fid[:8], meta["kind"], size)
     if not results:
@@ -154,21 +164,38 @@ async def upload(request: Request, files: list[UploadFile] = File(...)):
 # -------------------------------------------------------------- management
 @router.get("/files")
 async def list_files():
+    """List uploads, skipping sidecars whose content (.bin) has vanished -
+    half-dead entries must not surface in the UI as phantom files."""
     cfg = get_config()
     out = []
     if cfg.uploads_dir.exists():
         for p in sorted(cfg.uploads_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
             try:
-                out.append(json.loads(p.read_text(encoding="utf-8")))
+                meta = json.loads(p.read_text(encoding="utf-8"))
             except Exception:
                 continue
+            if not (cfg.uploads_dir / f"{meta.get('id', '')}.bin").is_file():
+                continue
+            out.append(meta)
     return out
 
 
+def _task_using_file(tm, file_id: str) -> bool:
+    """True if a queued/running task references this upload (meta.file_ids)."""
+    for rec in list(getattr(tm, "tasks", {}).values()):
+        if rec.status in ("queued", "running"):
+            if file_id in (rec.meta.get("file_ids") or []):
+                return True
+    return False
+
+
 @router.delete("/files/{file_id}")
-async def delete_file(file_id: str):
+async def delete_file(file_id: str, request: Request):
     cfg = get_config()
     meta = get_upload(file_id)
+    if _task_using_file(request.app.state.tm, file_id):
+        raise HTTPException(409, "This file is used by a queued or running task "
+                                 "- cancel the task first or try again later.")
     (cfg.uploads_dir / f"{meta.data['id']}.bin").unlink(missing_ok=True)
     _sidecar_path(file_id).unlink(missing_ok=True)
     for p in cfg.thumbs_dir.glob(f"{file_id}*"):
@@ -195,29 +222,36 @@ async def file_thumbnail(file_id: str, width: int = 240):
     return await _thumbnail(file_id, 1, width)
 
 
-def _cached_thumb(key: str, width: int, producer) -> Response:
-    cfg = get_config()
-    cache = cfg.thumbs_dir / f"{key}_w{width}.jpg"
-    if cache.exists():
-        return Response(content=cache.read_bytes(), media_type="image/jpeg",
-                        headers={"Cache-Control": "private, max-age=3600"})
-    data = producer(width)
-    try:
-        cache.write_bytes(data)
-    except OSError:
-        pass
+def _thumb_response(data: bytes) -> Response:
     return Response(content=data, media_type="image/jpeg",
                     headers={"Cache-Control": "private, max-age=3600"})
 
 
 async def _thumbnail(file_id: str, page: int, width: int) -> Response:
+    cfg = get_config()
     meta = get_upload(file_id)
     width = max(60, min(640, width))
+    cache = cfg.thumbs_dir / f"{file_id}_p{page}_w{width}.jpg"
+    if cache.exists():
+        try:
+            return _thumb_response(cache.read_bytes())
+        except OSError:
+            pass
     path = upload_path(meta)
-    key = f"{file_id}_p{page}"
+    # Rendering happens off the event loop: a cold thumbnail of a large PDF
+    # must never stall every other request.
     if meta.data["kind"] == "pdf":
-        return _cached_thumb(key, width, lambda w: pdf_service.render_page_thumbnail(path, page, w))
-    return _cached_thumb(key, width, lambda w: pdf_service.image_thumbnail(path, w))
+        data = await asyncio.to_thread(pdf_service.render_page_thumbnail, path, page, width)
+    else:
+        data = await asyncio.to_thread(pdf_service.image_thumbnail, path, width)
+    try:
+        tmp = cache.with_name(cache.name + ".tmp")
+        tmp.write_bytes(data)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(tmp, cache)
+    except OSError:
+        pass  # thumbnail caching is best-effort
+    return _thumb_response(data)
 
 
 # -------------------------------------------------------------- downloads

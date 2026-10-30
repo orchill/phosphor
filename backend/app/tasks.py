@@ -16,7 +16,7 @@ import traceback
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from .utils import atomic_write_text, new_id, now_iso
+from .utils import atomic_write_text, kill_process_tree, new_id, now_iso
 
 TERMINAL = {"completed", "failed", "cancelled"}
 LOG_CAP = 400
@@ -86,12 +86,6 @@ class TaskRecord:
             "started_at": self.started_at,
             "finished_at": self.finished_at,
         }
-
-
-def check_cancel(rec: TaskRecord) -> None:
-    """Cooperative cancellation point for runner code (thread-safe)."""
-    if rec.cancel_event.is_set():
-        raise TaskCancelled("Cancelled by user")
 
 
 class TaskManager:
@@ -193,12 +187,7 @@ class TaskManager:
         if rec.status == "queued":
             rec.status = "cancelled"
             rec.stage = "Cancelled"
-        proc = rec.process
-        if proc is not None:
-            try:
-                proc.terminate()
-            except Exception:
-                pass
+        kill_process_tree(rec.process)
         if rec.async_task is not None:
             rec.async_task.cancel()
         return True
@@ -236,15 +225,16 @@ class TaskManager:
         return self.tasks.get(task_id)
 
     async def shutdown(self) -> None:
-        """Terminate running subprocesses and cancel tasks on app shutdown."""
+        """Terminate running subprocesses, cancel tasks and WAIT for workers
+        to unwind - the app must not log 'shutdown complete' while threads or
+        subprocesses are still active."""
+        pending = []
         for rec in list(self.tasks.values()):
             if rec.status in ("queued", "running"):
                 rec.cancel_event.set()
-                proc = rec.process
-                if proc is not None:
-                    try:
-                        proc.kill()
-                    except Exception:
-                        pass
+                kill_process_tree(rec.process)
                 if rec.async_task is not None:
                     rec.async_task.cancel()
+                    pending.append(rec.async_task)
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)

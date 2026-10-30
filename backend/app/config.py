@@ -187,8 +187,18 @@ class Config:
         return d
 
     def public_dict(self) -> dict[str, Any]:
-        """Config exposed to the UI (absolute paths resolved for display)."""
-        return self.as_dict()
+        """Config exposed to the UI / API (public allowlist).
+
+        Excludes internal values: the resolved data_dir (working storage with
+        transient + sensitive content such as the cookie file), cookie-source
+        preferences (owned by the dedicated /api/media/cookies endpoints) and
+        the open_browser flag is kept as it is user-facing.
+        """
+        d = self.as_dict()
+        d.pop("data_dir", None)
+        d.pop("cookie_source", None)
+        d.pop("cookie_browser", None)
+        return d
 
     # ------------------------------------------------------------- update
     def update(self, patch: dict[str, Any]) -> list[str]:

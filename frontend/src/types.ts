@@ -90,7 +90,6 @@ export interface SystemInfo {
   python: string;
   platform: string;
   output_dir: string;
-  data_dir: string;
   free_disk_gb: number | null;
   deps: {
     ffmpeg: { found: boolean; path: string; version: string };

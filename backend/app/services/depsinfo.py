@@ -46,7 +46,6 @@ def system_info(cfg: Config) -> dict:
         "python": sys.version.split()[0],
         "platform": platform.platform(terse=True),
         "output_dir": str(cfg.output_dir),
-        "data_dir": str(cfg.data_dir),
         "free_disk_gb": free_gb,
         "deps": {
             "ffmpeg": {"found": ffmpeg_path is not None,
@@ -61,5 +60,4 @@ def system_info(cfg: Config) -> dict:
             "pillow": _pkg_version("pillow"),
             "fastapi": _pkg_version("fastapi"),
         },
-        "config": cfg.public_dict(),
     }

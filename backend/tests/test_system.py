@@ -18,7 +18,8 @@ def test_system_info_reports_deps(client):
     assert data["deps"]["pypdf"] != "not found"
     assert data["deps"]["pillow"] != "not found"
     assert data["deps"]["ytdlp"]["found"] is True
-    assert "127.0.0.1" in data["config"]["host"] or "0.0.0.0" in data["config"]["host"]
+    # host moved to /api/settings when the internal config blob was trimmed
+    assert "127.0.0.1" in client.get("/api/settings").json()["host"]
 
 
 def test_settings_roundtrip_and_validation(client):
@@ -150,3 +151,51 @@ def test_config_update_rolls_back_on_save_failure(client, monkeypatch):
         monkeypatch.undo()
     r = client.put("/api/settings", json={"patch": {"max_upload_mb": original}})
     assert r.status_code == 200
+
+
+# ------------------------------------------------- public payload trimming
+def test_public_api_hides_internal_paths_and_cookie_prefs(client):
+    info = client.get("/api/system/info").json()
+    assert "data_dir" not in info and "config" not in info
+    assert "output_dir" in info  # user-facing, intentionally kept
+    cfg_public = client.get("/api/settings").json()
+    for key in ("data_dir", "cookie_source", "cookie_browser"):
+        assert key not in cfg_public, key
+
+
+def test_upload_rejects_more_than_24_files(client):
+    import pathlib, tempfile
+    from .conftest import make_pdf
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="pms_cap_"))
+    pdf = make_pdf(tmp / "cap.pdf", 1)
+    r = client.post("/api/upload", files=[
+        ("files", (f"f{i}.pdf", pdf.read_bytes())) for i in range(25)])
+    assert r.status_code == 413
+
+
+def test_list_files_skips_missing_content(client):
+    import pathlib, tempfile
+    from backend.app.config import get_config
+    from .conftest import make_pdf
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="pms_ghost_"))
+    meta = upload_file(client, "ghost.pdf", make_pdf(tmp / "ghost.pdf", 1).read_bytes())
+    assert any(f["id"] == meta["id"] for f in client.get("/api/files").json())
+    # simulate lost content (e.g. manual deletion / crash)
+    (get_config().uploads_dir / f"{meta['id']}.bin").unlink()
+    assert not any(f["id"] == meta["id"] for f in client.get("/api/files").json())
+
+
+def test_task_using_file_helper():
+    from backend.app.routers.files import _task_using_file
+
+    class Rec:
+        def __init__(self, status, ids):
+            self.status, self.meta = status, {"file_ids": ids}
+
+    class TM:
+        tasks = {"t1": Rec("running", ["abc"]), "t2": Rec("completed", ["abc"])}
+
+    assert _task_using_file(TM(), "abc")
+
+    TM.tasks["t1"].status = "completed"
+    assert not _task_using_file(TM(), "abc")

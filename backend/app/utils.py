@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,6 +52,39 @@ def atomic_write_text(path: Path, text: str) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
+
+
+def kill_process_tree(proc) -> None:
+    """Terminate a spawned subprocess together with its children.
+
+    Media tools nest: yt-dlp (a python process) spawns ffmpeg. Killing only
+    the parent would leave the child running. On Windows `taskkill /T`
+    handles the whole tree; on POSIX the plain terminate/kill pair is kept
+    (no process group is created for children today).
+    """
+    if proc is None:
+        return
+    try:
+        if proc.poll() is None:
+            if sys.platform == "win32":
+                try:
+                    subprocess.run(
+                        ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                        capture_output=True, timeout=10, check=False)
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+            else:
+                try:
+                    proc.terminate()
+                except OSError:
+                    pass
+    except Exception:
+        pass
+    try:
+        if proc.poll() is None:
+            proc.kill()
+    except Exception:
+        pass
 
 
 def human_size(num: float | int | None) -> str:
