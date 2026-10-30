@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
 import FileDrop from "../components/FileDrop";
+import OptionCard from "../components/OptionCard";
 import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opCompress, uploadFiles } from "../api";
 import { useToast } from "../ctx";
@@ -76,13 +77,8 @@ export default function Compress() {
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {PRESETS.map((p) => (
-                <label key={p.id} className={`cursor-pointer rounded-lg border p-3 text-sm ${preset === p.id ? "border-acc bg-acc/10" : "border-line "}`}>
-                  <span className="flex items-center gap-2 font-medium text-ink">
-                    <input type="radio" name="preset" checked={preset === p.id} onChange={() => setPreset(p.id)} className="accent-acc" />
-                    {p.label}
-                  </span>
-                  <span className="mt-1 block text-xs text-ink2">{p.desc}</span>
-                </label>
+                <OptionCard key={p.id} name="preset" checked={preset === p.id}
+                  onChange={() => setPreset(p.id)} label={p.label} desc={p.desc} />
               ))}
             </div>
             {preset === "custom" && (

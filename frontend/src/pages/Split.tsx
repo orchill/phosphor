@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Scissors } from "lucide-react";
 import FileDrop from "../components/FileDrop";
+import OptionCard from "../components/OptionCard";
 import PageGrid, { PageState } from "../components/PageGrid";
 import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opSplit, uploadFiles } from "../api";
@@ -92,15 +93,10 @@ export default function Split() {
 
       {pdf && (
         <>
-          <div className="grid grid-cols-1 gap-2 rounded-xl border border-line bg-panel p-3   sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {modes.map((m) => (
-              <label key={m.id} className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border p-3 text-sm transition-colors ${mode === m.id ? "border-acc bg-acc/10" : "border-line "}`}>
-                <span className="flex items-center gap-2 font-medium text-ink">
-                  <input type="radio" name="splitmode" checked={mode === m.id} onChange={() => setMode(m.id)} className="accent-acc" />
-                  {m.label}
-                </span>
-                <span className="text-xs text-ink2">{m.desc}</span>
-              </label>
+              <OptionCard key={m.id} name="splitmode" checked={mode === m.id}
+                onChange={() => setMode(m.id)} label={m.label} desc={m.desc} />
             ))}
           </div>
 
