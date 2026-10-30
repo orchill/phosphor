@@ -422,18 +422,41 @@ def compress_task(rec: TaskRecord, src: Path, quality: int, dpi_cap: int,
     orig_size = src.stat().st_size
     new_size = out.stat().st_size
     verify_pdf(out)
-    saved = max(0, orig_size - new_size)
-    pct = (saved / orig_size * 100.0) if orig_size else 0.0
-    note = None
     if new_size >= orig_size:
-        note = ("The document was already well optimized - the result is not smaller "
-                "than the source. The original file is kept.")
+        return _compress_kept_original_result(src, out, out_dir, base_name,
+                                              orig_size, replaced, n_pages, rec)
+    saved = orig_size - new_size
+    pct = (saved / orig_size * 100.0) if orig_size else 0.0
     rec.message = f"Reduced by {pct:.1f}% ({new_size:,} bytes)"
     return {"outputs": [output_entry(out)],
             "info": {"original_size": orig_size, "new_size": new_size,
                      "saved_bytes": saved, "saved_pct": round(pct, 1),
                      "images_replaced": replaced, "pages": n_pages},
-            "note": note}
+            "note": None}
+
+
+def _compress_kept_original_result(src: Path, out: Path, out_dir: Path,
+                                   base_name: str | None, orig_size: int,
+                                   replaced: int, n_pages: int,
+                                   rec: TaskRecord) -> dict:
+    """Fallback when recompression would not shrink the document.
+
+    Compression cannot help here, so the untouched original is delivered
+    instead of a larger rewrite - the note matches what the user actually
+    gets, and no oversized file is left in the output directory.
+    """
+    out.unlink(missing_ok=True)
+    final = unique_path(out_dir / f"{base_name or src.stem} (original).pdf")
+    shutil.copy2(src, final)
+    verify_pdf(final)
+    rec.message = f"No reduction possible - original kept ({orig_size:,} bytes)"
+    return {"outputs": [output_entry(final)],
+            "info": {"original_size": orig_size, "new_size": orig_size,
+                     "saved_bytes": 0, "saved_pct": 0.0,
+                     "images_replaced": replaced, "pages": n_pages},
+            "note": ("The document was already well optimized - recompression "
+                     "would not make it smaller, so the original file is "
+                     "delivered unchanged.")}
 
 
 # ==================================================== extract images

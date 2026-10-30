@@ -84,6 +84,9 @@ def main() -> int:
     print("  PDF & Media Studio")
     print(f"  URL          : {url}")
     print(f"  Output folder: {cfg.output_dir}")
+    if host not in ("127.0.0.1", "localhost"):
+        print(f"  [!] WARNING  : bound to {host} - other devices on this network")
+        print("                 can access your files and settings. 127.0.0.1 is safe.")
     print("  Press Ctrl+C to stop. Do not close this window while downloading.")
     print("=" * 62)
 

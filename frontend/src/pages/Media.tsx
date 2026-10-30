@@ -71,12 +71,19 @@ export default function Media() {
       const { task_id } = await mediaDownload({
         url: info.webpage_url || url,
         mode,
-        video_format: "mp4",
-        audio_format: audioFmt,
-        audio_quality: mode === "audio" && audioFmt !== "best" ? audioKbps : null,
-        height: height || null,
-        prefer_h264: preferH264,
-        format_ids: videoFmt ? { video: videoFmt, audio: "" } : null,
+        // Mode-specific fields only - a video selection must never leak into
+        // an audio download (the backend drops them defensively as well).
+        ...(mode === "video"
+          ? {
+              video_format: "mp4",
+              height: height || null,
+              prefer_h264: preferH264,
+              format_ids: videoFmt ? { video: videoFmt, audio: "" } : null,
+            }
+          : {
+              audio_format: audioFmt,
+              audio_quality: audioFmt !== "best" ? audioKbps : null,
+            }),
         video_id: info.id,
         title: info.title,
         is_live: info.is_live,
@@ -225,7 +232,8 @@ export default function Media() {
                 className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium ${mode === "video" ? "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>
                 <Video size={16} /> Video (MP4)
               </button>
-              <button role="tab" aria-selected={mode === "audio"} onClick={() => setMode("audio")}
+              <button role="tab" aria-selected={mode === "audio"}
+                onClick={() => { setMode("audio"); setVideoFmt(""); setHeight(0); }}
                 className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium ${mode === "audio" ? "border-violet-500 bg-violet-50 text-violet-700 dark:bg-violet-500/10 dark:text-violet-300" : "border-slate-200 text-slate-600 dark:border-slate-700 dark:text-slate-300"}`}>
                 <Music size={16} /> Audio (MP3 / M4A)
               </button>

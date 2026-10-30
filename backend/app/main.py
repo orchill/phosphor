@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import APP_NAME, __version__
 from .config import get_config
-from .security import ValidationError
+from .security import SecurityMiddleware, ValidationError
 from .tasks import TaskManager
 
 log = logging.getLogger("pms.main")
@@ -61,8 +61,14 @@ async def lifespan(app: FastAPI):
     _setup_logging(cfg)
     cfg.ensure_dirs()
     removed = boot_cleanup(cfg)
+    host = str(cfg.get("host"))
     log.info("%s v%s starting - http://%s:%d (output: %s)",
-             APP_NAME, __version__, cfg.get("host"), cfg.get("port"), cfg.output_dir)
+             APP_NAME, __version__, host, cfg.get("port"), cfg.output_dir)
+    if host not in ("127.0.0.1", "localhost"):
+        log.warning(
+            "Binding to %s exposes this app (files, settings, downloads) to other "
+            "devices on the network. Only do this on a trusted network - 127.0.0.1 "
+            "is the safe default.", host)
     log.info("Cleaned from previous run: %s", removed)
     app.state.tm = TaskManager(cfg.history_path, int(cfg.get("history_limit")),
                                int(cfg.get("max_concurrent_tasks")))
@@ -77,9 +83,12 @@ app = FastAPI(title=APP_NAME, version=__version__, lifespan=lifespan,
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type"],
 )
+# Added after CORSMiddleware so it wraps it (outermost): the security guard
+# sees requests first and every response leaves with the hardening headers.
+app.add_middleware(SecurityMiddleware)
 
 from .routers import files, media, pdf, system, tasks_api  # noqa: E402
 

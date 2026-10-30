@@ -101,3 +101,52 @@ def test_config_get_accepts_default():
     assert cfg.get("open_browser", True) in (True, False)   # 3-arg call works
     assert cfg.get("missing_key_xyz", "fallback") == "fallback"
     assert cfg.get("host") == "127.0.0.1"                   # 2-arg call unchanged
+
+
+def test_config_boolean_validation(client):
+    """String booleans are only accepted as explicit 'true'/'false'; anything
+    else is rejected instead of silently becoming bool(value) == True."""
+    r = client.put("/api/settings", json={"patch": {"open_browser": "yes"}})
+    assert r.status_code == 400
+    r = client.put("/api/settings", json={"patch": {"open_browser": 1}})
+    assert r.status_code == 400
+    r = client.put("/api/settings", json={"patch": {"open_browser": "false"}})
+    assert r.status_code == 200
+    assert r.json()["config"]["open_browser"] is False
+    r = client.put("/api/settings", json={"patch": {"open_browser": True}})
+    assert r.status_code == 200
+
+
+def test_config_load_sanitizes_bad_file_values(tmp_path):
+    """A hand-edited/corrupted config file must not poison runtime state."""
+    import json
+    from backend.app.config import Config
+    p = tmp_path / "config.json"
+    p.write_text(json.dumps({"open_browser": "banana", "cookie_source": "hax",
+                             "cookie_browser": "notabrowser",
+                             "max_upload_mb": "bogus", "port": "not-a-port"}))
+    cfg = Config(p)
+    assert cfg.get("open_browser") is False
+    assert cfg.get("cookie_source") == "none"
+    assert cfg.get("cookie_browser") == ""
+    assert cfg.get("max_upload_mb") == 512          # int-clamp fallback default
+    assert cfg.get("port") == 8756
+
+
+def test_config_update_rolls_back_on_save_failure(client, monkeypatch):
+    """If persisting fails, the previous configuration stays active."""
+    from backend.app.config import get_config
+    cfg = get_config()
+    original = cfg.get("max_upload_mb")
+    from backend.app.utils import atomic_write_text
+    def boom(path, text):
+        raise OSError("disk full")
+    monkeypatch.setattr("backend.app.config.atomic_write_text", boom)
+    try:
+        r = client.put("/api/settings", json={"patch": {"max_upload_mb": 32}})
+        assert r.status_code in (400, 500)
+        assert cfg.get("max_upload_mb") == original   # memory untouched
+    finally:
+        monkeypatch.undo()
+    r = client.put("/api/settings", json={"patch": {"max_upload_mb": original}})
+    assert r.status_code == 200

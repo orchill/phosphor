@@ -184,6 +184,12 @@ async def media_download(request: Request, body: MediaDownloadIn):
         raise HTTPException(400, str(exc))
     if body.mode not in ("video", "audio"):
         raise HTTPException(400, "mode must be 'video' or 'audio'")
+    if body.mode == "audio":
+        # Video-only selectors must never leak into an audio task (e.g. a
+        # stale explicit format id left over from a previous video attempt).
+        body.height = None
+        body.format_ids = None
+        body.prefer_h264 = False
 
     vid = body.video_id if re.fullmatch(r"[A-Za-z0-9_\-\.]{1,64}", body.video_id or "") else ""
     title = re.sub(r"[\r\n\t]+", " ", (body.title or ""))[:120]

@@ -16,6 +16,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from .utils import atomic_write_text
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 # Browsers yt-dlp can extract cookies from (--cookies-from-browser).
@@ -57,6 +59,17 @@ _INT_LIMITS = {
     "history_limit": (5, 1000),
 }
 
+_BOOLEAN_KEYS = {"open_browser"}
+
+
+def _coerce_bool(value: Any, where: str) -> bool:
+    """Accept real booleans plus explicit 'true'/'false' strings; nothing else."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lower() in ("true", "false"):
+        return value.strip().lower() == "true"
+    raise ConfigError(f"{where} must be true or false")
+
 
 class ConfigError(ValueError):
     pass
@@ -80,19 +93,43 @@ class Config:
                 raw = {}
             if isinstance(raw, dict):
                 for key in DEFAULTS:
-                    if key in raw:
-                        self._d[key] = raw[key]
+                    if key not in raw:
+                        continue
+                    value = raw[key]
+                    if key in _BOOLEAN_KEYS:
+                        # A hand-edited or corrupted value must not be trusted:
+                        # fall back to False rather than guessing (bool("false") is True).
+                        try:
+                            value = _coerce_bool(value, key)
+                        except ConfigError:
+                            print(f"[warn] config: invalid boolean for '{key}' "
+                                  f"({value!r}) - falling back to False", file=sys.stderr)
+                            value = False
+                    elif key == "cookie_source" and value not in COOKIE_SOURCES:
+                        print(f"[warn] config: unknown cookie_source '{value}' "
+                              f"- falling back to 'none'", file=sys.stderr)
+                        value = "none"
+                    elif key == "cookie_browser" and value not in ("",) + COOKIE_BROWSERS:
+                        print(f"[warn] config: unknown cookie_browser '{value}' "
+                              f"- ignoring", file=sys.stderr)
+                        value = ""
+                    self._d[key] = value
         self._validate()
 
-    def _validate(self) -> None:
+    def _validate(self, d: dict[str, Any] | None = None) -> None:
+        d = self._d if d is None else d
         for key, (lo, hi) in _INT_LIMITS.items():
             try:
-                val = int(self._d[key])
+                val = int(d[key])
             except (TypeError, ValueError):
                 val = DEFAULTS[key]
-            self._d[key] = max(lo, min(hi, val))
-        if self._d["host"] not in ("127.0.0.1", "localhost", "0.0.0.0"):
-            self._d["host"] = "127.0.0.1"
+            d[key] = max(lo, min(hi, val))
+        if d["host"] not in ("127.0.0.1", "localhost", "0.0.0.0"):
+            d["host"] = "127.0.0.1"
+        if d.get("cookie_source") not in COOKIE_SOURCES:
+            d["cookie_source"] = "none"
+        if d.get("cookie_browser") not in ("",) + COOKIE_BROWSERS:
+            d["cookie_browser"] = ""
 
     # ----------------------------------------------------------- resolved
     @property
@@ -155,7 +192,12 @@ class Config:
 
     # ------------------------------------------------------------- update
     def update(self, patch: dict[str, Any]) -> list[str]:
-        """Validate + apply a settings patch. Returns keys needing restart."""
+        """Validate + apply a settings patch. Returns keys needing restart.
+
+        The patch is fully validated and persisted before it replaces the
+        in-memory state: if anything fails (including the disk write) the
+        previous configuration stays active everywhere.
+        """
         with self._lock:
             new = dict(self._d)
             for key, value in (patch or {}).items():
@@ -169,8 +211,8 @@ class Config:
                     lo, hi = _INT_LIMITS[key]
                     if not (lo <= value <= hi):
                         raise ConfigError(f"{key} must be between {lo} and {hi}")
-                elif key in ("open_browser",):
-                    value = bool(value)
+                elif key in _BOOLEAN_KEYS:
+                    value = _coerce_bool(value, key)
                 elif key in ("output_dir", "ffmpeg_path", "ytdlp_path"):
                     value = "" if value is None else str(value).strip()
                     if key == "output_dir":
@@ -187,9 +229,9 @@ class Config:
                             raise ConfigError(f"Cannot use output_dir '{value}': {exc}")
                         value = str(p)
                 new[key] = value
+            self._validate(new)
+            self._persist(new)          # disk first: failure leaves state untouched
             self._d = new
-            self._validate()
-            self.save()
             return sorted(set(patch or {}) & RESTART_KEYS)
 
     def set_cookie_prefs(self, source: str, browser: str = "") -> None:
@@ -209,17 +251,24 @@ class Config:
         else:
             browser = ""
         with self._lock:
-            self._d["cookie_source"] = source
-            self._d["cookie_browser"] = browser
-            self.save()
+            new = dict(self._d)
+            new["cookie_source"] = source
+            new["cookie_browser"] = browser
+            self._persist(new)
+            self._d = new
 
     def save(self) -> None:
+        """Persist the current in-memory configuration atomically."""
+        with self._lock:
+            self._persist(self._d)
+
+    def _persist(self, d: dict[str, Any]) -> None:
+        """Atomically write the given config dict to disk. Raises on failure."""
         try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text(
-                json.dumps(self._d, indent=2, ensure_ascii=False), encoding="utf-8")
-        except Exception:
-            pass  # config persistence is best-effort; runtime keeps working
+            atomic_write_text(
+                self.path, json.dumps(d, indent=2, ensure_ascii=False))
+        except OSError as exc:
+            raise ConfigError(f"Could not save {self.path.name}: {exc}") from exc
 
 
 _config: Config | None = None

@@ -2,14 +2,21 @@
 
 Everything the client can influence passes through here:
 page selections, rotation values, output paths and media URLs.
+
+Also hosts the ASGI request-security middleware (Origin / Sec-Fetch-Site /
+Host validation and security headers) that protects the API from cross-site
+requests (CSRF) and adds baseline browser hardening headers.
 """
 from __future__ import annotations
 
 import ipaddress
+import json
 import re
 import socket
 from pathlib import Path
 from urllib.parse import urlparse
+
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 _RANGE_RE = re.compile(r"^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$")
 
@@ -149,3 +156,130 @@ def validate_media_url(url: str) -> str:
             raise ValidationError(
                 "Access to private/loopback network addresses is blocked for security reasons")
     return url
+
+
+# ============================================================ request middleware
+# Baseline browser-facing hardening for a localhost app:
+#
+# 1. Origin guard (CSRF): browsers send Origin on every cross-site and
+#    same-site POST/PUT/DELETE. Anything that is not this app's own origin or
+#    the Vite dev server cannot invoke state-changing endpoints, and
+#    cross-site requests without Origin (form/img GETs) are rejected via
+#    Sec-Fetch-Site metadata. Non-browser clients (curl, tests) send neither
+#    header and are unaffected.
+# 2. Host guard (DNS rebinding): a rebound public domain must not reach the
+#    API even when the check above is bypassed by an old browser. Public-IP
+#    Host headers (port-forwarding footgun) are rejected too; private IP
+#    literals and machine hostnames keep LAN usage working.
+# 3. Security headers (CSP etc.) on every response; /api/docs gets a relaxed
+#    script policy because Swagger UI ships inline bootstrap JSON.
+
+_DEV_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
+
+_CSP_APP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; "
+            "connect-src 'self'; object-src 'none'; base-uri 'self'; "
+            "form-action 'self'; frame-ancestors 'none'")
+_CSP_DOCS = ("default-src 'none'; script-src 'self' 'unsafe-inline'; "
+             "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+             "connect-src 'self'; frame-ancestors 'none'")
+
+_SECURITY_HEADERS = (
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "DENY"),
+    ("Referrer-Policy", "no-referrer"),
+    ("Permissions-Policy", "camera=(), microphone=(), geolocation=(), display-capture=()"),
+    ("Cross-Origin-Opener-Policy", "same-origin"),
+)
+
+
+def _origin_allowed(origin: str, host_header: str) -> bool:
+    """Same-origin (as addressed by the Host header) or an allowlisted dev origin."""
+    if origin in _DEV_ORIGINS:
+        return True
+    try:
+        o = urlparse(origin)
+        h = urlparse(f"//{host_header}") if host_header else None
+    except ValueError:
+        return False
+    if not o.hostname or h is None or not h.hostname:
+        return False
+    o_port = o.port or (443 if o.scheme == "https" else 80)
+    h_port = h.port or 80
+    return o.hostname == h.hostname and o_port == h_port
+
+
+def _host_allowed(host_header: str) -> bool:
+    """Reject public-IP hosts; allow loopback/private IPs and plain hostnames."""
+    try:
+        hostname = (urlparse(f"//{host_header}").hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+    if not hostname:
+        return True  # HTTP/1.0-style missing Host; routes don't need it
+    try:
+        ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        return True  # hostname (localhost, machine name, mDNS, ...) - fine locally
+    return not ip.is_global  # loopback/private/link-local ok, public IP rejected
+
+
+class SecurityMiddleware:
+    """Pure-ASGI middleware applying the guards described at module top."""
+
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        headers = {k.decode("latin-1").lower(): v.decode("latin-1")
+                   for k, v in scope.get("headers", [])}
+        method = scope.get("method", "GET").upper()
+        is_api = path.startswith("/api")
+
+        if is_api and method != "OPTIONS":     # preflights are CORS-middleware territory
+            origin = headers.get("origin", "")
+            site = headers.get("sec-fetch-site", "")
+            host = headers.get("host", "")
+            if origin:
+                if not _origin_allowed(origin, host):
+                    await self._deny(send, "Cross-site requests are blocked "
+                                           "(unexpected Origin)")
+                    return
+            elif site == "cross-site":
+                await self._deny(send, "Cross-site requests are blocked "
+                                       "(Sec-Fetch-Site: cross-site)")
+                return
+            if not _host_allowed(host):
+                await self._deny(send, "This server is not reachable via that "
+                                       "hostname (DNS-rebinding protection)")
+                return
+
+        csp = _CSP_DOCS if path.startswith(("/api/docs", "/api/redoc")) else _CSP_APP
+
+        async def send_with_headers(message) -> None:
+            if message["type"] == "http.response.start":
+                raw = message.setdefault("headers", [])
+                existing = {k.lower() for k, _ in raw}
+                pairs = [(b"content-security-policy", csp.encode("latin-1"))]
+                pairs += [(k.encode("latin-1"), v.encode("latin-1"))
+                          for k, v in _SECURITY_HEADERS if k.lower() not in existing]
+                raw.extend(pairs)
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+    @staticmethod
+    async def _deny(send: Send, detail: str) -> None:
+        body = json.dumps({"detail": detail}).encode("utf-8")
+        headers = [(b"content-type", b"application/json; charset=utf-8"),
+                   (b"content-length", str(len(body)).encode("latin-1")),
+                   (b"content-security-policy", _CSP_APP.encode("latin-1"))]
+        headers += [(k.lower().encode("latin-1"), v.encode("latin-1"))
+                    for k, v in _SECURITY_HEADERS]
+        await send({"type": "http.response.start", "status": 403, "headers": headers})
+        await send({"type": "http.response.body", "body": body})

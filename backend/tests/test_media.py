@@ -312,3 +312,31 @@ def test_history_limit_enforced():
         assert len(data) <= 5
 
     asyncio.run(go())
+
+
+# --------------------------------------------------- audio payload hygiene
+def test_audio_mode_drops_video_fields(client, monkeypatch):
+    """A stale video format id / resolution from a previous video attempt must
+    never reach the download runner when the user switches to audio mode."""
+    from backend.app.routers import media as media_router
+    captured: dict = {}
+
+    def fake_wrapper(cfg, params):
+        captured.update(params)
+
+        async def runner(rec):
+            return {}
+        return runner
+
+    monkeypatch.setattr(media_router.media_service, "download_task_wrapper", fake_wrapper)
+    monkeypatch.setattr(media_router, "validate_media_url", lambda u: u)
+    r = client.post("/api/media/download", json={
+        "url": "https://example.com/v.mp4", "mode": "audio",
+        "audio_format": "mp3", "height": 1080,
+        "format_ids": {"video": "137", "audio": ""},
+        "video_id": "abc123", "title": "t",
+    })
+    assert r.status_code == 200
+    assert captured["height"] is None
+    assert captured["format_ids"] is None
+    assert captured["prefer_h264"] is False

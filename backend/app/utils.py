@@ -1,6 +1,7 @@
 """Small shared helpers: ids, timestamps, filename sanitation, formatting."""
 from __future__ import annotations
 
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -38,6 +39,17 @@ def unique_path(path: Path) -> Path:
         if not cand.exists():
             return cand
     raise RuntimeError("Could not allocate a free filename in the output directory")
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    """Write text to `path` atomically (tmp file in the same dir + os.replace).
+
+    A crash mid-write can never leave a truncated or half-written file behind.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def human_size(num: float | int | None) -> str:

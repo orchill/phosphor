@@ -9,13 +9,14 @@ and are archived into a bounded JSON history file.
 from __future__ import annotations
 
 import asyncio
+import json
 import shutil
 import threading
 import traceback
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from .utils import new_id, now_iso
+from .utils import atomic_write_text, new_id, now_iso
 
 TERMINAL = {"completed", "failed", "cancelled"}
 LOG_CAP = 400
@@ -107,7 +108,6 @@ class TaskManager:
         try:
             if self.history_path.exists():
                 raw = self.history_path.read_text(encoding="utf-8")
-                import json
                 data = json.loads(raw)
                 if isinstance(data, list):
                     self.history = [d for d in data if isinstance(d, dict)]
@@ -120,13 +120,11 @@ class TaskManager:
         self.history.insert(0, entry)
         del self.history[self.history_limit:]
         try:
-            import json
-            self.history_path.parent.mkdir(parents=True, exist_ok=True)
-            self.history_path.write_text(
-                json.dumps(self.history[:self.history_limit], indent=1, ensure_ascii=False),
-                encoding="utf-8")
-        except Exception:
-            pass
+            atomic_write_text(
+                self.history_path,
+                json.dumps(self.history[:self.history_limit], indent=1, ensure_ascii=False))
+        except OSError:
+            pass  # history persistence is best-effort; runtime keeps working
 
     # -------------------------------------------------------------- submit
     def submit(
@@ -214,10 +212,10 @@ class TaskManager:
         self.history = [h for h in self.history if h.get("id") != task_id]
         if len(self.history) != before:
             try:
-                import json
-                self.history_path.write_text(
-                    json.dumps(self.history, indent=1, ensure_ascii=False), encoding="utf-8")
-            except Exception:
+                atomic_write_text(
+                    self.history_path,
+                    json.dumps(self.history, indent=1, ensure_ascii=False))
+            except OSError:
                 pass
         return True
 

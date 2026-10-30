@@ -134,3 +134,64 @@ def test_validate_helpers():
         validate_rotation(45)
     with pytest.raises(ValidationError):
         validate_order([1, 1], 3)
+
+
+# ------------------------------------------------- request security guard
+def test_security_headers_present(client):
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    csp = r.headers["content-security-policy"]
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["x-frame-options"] == "DENY"
+    assert r.headers["referrer-policy"] == "no-referrer"
+
+
+def test_docs_pages_get_relaxed_csp(client):
+    docs_csp = client.get("/api/docs").headers["content-security-policy"]
+    assert "script-src 'self' 'unsafe-inline'" in docs_csp
+    app_csp = client.get("/").headers["content-security-policy"]
+    assert "script-src 'self'" in app_csp
+    assert "default-src 'self'" in app_csp
+
+
+def test_cross_origin_state_change_blocked(client):
+    # Merge with an empty list is normally a 400/404 - a 403 means the
+    # request never reached the route because its Origin was rejected.
+    for origin in ("https://evil.example", "http://evil.example:8756",
+                   "http://testserver.evil.com", "null"):
+        r = client.post("/api/pdf/merge", json={"file_ids": []},
+                        headers={"Origin": origin})
+        assert r.status_code == 403, origin
+
+
+def test_same_origin_and_dev_origin_allowed(client):
+    for origin in ("http://testserver", "http://localhost:5173"):
+        r = client.post("/api/pdf/merge", json={"file_ids": []},
+                        headers={"Origin": origin})
+        assert r.status_code in (400, 422), origin
+
+
+def test_cross_site_fetch_metadata_blocked(client):
+    # No Origin header (img/form style GET) but cross-site fetch metadata.
+    assert client.get("/api/files",
+                      headers={"Sec-Fetch-Site": "cross-site"}).status_code == 403
+    assert client.get("/api/files",
+                      headers={"Sec-Fetch-Site": "same-site"}).status_code == 200
+
+
+def test_host_guard_unit():
+    # TestClient/httpx cannot override the Host header, so the guard logic is
+    # tested directly. Public-IP Hosts are rejected (port-forwarding footgun);
+    # private/loopback IPs and ordinary hostnames keep LAN usage working.
+    from backend.app.security import _host_allowed
+    assert not _host_allowed("8.8.8.8")                # public IP
+    assert not _host_allowed("8.8.8.8:8756")
+    assert not _host_allowed("93.184.216.34")
+    assert _host_allowed("127.0.0.1:8756")
+    assert _host_allowed("localhost:8756")
+    assert _host_allowed("192.168.1.10:8756")          # LAN IP literal
+    assert _host_allowed("[::1]:8756")                 # IPv6 loopback
+    assert _host_allowed("my-machine:8756")            # LAN hostname
+    assert _host_allowed("")                           # missing Host (HTTP/1.0)

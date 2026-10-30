@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import pathlib
+import shutil
 import tempfile
 import zipfile
 
@@ -175,6 +176,30 @@ def test_compress_reduces_size_and_reports_actual_bytes(client):
     doc = fitz.open(stream=_download(client, task), filetype="pdf")
     assert doc.page_count == 1
     doc.close()
+
+
+def test_compress_fallback_delivers_original_when_not_smaller():
+    """When recompression cannot shrink the file, the original is delivered
+    unchanged (never the larger rewrite)."""
+    from backend.app.services import pdf_service
+    from backend.app.tasks import TaskRecord
+    src = make_pdf(TMP / "incompressible.pdf", 1, "Z")
+    out_dir = TMP / "fb_out"
+    out_dir.mkdir(exist_ok=True)
+    bloated = out_dir / "incompressible_compressed.pdf"
+    shutil.copy2(src, bloated)          # simulate a "compressed" output that is not smaller
+    orig_size = src.stat().st_size
+    bloated.write_bytes(bloated.read_bytes() + b"\x00" * 256)   # ...and make it larger
+    rec = TaskRecord("pdf_compress", "unit")
+    result = pdf_service._compress_kept_original_result(
+        src, bloated, out_dir, None, orig_size, replaced=0, n_pages=1, rec=rec)
+    final = pathlib.Path(result["outputs"][0]["path"])
+    assert result["info"]["new_size"] == orig_size
+    assert result["info"]["saved_pct"] == 0.0
+    assert "original file is delivered unchanged" in result["note"]
+    assert not bloated.exists(), "the larger rewrite must not be left behind"
+    assert final.read_bytes() == src.read_bytes(), "output must be the untouched original"
+    final.unlink()
 
 
 # ------------------------------------------------------------ to images
