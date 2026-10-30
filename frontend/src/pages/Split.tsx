@@ -6,7 +6,7 @@ import PageGrid, { PageState } from "../components/PageGrid";
 import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opSplit, uploadFiles } from "../api";
 import { useToast } from "../ctx";
-import { UploadedFile } from "../types";
+import { SplitPayload, UploadedFile } from "../types";
 import { BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
 
 type Mode = "extract" | "ranges" | "every_n";
@@ -60,7 +60,7 @@ export default function Split() {
     if (!pdf) return;
     setBusy(true);
     try {
-      const payload: Record<string, any> = { file_id: pdf.id, mode };
+      const payload: SplitPayload = { file_id: pdf.id, mode };
       if (mode === "extract") payload.pages = [...selection].sort((a, b) => a - b).join(",") || undefined;
       if (mode === "ranges") payload.ranges = rangeText;
       if (mode === "every_n") payload.every_n = everyN;

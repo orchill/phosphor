@@ -46,7 +46,7 @@ export default function Merge() {
     }
     setBusy(true);
     try {
-      const { task_id } = await opMerge(files.map((f) => f.id));
+      const { task_id } = await opMerge({ file_ids: files.map((f) => f.id) });
       setTaskId(task_id);
       toast.push("info", "Merge started.");
     } catch (e: any) {

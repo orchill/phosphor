@@ -49,7 +49,9 @@ export default function PdfToImages() {
       const pagesSpec = useAll
         ? null
         : [...selection].sort((a, b) => a - b).join(",") || null;
-      const { task_id } = await opToImages({ file_id: pdf.id, format: fmt, dpi, pages: pagesSpec });
+      const { task_id } = await opToImages({
+        file_id: pdf.id, format: fmt as "png" | "jpg", dpi, pages: pagesSpec,
+      });
       setTaskId(task_id);
     } catch (e: any) {
       toast.push("error", e.message);

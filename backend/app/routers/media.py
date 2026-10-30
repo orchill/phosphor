@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import threading
 import time
 
@@ -19,6 +20,29 @@ router = APIRouter()
 # Serializes cookie-file writes/deletes: two concurrent PUTs must never
 # interleave through the shared cookies.txt.tmp staging file.
 _cookie_file_lock = threading.Lock()
+
+
+def _harden_cookie_acl(path) -> None:
+    """Windows: narrow the cookie file's ACL to the current user, SYSTEM and
+    Administrators (drops inherited grants such as Everyone/Users).
+
+    Best-effort hardening only - the file remains a plaintext Netscape
+    cookies.txt (yt-dlp's required input format), so this is fully backward
+    compatible with existing imports and downloads. Failure never blocks
+    sign-in; on POSIX the 0600 chmod attempt below covers the same idea.
+    """
+    if os.name != "nt":
+        return
+    user = os.environ.get("USERNAME") or ""
+    if not user:
+        return
+    try:
+        subprocess.run(
+            ["icacls", str(path), "/inheritance:r",
+             "/grant:r", f"{user}:F", "SYSTEM:F", "Administrators:F"],
+            capture_output=True, timeout=10, check=False)
+    except Exception:
+        pass
 
 
 def _tm(request: Request) -> TaskManager:
@@ -99,6 +123,7 @@ async def put_cookies(body: CookiePrefsIn):
                 path.chmod(0o600)
             except OSError:
                 pass  # Windows: NTFS ACLs govern access; chmod is best-effort
+            _harden_cookie_acl(path)
     except OSError as exc:
         raise HTTPException(500, f"Could not store the cookies file: {exc}")
     cfg.set_cookie_prefs("file")

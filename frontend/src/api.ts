@@ -1,4 +1,9 @@
-import type { CookieStatus, CookieTestResult, MediaInfo, Settings, SystemInfo, TaskRecord, UploadedFile } from "./types";
+import type {
+  CompressPayload, CookiePrefsPayload, CookieStatus, CookieTestResult,
+  EditPagesPayload, ImagesToPdfPayload, MediaDownloadPayload, MediaInfo,
+  MergePayload, Settings, SettingsPatch, SimpleOpPayload, SplitPayload,
+  SystemInfo, TaskRecord, TaskStarted, ToImagesPayload, UploadedFile,
+} from "./types";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
@@ -47,38 +52,33 @@ export const getTaskLog = (id: string) =>
   api<{ id: string; log: string[] }>(`/api/tasks/${id}/log`);
 
 // ---------------------------------------------------------------- pdf ops
-type OpPayload = Record<string, any>;
-const startOp = (endpoint: string, payload: OpPayload) =>
-  api<{ task_id: string }>(`/api/pdf/${endpoint}`, {
+// Payloads are typed against the FastAPI request schemas (see types.ts).
+const startOp = (endpoint: string, payload: unknown) =>
+  api<TaskStarted>(`/api/pdf/${endpoint}`, {
     method: "POST",
     headers: JSON_HDR,
     body: JSON.stringify(payload),
   });
 
-export const opMerge = (file_ids: string[]) => startOp("merge", { file_ids });
-export const opImagesToPdf = (payload: OpPayload) => startOp("images-to-pdf", payload);
-export const opEditPages = (payload: OpPayload) => startOp("pages", payload);
-export const opSplit = (payload: OpPayload) => startOp("split", payload);
-export const opCompress = (payload: OpPayload) => startOp("compress", payload);
-export const opExtractImages = (file_id: string) => startOp("extract-images", { file_id });
-export const opToImages = (payload: OpPayload) => startOp("to-images", payload);
+export const opMerge = (payload: MergePayload) => startOp("merge", payload);
+export const opImagesToPdf = (payload: ImagesToPdfPayload) => startOp("images-to-pdf", payload);
+export const opEditPages = (payload: EditPagesPayload) => startOp("pages", payload);
+export const opSplit = (payload: SplitPayload) => startOp("split", payload);
+export const opCompress = (payload: CompressPayload) => startOp("compress", payload);
+export const opExtractImages = (payload: SimpleOpPayload) => startOp("extract-images", payload);
+export const opToImages = (payload: ToImagesPayload) => startOp("to-images", payload);
 
 // ---------------------------------------------------------------- media
 export const mediaInfo = (url: string) =>
   api<MediaInfo>(`/api/media/info?url=${encodeURIComponent(url)}`);
-export const mediaDownload = (payload: OpPayload) =>
-  api<{ task_id: string }>("/api/media/download", {
+export const mediaDownload = (payload: MediaDownloadPayload) =>
+  api<TaskStarted>("/api/media/download", {
     method: "POST",
     headers: JSON_HDR,
     body: JSON.stringify(payload),
   });
 export const getCookieStatus = () => api<CookieStatus>("/api/media/cookies");
-export const saveCookiePrefs = (payload: {
-  source: "none" | "file" | "browser";
-  browser?: string;
-  cookies_text?: string;
-  domain?: string;
-}) =>
+export const saveCookiePrefs = (payload: CookiePrefsPayload) =>
   api<CookieStatus>("/api/media/cookies", {
     method: "PUT",
     headers: JSON_HDR,
@@ -92,10 +92,10 @@ export const testCookiePrefs = () =>
 // ---------------------------------------------------------------- system
 export const systemInfo = () => api<SystemInfo>("/api/system/info");
 export const getSettings = () => api<Settings>("/api/settings");
-export const saveSettings = (patch: Partial<Settings>) =>
+export const saveSettings = (patch: SettingsPatch["patch"]) =>
   api<{ config: Settings; restart_required: string[] }>("/api/settings", {
     method: "PUT",
     headers: JSON_HDR,
-    body: JSON.stringify({ patch }),
+    body: JSON.stringify({ patch } satisfies SettingsPatch),
   });
 export const openOutputFolder = () => api<{ opened: string }>("/api/system/open-output-folder", { method: "POST" });

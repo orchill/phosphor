@@ -23,6 +23,17 @@ cloud services, no telemetry, no accounts.
 └────────────────────────────────────────────────────────────────────┘
 ```
 
+## Screenshots
+
+Captured from the actual application (v1.1.0). Dark theme is the default;
+the light "paper terminal" theme is one click away.
+
+| Home (dark) | PDF Tools (dark) |
+|---|---|
+| ![Home dashboard, dark theme](docs/screenshots/home-dark.png) | ![PDF Tools landing, dark theme](docs/screenshots/pdf-tools.png) |
+| **Media Downloader (dark)** | **Home (light theme)** |
+| ![Media Downloader with metadata preview](docs/screenshots/media-dark.png) | ![Home dashboard, light theme](docs/screenshots/home-light.png) |
+
 ---
 
 ## Feature overview

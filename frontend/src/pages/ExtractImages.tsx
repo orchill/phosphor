@@ -32,7 +32,7 @@ export default function ExtractImages() {
     if (!pdf) return;
     setBusy(true);
     try {
-      const { task_id } = await opExtractImages(pdf.id);
+      const { task_id } = await opExtractImages({ file_id: pdf.id });
       setTaskId(task_id);
     } catch (e: any) {
       toast.push("error", e.message);

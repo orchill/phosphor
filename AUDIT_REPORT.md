@@ -79,26 +79,65 @@ the baseline and implemented the missing pieces rather than re-doing what existe
 |---|---|
 | Backend suite (pytest, Python 3.13.3, Windows) | **82 passed** / 0 failed / 0 skipped (13.2 s) |
 | `pip check` | clean |
-| `tsc --noEmit` + `vite build` | pass |
+| `tsc --noEmit` + `vite build` | pass (Vite 8.3.5 / plugin-react 6.1.2 — the toolchain the handover claimed; esbuild dev-server advisory resolved, `npm audit` now 0 findings) |
 | Live security smoke (curl against running server) | evil Origin → 403; same-origin → route reached; cross-site GET → 403; all headers present |
 | Browser verification | Dashboard/Settings/Media/PDF-landing/tool pages in both themes; zero CSP violations; deep-link + back-button verified |
 | Media/FFmpeg tests | executed live (FFmpeg present); no external websites required by the suite |
 
 ## 5. Security findings & residual risks (honest)
 
-1. **SSRF re-validation gap (documented residual)**: URLs are validated before
-   yt-dlp runs (scheme, credentials, private-IP resolution). Redirects and DNS
-   changes inside yt-dlp's own network stack are not re-validated. Mitigation
-   context: yt-dlp only fetches media streams; a full fix would require proxying
-   all traffic through the app. Not exploitable to *read* internal HTTP responses.
+1. **SSRF re-validation gap (documented residual — investigated, not implemented)**
+   URLs are validated before yt-dlp runs (scheme, credentials, private-IP
+   resolution). Redirects and DNS changes inside yt-dlp's own network stack are
+   not re-validated. A Python-side validation proxy was investigated:
+
+   - **Proposed architecture**: a small asyncio HTTP forward proxy bound to
+     127.0.0.1, passed to yt-dlp via `--proxy`. For every outbound request
+     (including each redirect hop) the proxy resolves the destination host and
+     applies the same private/loopback IP policy *at connect time*, then
+     forwards (HTTP) or tunnels (HTTPS via CONNECT, hostname validated, TLS
+     left end-to-end). This converts the current validate-once model into
+     validate-every-connection, closing redirect and DNS-rebinding TOCTOU gaps.
+   - **Compatibility concerns**: it would cover only yt-dlp's Python network
+     stack. When yt-dlp delegates media fetching to **FFmpeg** (HLS/DASH
+     segments), FFmpeg opens its own connections; its proxy support is
+     protocol-dependent (`http_proxy` env is honored by the http protocol but
+     not guaranteed across demuxers/protocols), so coverage would be
+     *incomplete while appearing complete* — the worst security posture. DASH
+     segment re-hosting, IP-literal URLs on odd ports and QUIC edge cases add
+     further bypass surfaces.
+   - **Security benefit**: real but narrow for this threat model. The operator
+     is the only user and the server binds to loopback; the attacker-reachable
+     effect is issuing GET requests toward internal hosts from the user's
+     machine, with responses parsed by yt-dlp (never returned to a remote
+     attacker). Direct private-target URLs are already blocked by the existing
+     pre-flight check.
+   - **Performance / maintenance**: ~200–300 lines of bespoke network code, a
+     new long-lived component, per-connection DNS latency, and a real risk of
+     regressing legitimate downloads across yt-dlp's many extractors.
+
+   **Decision: not implemented.** Incomplete FFmpeg coverage plus the
+   maintenance burden outweigh the narrow benefit for a single-user localhost
+   tool. Revisit if the app is ever reconfigured for multi-user or
+   untrusted-network operation.
+
 2. **Local network exposure is opt-in but real**: with `host: 0.0.0.0`, any LAN
    device reaches the API. The CSRF/Origin guard blocks *browser-based* cross-site
    attacks from the internet, but direct local access is inherently trusted.
    Default remains loopback-only.
-3. **Cookies are plaintext** (`data/cookies.txt`, yt-dlp's required format).
-   Best-effort permissions; never logged or echoed; one-click clearing. Windows
-   Credential Manager was considered and deferred (would break the file-based
-   yt-dlp workflow and import compatibility).
+
+3. **Cookie storage hardening (investigated this cycle; ACL layer implemented)**
+   - **DPAPI** (`CryptProtectData` via ctypes) would encrypt at rest, but yt-dlp
+     requires a *plaintext Netscape file path* — decrypting to a temp file per
+     download re-introduces a plaintext window plus temp-cleanup complexity,
+     for strictly worse protection than ACL hardening. Rejected.
+   - **NTFS ACL tightening** keeps the file byte-compatible with yt-dlp and all
+     existing import flows: on every save, inherited grants are removed and the
+     ACL is narrowed to the current user, SYSTEM and Administrators
+     (best-effort, non-fatal; `_harden_cookie_acl` in routers/media.py).
+     Default user-profile inheritance is already user-scoped, so this mainly
+     protects non-default `data_dir` placements. No format or workflow change.
+
 4. **Swagger UI** (`/api/docs`) ships inline bootstrap JSON → relaxed CSP for
    that page only; it exposes no sensitive data (no auth model in a local app).
 
@@ -110,11 +149,10 @@ targets raster images, playlists limited to first entry, no OCR/annotations.
 
 ## 7. Recommended future improvements
 
-- Python-side proxy for yt-dlp network traffic (closes the SSRF residual).
-- Consider Windows Credential Manager / DPAPI for cookie at-rest protection.
-- Keyboard-accessible page reordering (drag-and-drop currently mouse-only).
-- Frontend type-safe API payloads (replace `Record<string, any>` op payloads).
-- Optional Vite 6/7 upgrade (current: 5.4 — stable, zero known vulns).
+- Python-side validation proxy for yt-dlp traffic (investigated §5.1 — revisit
+  only for multi-user/untrusted-network deployments).
+- Frontend end-to-end tests (the suite covers the backend; UI is verified
+  manually/visually).
 
 ## 8. Versioning
 

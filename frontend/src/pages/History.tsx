@@ -6,6 +6,13 @@ import { useToast } from "../ctx";
 import { TaskRecord, TaskStatus, humanSize } from "../types";
 import { BTN_SECONDARY, CARD, SECTION_TITLE } from "../ui";
 
+/** Backend timestamps are UTC ISO-8601 ("...+00:00" or "...Z") - both parse
+ *  directly; the old naive-"Z" append produced "Invalid Date". */
+export function formatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? iso : d.toLocaleString();
+}
+
 const KIND_LABELS: Record<string, string> = {
   pdf_merge: "Merge", pdf_images: "Images->PDF", pdf_pages: "Pages",
   pdf_split: "Split", pdf_compress: "Compress", pdf_extract_images: "Extract imgs",
@@ -72,7 +79,7 @@ useEffect(() => { refresh(); }, [refresh]);
                 {KIND_LABELS[t.kind] || t.kind}
               </span>
               <span className="text-xs text-ink3">
-                {new Date(t.created_at + (t.created_at.endsWith("Z") ? "" : "Z")).toLocaleString()}
+                {formatTimestamp(t.created_at)}
               </span>
               <span className="min-w-16 text-right text-xs text-ink2">
                 {t.result?.outputs?.[0]?.size ? humanSize(t.result.outputs[0].size) : ""}

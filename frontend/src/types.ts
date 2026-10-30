@@ -100,7 +100,6 @@ export interface SystemInfo {
     pillow: string;
     fastapi: string;
   };
-  config: Record<string, any>;
 }
 
 export type Settings = {
@@ -117,9 +116,95 @@ export type Settings = {
   open_browser: boolean;
 };
 
-export interface ImageItem {
-  id: string;
-  rotation: number;
+// ------------------------------------------------- API request payloads
+// Mirror the FastAPI request schemas (backend/app/routers/{pdf,media}.py).
+
+/** POST /api/pdf/merge */
+export interface MergePayload {
+  file_ids: string[];
+  output_name?: string | null;
+}
+
+/** POST /api/pdf/images-to-pdf */
+export interface ImagesToPdfPayload {
+  items: { id: string; rotation: number }[];
+  page_size: string;                       // a4 | a3 | a5 | letter | legal | image
+  orientation: string;                     // auto | portrait | landscape
+  margin_mm: number;
+  image_dpi: number;
+  jpeg_quality: number | null;             // null = preserve original bytes
+  output_name?: string | null;
+}
+
+/** POST /api/pdf/pages */
+export interface EditPagesPayload {
+  file_id: string;
+  order: number[];
+  rotate: Record<string, number>;          // page number (as string) -> degrees
+  output_name?: string | null;
+}
+
+/** POST /api/pdf/split */
+export interface SplitPayload {
+  file_id: string;
+  mode: "extract" | "ranges" | "every_n";
+  ranges?: string | null;                  // mode=ranges: "1-3,5,8-10"
+  every_n?: number | null;                 // mode=every_n
+  pages?: string | null;                   // mode=extract: "1,2,5-8" (empty = all)
+  output_name?: string | null;
+}
+
+/** POST /api/pdf/compress */
+export interface CompressPayload {
+  file_id: string;
+  quality: number;                         // 10-95
+  dpi_cap: number;                         // 36-300
+}
+
+/** POST /api/pdf/extract-images */
+export interface SimpleOpPayload {
+  file_id: string;
+}
+
+/** POST /api/pdf/to-images */
+export interface ToImagesPayload {
+  file_id: string;
+  format: "png" | "jpg";
+  dpi: number;
+  pages?: string | null;
+}
+
+/** POST /api/media/download */
+export interface MediaDownloadPayload {
+  url: string;
+  mode: "video" | "audio";
+  video_format?: string;                   // mp4 | best (video mode)
+  audio_format?: string;                   // mp3 | m4a | best (audio mode)
+  audio_quality?: number | null;           // kbps: 320/256/192/128/96/64
+  height?: number | null;                  // resolution cap (video mode)
+  prefer_h264?: boolean;                   // video mode
+  format_ids?: { video: string; audio: string } | null;  // explicit ids (advanced)
+  video_id: string;
+  title: string;
+  is_live: boolean;
+}
+
+/** PUT /api/media/cookies */
+export interface CookiePrefsPayload {
+  source: "none" | "file" | "browser";
+  browser?: string;
+  cookies_text?: string;
+  domain?: string;
+}
+
+/** PUT /api/settings */
+export interface SettingsPatch {
+  patch: Partial<Settings>;
+}
+
+/** Standard task-start response */
+export interface TaskStarted {
+  task_id: string;
 }
 
 export const TERMINAL: TaskStatus[] = ["completed", "failed", "cancelled"];

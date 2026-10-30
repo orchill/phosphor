@@ -177,7 +177,7 @@ def validate_media_url(url: str) -> str:
 _DEV_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
 
 _CSP_APP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; "
+            "img-src 'self' data: blob: https:; media-src 'self' blob:; font-src 'self' data:; "
             "connect-src 'self'; object-src 'none'; base-uri 'self'; "
             "form-action 'self'; frame-ancestors 'none'")
 _CSP_DOCS = ("default-src 'none'; script-src 'self' 'unsafe-inline'; "
