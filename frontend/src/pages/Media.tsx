@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  AlertTriangle, Cookie, Download, KeyRound, Link2, Loader2, Music,
+  AlertTriangle, ChevronDown, Cookie, Download, KeyRound, Link2, Loader2, Music,
   RefreshCw, Video,
 } from "lucide-react";
 import TaskPanel from "../components/TaskPanel";
@@ -240,26 +240,34 @@ src={info.thumbnail}
                     {HEIGHTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className={LABEL} htmlFor="vfmt">Exact format (advanced)</label>
-                  <select id="vfmt" value={videoFmt} onChange={(e) => setVideoFmt(e.target.value)} className={`${INPUT} mt-1`}>
-                    <option value="">Auto-select (recommended)</option>
-                    {info.video_formats.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.id} - {f.height ? `${f.height}p` : "video"} {f.fps ? `${Math.round(f.fps)}fps` : ""} {f.ext} {formatSize(f) ? `(${humanSize(formatSize(f))})` : ""} {f.type === "video-only" ? "(no audio)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
-                  <input type="checkbox" checked={preferH264} onChange={(e) => setPreferH264(e.target.checked)} disabled={!!videoFmt} className="accent-acc" />
-                  Prefer H.264/AAC for maximum player compatibility (falls back to any codec if unavailable)
-                </label>
-                {videoFmt && info.video_formats.find((f) => f.id === videoFmt)?.type === "video-only" && (
-                  <p className="text-xs text-warn sm:col-span-2">
-                    Selected format has no audio - the best audio stream will be merged in (requires FFmpeg).
-                  </p>
-                )}
+                <details className="group rounded-md border border-line bg-base/50 sm:col-span-2">
+                  <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-mono text-[11px] uppercase tracking-widest text-ink3 hover:text-ink2">
+                    advanced options
+                    <ChevronDown size={13} className="transition-transform group-open:rotate-180" aria-hidden />
+                  </summary>
+                  <div className="grid grid-cols-1 gap-4 border-t border-line p-3 sm:grid-cols-2">
+                    <div>
+                      <label className={LABEL} htmlFor="vfmt">Exact format (overrides resolution)</label>
+                      <select id="vfmt" value={videoFmt} onChange={(e) => setVideoFmt(e.target.value)} className={`${INPUT} mt-1`}>
+                        <option value="">Auto-select (recommended)</option>
+                        {info.video_formats.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.id} - {f.height ? `${f.height}p` : "video"} {f.fps ? `${Math.round(f.fps)}fps` : ""} {f.ext} {formatSize(f) ? `(${humanSize(formatSize(f))})` : ""} {f.type === "video-only" ? "(no audio)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
+                      <input type="checkbox" checked={preferH264} onChange={(e) => setPreferH264(e.target.checked)} disabled={!!videoFmt} className="accent-acc" />
+                      Prefer H.264/AAC for maximum player compatibility (falls back to any codec if unavailable)
+                    </label>
+                    {videoFmt && info.video_formats.find((f) => f.id === videoFmt)?.type === "video-only" && (
+                      <p className="text-xs text-warn sm:col-span-2">
+                        Selected format has no audio - the best audio stream will be merged in (requires FFmpeg).
+                      </p>
+                    )}
+                  </div>
+                </details>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
