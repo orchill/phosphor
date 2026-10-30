@@ -2,16 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================= design tokens
+   Light theme = "paper terminal" (default). Dark theme = phosphor on carbon.
+   Values are R G B triplets consumed by tailwind.config.js with alpha support. */
+:root {
+  --c-base: 244 245 242;
+  --c-panel: 255 255 255;
+  --c-elev: 238 240 236;
+  --c-line: 224 227 221;
+  --c-ink: 24 31 39;
+  --c-ink2: 90 99 110;
+  --c-ink3: 134 142 152;
+  --c-acc: 22 163 74;
+  --c-accHi: 21 128 61;
+  --c-onAcc: 255 255 255;
+  --c-info: 8 145 178;
+  --c-ok: 22 163 74;
+  --c-warn: 180 83 9;
+  --c-bad: 220 38 38;
+}
+
+.dark {
+  --c-base: 10 12 16;
+  --c-panel: 16 20 27;
+  --c-elev: 24 29 38;
+  --c-line: 32 40 52;
+  --c-ink: 230 237 243;
+  --c-ink2: 145 158 175;
+  --c-ink3: 96 107 121;
+  --c-acc: 74 222 128;
+  --c-accHi: 134 239 172;
+  --c-onAcc: 5 26 14;
+  --c-info: 34 211 238;
+  --c-ok: 74 222 128;
+  --c-warn: 251 191 36;
+  --c-bad: 248 113 113;
+}
+
 html {
   scrollbar-gutter: stable;
 }
 
 body {
-  @apply bg-slate-100 text-slate-900 antialiased;
+  @apply bg-base text-ink font-sans antialiased;
 }
 
-.dark body {
-  @apply bg-slate-950 text-slate-200;
+/* phosphor selection */
+::selection {
+  background: rgb(var(--c-acc) / 0.30);
+}
+
+/* keyboard focus everywhere, even where components don't add their own ring */
+:focus-visible {
+  outline: 2px solid rgb(var(--c-acc) / 0.85);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 *::-webkit-scrollbar {
@@ -22,8 +67,23 @@ body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full border-2 border-solid border-transparent bg-clip-content;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  background-color: rgb(var(--c-line));
 }
-.dark *::-webkit-scrollbar-thumb {
-  @apply bg-slate-700;
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--c-ink3));
+}
+
+/* honor the OS "reduce motion" setting: kill animations and transitions */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

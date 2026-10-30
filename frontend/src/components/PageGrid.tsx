@@ -67,8 +67,8 @@ export default function PageGrid({
               next.splice(idx, 0, moved);
               setPages(next);
             }}
-            className={`group relative overflow-hidden rounded-lg border-2 bg-white shadow-sm transition-shadow dark:bg-slate-900
-              ${selected ? "border-violet-500 ring-2 ring-violet-300 dark:ring-violet-500/40" : "border-slate-200 dark:border-slate-800"}
+            className={`group relative overflow-hidden rounded-md border-2 bg-panel transition-colors
+              ${selected ? "border-acc ring-1 ring-acc/50" : "border-line"}
               ${allowReorder ? "cursor-grab" : ""}`}
           >
             <button
@@ -76,7 +76,7 @@ export default function PageGrid({
               onClick={() => allowSelect && toggleSelect(p.page)}
               aria-pressed={selected}
               aria-label={`Page ${p.page}${selected ? " (selected)" : ""}`}
-              className="block w-full bg-slate-100 dark:bg-slate-800"
+              className="block w-full bg-elev focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
             >
               <img
                 src={pageThumbUrl(fileId, p.page, width)}
@@ -88,22 +88,22 @@ export default function PageGrid({
             </button>
 
             <div className="flex items-center justify-between px-2 py-1.5">
-              <span className={`text-xs font-semibold ${selected ? "text-violet-600 dark:text-violet-300" : "text-slate-500 dark:text-slate-400"}`}>
+              <span className={`font-mono text-[11px] ${selected ? "text-acc" : "text-ink3"}`}>
                 {p.rotation ? `Page ${p.page} (${p.rotation}deg)` : `Page ${p.page}`}
               </span>
               <span className="flex items-center gap-0.5">
                 {allowRotate && (
                   <>
-                    <button onClick={() => rotate(idx, -90)} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-violet-600 dark:hover:bg-slate-800" aria-label={`Rotate page ${p.page} left`} title="Rotate left">
+                    <button onClick={() => rotate(idx, -90)} className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Rotate page ${p.page} left`} title="Rotate left">
                       <RotateCcw size={13} />
                     </button>
-                    <button onClick={() => rotate(idx, 90)} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-violet-600 dark:hover:bg-slate-800" aria-label={`Rotate page ${p.page} right`} title="Rotate right">
+                    <button onClick={() => rotate(idx, 90)} className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Rotate page ${p.page} right`} title="Rotate right">
                       <RotateCw size={13} />
                     </button>
                   </>
                 )}
                 {allowDelete && (
-                  <button onClick={() => remove(idx)} className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10" aria-label={`Remove page ${p.page}`} title="Remove page">
+                  <button onClick={() => remove(idx)} className="rounded-sm p-1 text-ink3 hover:bg-bad/10 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Remove page ${p.page}`} title="Remove page">
                     <Trash2 size={13} />
                   </button>
                 )}
@@ -111,7 +111,7 @@ export default function PageGrid({
             </div>
 
             {selected && (
-              <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-violet-600 text-[11px] font-bold text-white">
+              <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-sm bg-acc font-mono text-[11px] font-bold text-onAcc">
                 ✓
               </span>
             )}
@@ -123,5 +123,5 @@ export default function PageGrid({
 }
 
 export function EmptyGridHint({ children }: { children: React.ReactNode }) {
-  return <div className={`${CARD} p-6 text-center text-sm text-slate-500 dark:text-slate-400`}>{children}</div>;
+  return <div className={`${CARD} p-6 text-center text-sm text-ink3`}>{children}</div>;
 }

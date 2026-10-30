@@ -60,7 +60,7 @@ export default function Compress() {
     <div className="space-y-4">
       <div>
         <h2 className={SECTION_TITLE}>Compress PDF</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-ink2">
           Downscales oversized embedded images and re-encodes them as JPEG. The tool reports the
           real output size after processing; if the file is already optimized, the original is kept.
         </p>
@@ -71,29 +71,29 @@ export default function Compress() {
       {pdf && (
         <>
           <div className={`${CARD} p-4`}>
-            <p className="text-sm text-slate-600 dark:text-slate-300">
+            <p className="text-sm text-ink">
               Source: <span className="font-medium">{pdf.name}</span> ({humanSize(pdf.size)}, {pdf.pages} pages)
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {PRESETS.map((p) => (
-                <label key={p.id} className={`cursor-pointer rounded-lg border p-3 text-sm ${preset === p.id ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10" : "border-slate-200 dark:border-slate-700"}`}>
-                  <span className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
-                    <input type="radio" name="preset" checked={preset === p.id} onChange={() => setPreset(p.id)} className="accent-violet-600" />
+                <label key={p.id} className={`cursor-pointer rounded-lg border p-3 text-sm ${preset === p.id ? "border-acc bg-acc/10" : "border-line "}`}>
+                  <span className="flex items-center gap-2 font-medium text-ink">
+                    <input type="radio" name="preset" checked={preset === p.id} onChange={() => setPreset(p.id)} className="accent-acc" />
                     {p.label}
                   </span>
-                  <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{p.desc}</span>
+                  <span className="mt-1 block text-xs text-ink2">{p.desc}</span>
                 </label>
               ))}
             </div>
             {preset === "custom" && (
               <div className="mt-4 space-y-3">
-                <label className="block text-xs text-slate-500 dark:text-slate-400" htmlFor="cq">
+                <label className="block text-xs text-ink2" htmlFor="cq">
                   JPEG quality: {quality}
-                  <input id="cq" type="range" min={20} max={95} value={quality} onChange={(e) => setQuality(+e.target.value)} className="ml-3 w-56 accent-violet-600" />
+                  <input id="cq" type="range" min={20} max={95} value={quality} onChange={(e) => setQuality(+e.target.value)} className="ml-3 w-56 accent-acc" />
                 </label>
-                <label className="block text-xs text-slate-500 dark:text-slate-400" htmlFor="cdpi">
+                <label className="block text-xs text-ink2" htmlFor="cdpi">
                   Max image DPI: {dpi}
-                  <input id="cdpi" type="range" min={60} max={250} step={10} value={dpi} onChange={(e) => setDpi(+e.target.value)} className="ml-3 w-56 accent-violet-600" />
+                  <input id="cdpi" type="range" min={60} max={250} step={10} value={dpi} onChange={(e) => setDpi(+e.target.value)} className="ml-3 w-56 accent-acc" />
                 </label>
               </div>
             )}

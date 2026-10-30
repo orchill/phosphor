@@ -62,7 +62,7 @@ export default function PdfToImages() {
     <div className="space-y-4">
       <div>
         <h2 className={SECTION_TITLE}>PDF to Images</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-ink2">
           Render pages to PNG (lossless) or JPG at the chosen DPI. Select specific pages if you do
           not need the whole document; multiple outputs arrive as a ZIP.
         </p>
@@ -72,7 +72,7 @@ export default function PdfToImages() {
 
       {pdf && (
         <>
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-panel p-3  ">
             <div>
               <label className={LABEL} htmlFor="fmt">Format</label>
               <select id="fmt" value={fmt} onChange={(e) => setFmt(e.target.value)} className={`${INPUT} mt-1 w-28`}>
@@ -89,8 +89,8 @@ export default function PdfToImages() {
                 <option value={600}>600 - archive</option>
               </select>
             </div>
-            <label className="flex items-center gap-2 pb-2 text-sm text-slate-700 dark:text-slate-300">
-              <input type="checkbox" checked={useAll} onChange={(e) => setUseAll(e.target.checked)} className="accent-violet-600" />
+            <label className="flex items-center gap-2 pb-2 text-sm text-ink">
+              <input type="checkbox" checked={useAll} onChange={(e) => setUseAll(e.target.checked)} className="accent-acc" />
               All pages
             </label>
             <span className="ml-auto flex gap-2">
@@ -102,7 +102,7 @@ export default function PdfToImages() {
           </div>
 
           {!useAll && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-ink2">
               Click thumbnails below to pick pages ({selection.size} selected).
             </p>
           )}

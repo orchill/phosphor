@@ -45,7 +45,7 @@ export default function ExtractImages() {
     <div className="space-y-4">
       <div>
         <h2 className={SECTION_TITLE}>Extract Images</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-ink2">
           Exports the embedded raster images (photos, figures) at their stored resolution, in
           their original format when possible. Vector graphics are not raster images and are skipped.
         </p>
@@ -56,7 +56,7 @@ export default function ExtractImages() {
       {pdf && (
         <>
           <div className={`${CARD} flex flex-wrap items-center gap-3 p-4`}>
-            <span className="text-sm text-slate-600 dark:text-slate-300">{pdf.name} - {humanSize(pdf.size)}</span>
+            <span className="font-mono text-[13px] text-ink">{pdf.name} - {humanSize(pdf.size)}</span>
             <span className="ml-auto flex gap-2">
               <button onClick={run} disabled={busy} className={BTN_PRIMARY}><FilePlus2 size={16} /> Extract images</button>
               <button onClick={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} className={BTN_SECONDARY}>Close file</button>

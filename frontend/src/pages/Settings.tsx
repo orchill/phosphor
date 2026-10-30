@@ -8,10 +8,10 @@ import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, SECTION_TITLE } from ".
 function DepRow({ name, found, detail, hint }: { name: string; found: boolean; detail: string; hint?: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2 py-1.5">
-      {found ? <CheckCircle2 size={15} className="text-emerald-500" /> : <XCircle size={15} className="text-red-500" />}
-      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{name}</span>
-      <span className={`truncate text-xs ${found ? "text-slate-500 dark:text-slate-400" : "text-red-500"}`}>{detail}</span>
-      {!found && hint && <span className="w-full text-xs text-slate-400 dark:text-slate-500">{hint}</span>}
+      {found ? <CheckCircle2 size={15} className="text-ok" /> : <XCircle size={15} className="text-bad" />}
+      <span className="text-sm font-medium text-ink">{name}</span>
+      <span className={`truncate text-xs ${found ? "text-ink2" : "text-bad"}`}>{detail}</span>
+      {!found && hint && <span className="w-full text-xs text-ink3">{hint}</span>}
     </div>
   );
 }
@@ -31,8 +31,7 @@ export default function SettingsPage() {
     }
   };
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const set = (k: keyof Settings, v: any) => setCfg((c) => (c ? { ...c, [k]: v } : c));
+const set = (k: keyof Settings, v: any) => setCfg((c) => (c ? { ...c, [k]: v } : c));
 
   const save = async () => {
     if (!cfg) return;
@@ -58,7 +57,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (!cfg) return <p className="text-sm text-slate-500">Loading settings...</p>;
+  if (!cfg) return <p className="text-sm text-ink2">Loading settings...</p>;
 
   return (
     <div className="space-y-4">
@@ -96,18 +95,18 @@ export default function SettingsPage() {
               <input id="conc" type="number" value={cfg.max_concurrent_tasks} onChange={(e) => set("max_concurrent_tasks", +e.target.value)} className={`${INPUT} mt-1`} />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 sm:col-span-2">
-            <input type="checkbox" checked={cfg.open_browser} onChange={(e) => set("open_browser", e.target.checked)} className="accent-violet-600" />
+          <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
+            <input type="checkbox" checked={cfg.open_browser} onChange={(e) => set("open_browser", e.target.checked)} className="accent-acc" />
             Open the web interface automatically on startup
-          </label>
+</label>
         </div>
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-800">
+        <div className="flex flex-wrap gap-2 border-t border-line pt-4 ">
           <button onClick={save} disabled={saving} className={BTN_PRIMARY}><Save size={15} /> Save settings</button>
           <button onClick={async () => { try { await openOutputFolder(); } catch (e: any) { toast.push("error", e.message); } }} className={BTN_SECONDARY}>
             <FolderOutput size={15} /> Open output folder
-          </button>
+</button>
           <button
-            onClick={async () => {
+onClick={async () => {
               if (!confirm("Clear all cached uploads and thumbnails? Files in the output folder are NOT touched.")) return;
               try { const r = await clearWorkspace(); toast.push("success", `Cleared ${r.removed} items.`); }
               catch (e: any) { toast.push("error", e.message); }
@@ -115,17 +114,17 @@ export default function SettingsPage() {
             className={BTN_SECONDARY}
           >
             <Trash2 size={15} /> Clear workspace cache
-          </button>
+</button>
         </div>
       </div>
 
       <div className={`${CARD} p-4`}>
         <div className="mb-2 flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Dependencies &amp; diagnostics</h3>
+          <h3 className="text-sm font-semibold text-ink">Dependencies &amp; diagnostics</h3>
           <button onClick={loadAll} className={`${BTN_SECONDARY} ml-auto py-1 text-xs`}><RefreshCw size={12} /> Re-check</button>
         </div>
         {info && (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <div className="divide-y divide-line">
             <DepRow name="FFmpeg" found={info.deps.ffmpeg.found}
               detail={info.deps.ffmpeg.found ? `${info.deps.ffmpeg.version} (${info.deps.ffmpeg.path})` : "not found"}
               hint="Install: winget install Gyan.FFmpeg (Windows) or apt install ffmpeg (Linux), then restart the app - or set the path above." />
@@ -133,7 +132,7 @@ export default function SettingsPage() {
             <DepRow name="PyMuPDF" found detail={info.deps.pymupdf} />
             <DepRow name="pypdf" found detail={info.deps.pypdf} />
             <DepRow name="Pillow" found detail={info.deps.pillow} />
-            <p className="pt-2 text-xs text-slate-400">
+            <p className="pt-2 text-xs text-ink3">
               App {info.app_version} - Python {info.python} - {info.platform}
               {info.free_disk_gb != null && <> - {info.free_disk_gb} GB free</>}
             </p>
@@ -141,17 +140,17 @@ export default function SettingsPage() {
         )}
       </div>
 
-      <div className={`${CARD} border-amber-300 p-4 dark:border-amber-800`}>
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+      <div className={`${CARD} border-warn/50 p-4`}>
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-warn">
           <ShieldAlert size={15} /> Privacy &amp; security notes
-        </h3>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
+</h3>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed text-ink2">
           <li>The server binds to 127.0.0.1 only - other devices on your network cannot reach it.</li>
           <li>URLs pointing at private/loopback addresses are rejected to prevent SSRF.</li>
           <li>Downloads are limited in size and duration (see fields above).</li>
           <li>Cached uploads are wiped on every restart; outputs stay in the output folder.</li>
           <li>YouTube cookies (if configured in the downloader's Cookies / Sign-in tab) are
-            stored only in <code>data/cookies.txt</code>, never logged and never shown.</li>
+stored only in <code>data/cookies.txt</code>, never logged and never shown.</li>
           <li>No telemetry, no cloud services - files never leave this machine.</li>
         </ul>
       </div>

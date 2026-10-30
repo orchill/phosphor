@@ -1,5 +1,5 @@
 import {
-  Combine, FileOutput, FilePlus2, FileStack, Images, Loader2, Scissors,
+  Combine, FileOutput, FilePlus2, FileStack, Images, Scissors,
   Video, Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -7,7 +7,7 @@ import { listTasks, systemInfo } from "../api";
 import { useNav } from "../ctx";
 import { SystemInfo, TaskRecord, humanSize } from "../types";
 import { StatusBadge } from "../components/TaskPanel";
-import { CARD, SECTION_TITLE } from "../ui";
+import { CARD, DOT, SECTION_TITLE } from "../ui";
 
 const TOOLS = [
   { id: "merge", icon: Combine, title: "Merge PDFs", desc: "Combine multiple PDFs in any order." },
@@ -32,20 +32,21 @@ function DepsCard({ info }: { info: SystemInfo | null }) {
   ];
   return (
     <div className={`${CARD} p-4`}>
-      <h2 className={`${SECTION_TITLE} mb-3 text-base`}>System status</h2>
-      <ul className="space-y-1.5 text-sm">
+      <h2 className={`${SECTION_TITLE} mb-3`}>system status</h2>
+      <ul className="space-y-1.5">
         {items.map((it) => (
-          <li key={it.name} className="flex items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${it.ok ? "bg-emerald-500" : "bg-red-500"}`} aria-hidden />
-            <span className="font-medium text-slate-700 dark:text-slate-300">{it.name}</span>
-            <span className="ml-auto truncate text-xs text-slate-500 dark:text-slate-400">{it.detail}</span>
+          <li key={it.name} className="flex items-center gap-2 font-mono text-[12px]">
+            <span className={`${DOT} ${it.ok ? "bg-ok" : "bg-bad"}`} aria-hidden />
+            <span className="text-ink">{it.name}</span>
+            <span className="ml-auto truncate text-ink3">{it.detail}</span>
           </li>
         ))}
-        <li className="flex items-center gap-2 border-t border-slate-100 pt-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-          Output folder: <span className="truncate font-mono">{info.output_dir}</span>
+        <li className="flex items-center gap-2 border-t border-line pt-2 font-mono text-[11px] text-ink3">
+          <span className="shrink-0">output:</span>
+          <span className="truncate">{info.output_dir}</span>
         </li>
         {info.free_disk_gb != null && (
-          <li className="text-xs text-slate-500 dark:text-slate-400">Free disk space: {info.free_disk_gb} GB</li>
+          <li className="font-mono text-[11px] text-ink3">free disk: {info.free_disk_gb} GB</li>
         )}
       </ul>
     </div>
@@ -64,17 +65,28 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <section className={`${CARD} bg-gradient-to-br from-violet-600 to-violet-800 p-6 text-white`}>
-        <h2 className="text-xl font-bold">Welcome to PDF &amp; Media Studio</h2>
-        <p className="mt-1 max-w-2xl text-sm text-violet-100">
-          A private, local-first toolbox: everything runs on this machine as a localhost service.
-          Merge, convert, organize and compress PDFs; convert images; download and convert media
-          with yt-dlp and FFmpeg. Original files are always preserved.
+      <section className={`${CARD} p-5`}>
+        <div className="flex items-center gap-2 font-mono text-[11px] tracking-tight text-ink3">
+          <span className={`${DOT} bg-ok`} aria-hidden />
+          <span>ready</span>
+          <span aria-hidden>·</span>
+          <span>100% local</span>
+          <span aria-hidden>·</span>
+          <span>no cloud</span>
+          <span className="ml-auto hidden sm:block">~/.local/pdf-media-studio</span>
+        </div>
+        <h2 className="mt-3 font-mono text-lg font-semibold tracking-tight text-ink">
+          Your private PDF &amp; media toolbox<span className="animate-cursor-blink text-acc" aria-hidden>▮</span>
+        </h2>
+        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink2">
+          Everything runs on this machine as a localhost service - merge, convert, organize
+          and compress PDFs, turn images into documents, and download media with yt-dlp and
+          FFmpeg. Original files are always preserved.
         </p>
       </section>
 
       <section>
-        <h2 className={`${SECTION_TITLE} mb-3`}>Tools</h2>
+        <h2 className={`${SECTION_TITLE} mb-3`}>tools</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {TOOLS.map((t) => {
             const Icon = t.icon;
@@ -82,14 +94,17 @@ export default function Dashboard() {
               <button
                 key={t.id}
                 onClick={() => navigate(t.id as any)}
-                className={`${CARD} group flex items-start gap-3 p-4 text-left transition-all hover:border-violet-400 hover:shadow-md dark:hover:border-violet-500`}
+                className={`${CARD} group flex items-start gap-3 p-4 text-left transition-colors hover:border-acc/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc`}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700 group-hover:bg-violet-600 group-hover:text-white dark:bg-violet-500/15 dark:text-violet-300">
-                  <Icon size={18} />
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-acc/10 text-acc transition-colors group-hover:bg-acc group-hover:text-onAcc"
+                  aria-hidden
+                >
+                  <Icon size={17} />
                 </span>
-                <span>
-                  <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">{t.title}</span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-slate-500 dark:text-slate-400">{t.desc}</span>
+                <span className="min-w-0">
+                  <span className="block font-mono text-[13px] font-semibold tracking-tight text-ink">{t.title}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-ink2">{t.desc}</span>
                 </span>
               </button>
             );
@@ -100,16 +115,16 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <DepsCard info={info} />
         <div className={`${CARD} p-4`}>
-          <h2 className={`${SECTION_TITLE} mb-3 text-base`}>Recent tasks</h2>
+          <h2 className={`${SECTION_TITLE} mb-3`}>recent tasks</h2>
           {recent.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400">No tasks yet - results and downloads will appear here.</p>
+            <p className="text-sm text-ink3">No tasks yet - results and downloads will appear here.</p>
           ) : (
             <ul className="space-y-2">
               {recent.map((t) => (
-                <li key={t.id} className="flex items-center gap-2 text-sm">
+                <li key={t.id} className="flex items-center gap-2">
                   <StatusBadge status={t.status} />
-                  <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">{t.title}</span>
-                  <span className="text-xs text-slate-400">
+                  <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink2">{t.title}</span>
+                  <span className="shrink-0 font-mono text-[11px] text-ink3">
                     {t.result?.outputs?.[0]?.size ? humanSize(t.result.outputs[0].size) : ""}
                   </span>
                 </li>
@@ -119,8 +134,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <p className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-        <Loader2 size={12} className="animate-spin" style={{ display: "none" }} />
+      <p className="text-xs text-ink3">
         Only download media you have permission to save. This app does not bypass DRM or access controls.
       </p>
     </div>

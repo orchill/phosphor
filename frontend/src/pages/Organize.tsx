@@ -85,7 +85,7 @@ export default function Organize() {
     <div className="space-y-4">
       <div>
         <h2 className={SECTION_TITLE}>Organize Pages</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-ink2">
           Drag pages to reorder, rotate or remove individual pages, or select several at once.
           Saving produces a new PDF; the source file stays untouched.
         </p>
@@ -95,37 +95,37 @@ export default function Organize() {
 
       {pdf && (
         <>
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{pdf.name} - {pages.length} page(s)</span>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-panel p-3 ">
+            <span className="text-sm font-medium text-ink">{pdf.name} - {pages.length} page(s)</span>
             <span className="ml-auto flex flex-wrap items-center gap-2">
               <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>Select all</button>
               <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>Select none</button>
               <button onClick={() => rotateSelected(-90)} disabled={!selection.size} className={BTN_SECONDARY}><RotateCcw size={14} /> Rotate selected</button>
               <button onClick={() => rotateSelected(90)} disabled={!selection.size} className={BTN_SECONDARY}><RotateCw size={14} /> Rotate selected</button>
-              <button onClick={deleteSelected} disabled={!selection.size} className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-500/10">
+              <button onClick={deleteSelected} disabled={!selection.size} className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-bad hover:bg-bad/10 disabled:opacity-50">
                 <Trash2 size={14} /> Delete selected
-              </button>
+</button>
               <button onClick={() => rotateAll(90)} className={BTN_SECONDARY}>Rotate all +90</button>
               <button onClick={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} className={BTN_SECONDARY}>Close file</button>
             </span>
           </div>
 
           {pages.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700">
+            <p className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-ink2 ">
               All pages removed - add pages back by reloading the file.
             </p>
           ) : (
             <PageGrid
-              fileId={pdf.id}
+fileId={pdf.id}
               pages={pages}
               setPages={setPages}
               selection={selection}
               setSelection={setSelection}
               allowReorder
-              allowRotate
-              allowDelete
-              allowSelect
-            />
+allowRotate
+allowDelete
+allowSelect
+/>
           )}
 
           <div className="flex flex-wrap items-end gap-3">

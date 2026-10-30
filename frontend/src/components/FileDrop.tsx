@@ -37,8 +37,8 @@ export default function FileDrop({ onFiles, accept, multiple = true, label, hint
         const files = Array.from(e.dataTransfer.files || []);
         if (files.length) onFiles(multiple ? files : [files[0]]);
       }}
-      className={`${CARD} flex cursor-pointer flex-col items-center justify-center gap-2 border-2 border-dashed px-6 py-10 text-center transition-colors
-        ${over ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10" : "border-slate-300 hover:border-violet-400 dark:border-slate-700"}
+      className={`${CARD} flex cursor-pointer flex-col items-center justify-center gap-2 border-2 border-dashed px-6 py-10 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-acc
+        ${over ? "border-acc bg-acc/5" : "border-line hover:border-ink3"}
         ${disabled ? "pointer-events-none opacity-50" : ""}`}
     >
       <input
@@ -53,9 +53,9 @@ export default function FileDrop({ onFiles, accept, multiple = true, label, hint
           e.target.value = "";
         }}
       />
-      <UploadCloud size={30} className="text-violet-500" aria-hidden />
-      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{label_}</p>
-      {hint && <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>}
+      <UploadCloud size={30} className={over ? "text-acc" : "text-ink3"} aria-hidden />
+      <p className="text-sm font-medium text-ink2">{label_}</p>
+      {hint && <p className="text-xs text-ink3">{hint}</p>}
     </div>
   );
 }

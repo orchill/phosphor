@@ -82,7 +82,7 @@ export default function Split() {
     <div className="space-y-4">
       <div>
         <h2 className={SECTION_TITLE}>Split / Extract</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-ink2">
           Extract selected pages into a single document, or split a PDF into several files.
           Multiple outputs are delivered as a ZIP archive.
         </p>
@@ -92,14 +92,14 @@ export default function Split() {
 
       {pdf && (
         <>
-          <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 rounded-xl border border-line bg-panel p-3   sm:grid-cols-3">
             {modes.map((m) => (
-              <label key={m.id} className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border p-3 text-sm transition-colors ${mode === m.id ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10" : "border-slate-200 dark:border-slate-700"}`}>
-                <span className="flex items-center gap-2 font-medium text-slate-800 dark:text-slate-200">
-                  <input type="radio" name="splitmode" checked={mode === m.id} onChange={() => setMode(m.id)} className="accent-violet-600" />
+              <label key={m.id} className={`flex cursor-pointer flex-col gap-0.5 rounded-lg border p-3 text-sm transition-colors ${mode === m.id ? "border-acc bg-acc/10" : "border-line "}`}>
+                <span className="flex items-center gap-2 font-medium text-ink">
+                  <input type="radio" name="splitmode" checked={mode === m.id} onChange={() => setMode(m.id)} className="accent-acc" />
                   {m.label}
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">{m.desc}</span>
+                <span className="text-xs text-ink2">{m.desc}</span>
               </label>
             ))}
           </div>
@@ -109,7 +109,7 @@ export default function Split() {
               <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>Select all</button>
               <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>Clear</button>
               <button onClick={applySelectionToRangeText} className={BTN_SECONDARY}>Selection to text</button>
-              <span className="text-sm text-slate-500 dark:text-slate-400">{selection.size} page(s) selected</span>
+              <span className="text-sm text-ink2">{selection.size} page(s) selected</span>
             </div>
           )}
 
@@ -124,7 +124,7 @@ export default function Split() {
             <div>
               <label className={LABEL} htmlFor="everyn">Pages per output file</label>
               <input id="everyn" type="number" min={1} max={pdf.pages} value={everyN} onChange={(e) => setEveryN(Math.max(1, +e.target.value))} className={`${INPUT} mt-1 w-32`} />
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-1 text-xs text-ink2">
                 Will produce {Math.ceil(pdf.pages / Math.max(1, everyN))} file(s).
               </p>
             </div>

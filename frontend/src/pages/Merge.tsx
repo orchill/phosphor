@@ -60,7 +60,7 @@ export default function Merge() {
     <div className="space-y-4">
       <div>
         <h2 className={SECTION_TITLE}>Merge PDFs</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-ink2">
           Drop PDFs, drag to set the order, then merge. Outputs are written to your output folder -
           original files are never modified.
         </p>
@@ -94,9 +94,9 @@ export default function Merge() {
             </button>
             <button
               onClick={() => { files.forEach((f) => deleteFile(f.id).catch(() => {})); setFiles([]); }}
-              className="text-sm text-slate-500 hover:text-red-600 dark:text-slate-400"
+              className="rounded-sm px-2 py-1 font-mono text-[12px] text-ink3 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
             >
-              Clear list
+              clear list
             </button>
           </div>
         </>
