@@ -58,8 +58,8 @@ cloud services, no telemetry, no accounts.
 
 - Dashboard with tool cards, dependency status and recent tasks
 - Task history (bounded, persisted) with re-download links
-- Settings page: output dir, FFmpeg/yt-dlp paths, size/duration/concurrency limits
-- Dark & light themes, responsive layout, keyboard-accessible controls
+- Settings page in grouped sections: output dir, history limit, network (host/port with restart warning), download limits, tool paths
+- Terminal-inspired UI (phosphor green on carbon dark by default, paper-light alternative), hash-based routing with deep links, breadcrumbs, responsive layout, keyboard-accessible controls, reduced-motion support
 - Graceful shutdown: running subprocesses are killed, temp files cleaned on start & exit
 
 ---
@@ -154,8 +154,13 @@ verbose in the task's diagnostics log (URLs are omitted from logs).
 - **Security**: argument-array subprocess execution (no shell), URLs restricted to
   http(s) with **private/loopback address blocking (SSRF protection)**, all client
   paths validated against the output directory (traversal blocked), uploads
-  content-sniffed (magic bytes + real parsing) not extension-trusted, localhost-only
-  binding, size/duration/concurrency limits, no arbitrary command execution surface.
+  content-sniffed (magic bytes + real parsing) not extension-trusted, loopback-only
+  binding by default with an explicit opt-in + warnings for LAN exposure,
+  cross-site request protection (Origin/Sec-Fetch-Site guard), CSP and hardening
+  headers on every response, size/duration/concurrency limits, no arbitrary
+  command execution surface. Cancellation and shutdown kill the whole yt-dlp/FFmpeg
+  process tree (Windows `taskkill /T`), and config/history files are written
+  atomically so crashes cannot corrupt them.
 - **PDF library split** (deliberate, no duplication):
   - `pypdf` (BSD-3) — merge and split: pure structural page copying.
   - `PyMuPDF` (AGPL-3.0) — rendering/thumbnails, page edits (reorder/rotate/delete),
@@ -196,9 +201,10 @@ as if you were browsing; nothing is bypassed.
 
 **Storage & privacy**
 
-- Cookies are stored only in `data/cookies.txt` (Netscape format, restrictive
-  file permissions). Values are never returned by the API, never logged, and
-  only ever sent to the video site by yt-dlp.
+- Cookies are stored only in `data/cookies.txt` (Netscape format, best-effort
+  restrictive permissions - on Windows NTFS ACLs govern access). Values are never
+  returned by the API, never logged, and only ever sent to the video site by yt-dlp.
+  The generic settings API carries no cookie data at all.
 - The API exposes just a masked summary: source, cookie **count** and domain
   names.
 - Treat that file like a password — anyone with it can use your YouTube session.
@@ -212,7 +218,7 @@ as if you were browsing; nothing is bypassed.
 
 ## Testing & verification status
 
-The backend test-suite (`pytest backend/tests`, 62 tests) **all pass** and were
+The backend test-suite (`pytest backend/tests`, 82 tests) **all pass** and were
 executed in the development environment against fixture PDFs/images and a local
 HTTP media server (no reliance on external sites):
 
@@ -259,6 +265,12 @@ cookies.
   shrink very little (the app tells you and keeps the original).
 - No PDF form editing / annotation / OCR.
 - The web UI is not a public web server — do not forward the port to the internet.
+  Exposing it to your local network is an explicit opt-in (Settings → Network) with
+  warnings, but any device on that network can then reach the app.
+- SSRF protection validates the URL before yt-dlp runs (scheme, credentials,
+  private/loopback IP resolution). It cannot re-validate redirects or DNS changes
+  that happen inside yt-dlp's own network stack afterwards - a documented residual
+  risk, mitigated by the fact that yt-dlp only downloads media streams.
 - Playlists are intentionally limited to the first entry (`--no-playlist`).
 - Live stream recordings are downloaded but untested against duration limits.
 
@@ -313,7 +325,7 @@ pdf-media-studio/
 │   │   │   ├── cookie_store.py    # cookie sign-in parse/validate/store
 │   │   │   └── depsinfo.py        # dependency diagnostics
 │   │   └── routers/           # system · files · pdf · media · tasks
-│   └── tests/                 # 62 pytest tests (run: pytest backend/tests)
+│   └── tests/                 # 82 pytest tests (run: pytest backend/tests)
 ├── frontend/
 │   ├── src/                   # React + TypeScript sources (pages, components)
 │   └── dist/                  # prebuilt UI (shipped, no Node needed)
