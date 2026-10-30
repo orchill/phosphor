@@ -4,9 +4,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { listTasks, systemInfo } from "../api";
-import { useNav } from "../ctx";
 import { SystemInfo, TaskRecord, humanSize } from "../types";
 import { StatusBadge } from "../components/TaskPanel";
+import ToolCard from "../components/ToolCard";
 import { CARD, DOT, SECTION_TITLE } from "../ui";
 
 const TOOLS = [
@@ -54,7 +54,6 @@ function DepsCard({ info }: { info: SystemInfo | null }) {
 }
 
 export default function Dashboard() {
-  const { navigate } = useNav();
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [recent, setRecent] = useState<TaskRecord[]>([]);
 
@@ -88,27 +87,9 @@ export default function Dashboard() {
       <section>
         <h2 className={`${SECTION_TITLE} mb-3`}>tools</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {TOOLS.map((t) => {
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                onClick={() => navigate(t.id as any)}
-                className={`${CARD} group flex items-start gap-3 p-4 text-left transition-colors hover:border-acc/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc`}
-              >
-                <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-acc/10 text-acc transition-colors group-hover:bg-acc group-hover:text-onAcc"
-                  aria-hidden
-                >
-                  <Icon size={17} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-mono text-[13px] font-semibold tracking-tight text-ink">{t.title}</span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-ink2">{t.desc}</span>
-                </span>
-              </button>
-            );
-          })}
+          {TOOLS.map((t) => (
+            <ToolCard key={t.id} {...t} />
+          ))}
         </div>
       </section>
 

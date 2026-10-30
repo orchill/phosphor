@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, CheckCircle2, Combine, FileOutput, FilePlus2, FileStack,
-  FolderOutput, History as HistoryIcon, Images, LayoutDashboard, Moon, Scissors,
-  Settings as SettingsIcon, ShieldCheck, Sun, Video, X, Zap,
+  AlertTriangle, CheckCircle2, ChevronDown, Combine, FileOutput, FilePlus2,
+  FileStack, FolderOutput, History as HistoryIcon, Images, LayoutDashboard, Moon,
+  Scissors, Settings as SettingsIcon, ShieldCheck, Sun, Video, X, Zap,
 } from "lucide-react";
-import { NavContext, ToastContext, Toast, Route, useNav } from "./ctx";
+import { NavContext, ToastContext, Toast, Route, useNav, PDF_ROUTES, ROUTE_META } from "./ctx";
 import { systemInfo } from "./api";
 import { SystemInfo } from "./types";
 import { BTN_GHOST } from "./ui";
 import Dashboard from "./pages/Dashboard";
+import PdfTools from "./pages/PdfTools";
 import Merge from "./pages/Merge";
 import ImagesToPdf from "./pages/ImagesToPdf";
 import Organize from "./pages/Organize";
@@ -19,6 +20,26 @@ import PdfToImages from "./pages/PdfToImages";
 import Media from "./pages/Media";
 import History from "./pages/History";
 import SettingsPage from "./pages/Settings";
+
+// ------------------------------------------------------------------ routing
+// Hash-based routes survive reloads, support deep links and back/forward.
+const ROUTE_FOR_HASH: Record<string, Route> = {
+  "": "dashboard", "pdf": "pdftools", "pdf/merge": "merge", "pdf/images": "images",
+  "pdf/organize": "organize", "pdf/split": "split", "pdf/compress": "compress",
+  "pdf/extract": "extract", "pdf/toimages": "toimages", "media": "media",
+  "history": "history", "settings": "settings",
+};
+const HASH_FOR_ROUTE: Record<Route, string> = {
+  dashboard: "", pdftools: "pdf", merge: "pdf/merge", images: "pdf/images",
+  organize: "pdf/organize", split: "pdf/split", compress: "pdf/compress",
+  extract: "pdf/extract", toimages: "pdf/toimages", media: "media",
+  history: "history", settings: "settings",
+};
+
+function routeFromHash(): Route {
+  const h = window.location.hash.replace(/^#\/?/, "").replace(/\/+$/, "");
+  return ROUTE_FOR_HASH[h] ?? "dashboard";
+}
 
 // ------------------------------------------------------------------ theme
 // Dark-first: the phosphor palette is the intended default experience.
@@ -64,76 +85,144 @@ function ToastHost({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number)
 }
 
 // ------------------------------------------------------------------ nav
-const NAV: { id: Route; label: string; icon: React.ElementType; group: string }[] = [
-  { id: "dashboard", label: "dashboard", icon: LayoutDashboard, group: "" },
-  { id: "merge", label: "merge pdfs", icon: Combine, group: "pdf tools" },
-  { id: "images", label: "images to pdf", icon: Images, group: "pdf tools" },
-  { id: "organize", label: "organize pages", icon: FileStack, group: "pdf tools" },
-  { id: "split", label: "split / extract", icon: Scissors, group: "pdf tools" },
-  { id: "compress", label: "compress", icon: Zap, group: "pdf tools" },
-  { id: "extract", label: "extract images", icon: FilePlus2, group: "pdf tools" },
-  { id: "toimages", label: "pdf to images", icon: FileOutput, group: "pdf tools" },
-  { id: "media", label: "media downloader", icon: Video, group: "media" },
-  { id: "history", label: "task history", icon: HistoryIcon, group: "system" },
-  { id: "settings", label: "settings", icon: SettingsIcon, group: "system" },
+const PDF_TOOLS_NAV: { id: Route; label: string; icon: React.ElementType }[] = [
+  { id: "merge", label: "merge pdfs", icon: Combine },
+  { id: "images", label: "images to pdf", icon: Images },
+  { id: "organize", label: "organize pages", icon: FileStack },
+  { id: "split", label: "split / extract", icon: Scissors },
+  { id: "compress", label: "compress", icon: Zap },
+  { id: "extract", label: "extract images", icon: FilePlus2 },
+  { id: "toimages", label: "pdf to images", icon: FileOutput },
 ];
+
+function NavItem({ id, label, icon: Icon, active, onClick }: {
+  id: string; label: string; icon?: React.ElementType; active: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={`flex w-full items-center gap-2.5 rounded-sm border-l-2 px-2.5 py-1.5 font-mono text-[13px] transition-colors
+        ${active
+          ? "border-acc bg-acc/10 text-acc"
+          : "border-transparent text-ink2 hover:bg-elev hover:text-ink"}`}
+    >
+      {Icon && <Icon size={15} className="shrink-0" aria-hidden />}
+      {label}
+    </button>
+  );
+}
+
+function GroupHeader({ label, onClick, expanded, collapsible }: {
+  label: string; onClick?: (toggleOnly?: boolean) => void; expanded?: boolean; collapsible?: boolean;
+}) {
+  const cls =
+    "mb-1 mt-4 flex w-full items-center px-2 font-mono text-[10px] font-medium uppercase tracking-widest text-ink3";
+  if (!collapsible) {
+    return <div className={cls}>{label}</div>;
+  }
+  return (
+    <span className={`${cls} py-0.5`}>
+      <button
+        onClick={() => onClick?.(false)}
+        className="rounded-sm hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+      >
+        {label}
+      </button>
+      <button
+        onClick={() => onClick?.(true)}
+        aria-expanded={expanded}
+        aria-label={`${expanded ? "Collapse" : "Expand"} ${label} section`}
+        className="ml-auto rounded-sm p-0.5 hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+      >
+        <ChevronDown
+          size={13}
+          className={`transition-transform ${expanded ? "" : "-rotate-90"}`}
+          aria-hidden
+        />
+      </button>
+    </span>
+  );
+}
 
 function Sidebar() {
   const { route, navigate } = useNav();
-  let lastGroup = "";
+  const pdfActive = PDF_ROUTES.includes(route);
+  const [pdfOpen, setPdfOpen] = useState(pdfActive);
+  useEffect(() => { if (pdfActive) setPdfOpen(true); }, [pdfActive]);
+
   return (
     <nav
       aria-label="Main navigation"
       className="hidden w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-panel p-2.5 md:flex"
     >
-      {NAV.map((item) => {
-        const showGroup = item.group !== lastGroup;
-        lastGroup = item.group;
-        const Icon = item.icon;
-        const active = route === item.id;
-        return (
-          <div key={item.id}>
-            {showGroup && item.group && (
-              <div className="mb-1 mt-4 px-2 font-mono text-[10px] font-medium uppercase tracking-widest text-ink3">
-                {item.group}
-              </div>
-            )}
-            <button
-              onClick={() => navigate(item.id)}
-              aria-current={active ? "page" : undefined}
-              className={`flex w-full items-center gap-2.5 rounded-sm border-l-2 px-2.5 py-1.5 font-mono text-[13px] transition-colors
-                ${active
-                  ? "border-acc bg-acc/10 text-acc"
-                  : "border-transparent text-ink2 hover:bg-elev hover:text-ink"}`}
-            >
-              <Icon size={15} className="shrink-0" aria-hidden />
-              {item.label}
-            </button>
-          </div>
-        );
-      })}
+      <NavItem
+        id="dashboard" label="home" icon={LayoutDashboard}
+        active={route === "dashboard"} onClick={() => navigate("dashboard")}
+      />
+
+      <GroupHeader
+        label="pdf tools" collapsible expanded={pdfOpen}
+        onClick={(toggleOnly?: boolean) => {
+          if (toggleOnly) setPdfOpen((o) => !o);
+          else { navigate("pdftools"); setPdfOpen(true); }
+        }}
+      />
+      {pdfOpen && PDF_TOOLS_NAV.map((item) => (
+        <NavItem
+          key={item.id} {...item}
+          active={route === item.id} onClick={() => navigate(item.id)}
+        />
+      ))}
+
+      <GroupHeader label="media" />
+      <NavItem
+        id="media" label="media downloader" icon={Video}
+        active={route === "media"} onClick={() => navigate("media")}
+      />
+
+      <GroupHeader label="system" />
+      <NavItem
+        id="history" label="task history" icon={HistoryIcon}
+        active={route === "history"} onClick={() => navigate("history")}
+      />
+      <NavItem
+        id="settings" label="settings" icon={SettingsIcon}
+        active={route === "settings"} onClick={() => navigate("settings")}
+      />
     </nav>
   );
 }
 
 function MobileNav() {
   const { route, navigate } = useNav();
+  const items: { id: Route; label: string }[] = [
+    { id: "dashboard", label: "home" },
+    { id: "pdftools", label: "pdf tools" },
+    { id: "merge", label: "merge" },
+    { id: "images", label: "images" },
+    { id: "organize", label: "organize" },
+    { id: "split", label: "split" },
+    { id: "compress", label: "compress" },
+    { id: "extract", label: "extract" },
+    { id: "toimages", label: "to images" },
+    { id: "media", label: "media" },
+    { id: "history", label: "history" },
+    { id: "settings", label: "settings" },
+  ];
   return (
     <div className="flex gap-1 overflow-x-auto border-b border-line bg-panel px-2 py-2 md:hidden">
-      {NAV.map((item) => {
-        const active = route === item.id;
-        return (
-          <button
-            key={item.id}
-            onClick={() => navigate(item.id)}
-            aria-current={active ? "page" : undefined}
-            className={`flex shrink-0 items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-xs
-              ${active ? "bg-acc/10 text-acc" : "text-ink2 hover:bg-elev hover:text-ink"}`}
-          >
-            {item.label}
-          </button>
-        );
-      })}
+      {items.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => navigate(item.id)}
+          aria-current={route === item.id ? "page" : undefined}
+          className={`flex shrink-0 items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-xs
+            ${route === item.id ? "bg-acc/10 text-acc" : "text-ink2 hover:bg-elev hover:text-ink"}`}
+        >
+          {item.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -190,8 +279,26 @@ function Header({ dark, toggleTheme }: { dark: boolean; toggleTheme: () => void 
 // ------------------------------------------------------------------ app
 export default function App() {
   const { dark, toggle } = useTheme();
-  const [route, setRoute] = useState<Route>("dashboard");
+  const [route, setRoute] = useState<Route>(routeFromHash);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!window.location.hash) history.replaceState(null, "", "#/");
+    const onHash = () => setRoute(routeFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [route]);
+
+  const navigate = useCallback((r: Route) => {
+    const target = `#/${HASH_FOR_ROUTE[r]}`;
+    if (window.location.hash === target) setRoute(r);
+    else window.location.hash = target;
+  }, []);
 
   const push = useCallback((kind: Toast["kind"], text: string) => {
     const id = Date.now() + Math.random();
@@ -200,10 +307,11 @@ export default function App() {
   }, []);
   const dismiss = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
   const toastCtx = useMemo(() => ({ toasts, push, dismiss }), [toasts, push, dismiss]);
-  const navCtx = useMemo(() => ({ route, navigate: setRoute }), [route]);
+  const navCtx = useMemo(() => ({ route, navigate }), [route, navigate]);
 
   const page = {
     dashboard: <Dashboard />,
+    pdftools: <PdfTools />,
     merge: <Merge />,
     images: <ImagesToPdf />,
     organize: <Organize />,
@@ -216,6 +324,9 @@ export default function App() {
     settings: <SettingsPage />,
   }[route];
 
+  const meta = ROUTE_META[route];
+  const inPdfTools = PDF_ROUTES.includes(route) && route !== "pdftools";
+
   return (
     <NavContext.Provider value={navCtx}>
       <ToastContext.Provider value={toastCtx}>
@@ -225,7 +336,27 @@ export default function App() {
           <div className="flex min-h-0 flex-1">
             <Sidebar />
             <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6 focus:outline-none">
-              <div className="mx-auto max-w-4xl">{page}</div>
+              <div className="mx-auto max-w-4xl">
+                {route !== "dashboard" && (
+                  <nav aria-label="Breadcrumb" className="mb-4 flex items-center font-mono text-[11px] tracking-tight text-ink3">
+                    {inPdfTools ? (
+                      <>
+                        <button
+                          onClick={() => navigate("pdftools")}
+                          className="rounded-sm hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+                        >
+                          ~/pdf-tools
+                        </button>
+                        <span className="mx-1.5" aria-hidden>/</span>
+                        <span className="text-ink2">{meta.crumb.split("/").pop()}</span>
+                      </>
+                    ) : (
+                      <span>{meta.crumb}</span>
+                    )}
+                  </nav>
+                )}
+                {page}
+              </div>
             </main>
           </div>
           <ToastHost toasts={toasts} dismiss={dismiss} />
