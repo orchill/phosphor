@@ -9,6 +9,7 @@ import { systemInfo } from "./api";
 import { SystemInfo } from "./types";
 import { BTN_GHOST } from "./ui";
 import CommandPalette from "./components/CommandPalette";
+import Onboarding from "./components/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import PdfTools from "./pages/PdfTools";
 import Merge from "./pages/Merge";
@@ -42,6 +43,28 @@ function routeFromHash(): Route {
   return ROUTE_FOR_HASH[h] ?? "dashboard";
 }
 
+// ------------------------------------------------------------------ density
+// Interface density: root font-size scaling (rem-based layout follows).
+function applyDensity() {
+  const d = localStorage.getItem("pms-density") ?? "comfortable";
+  document.documentElement.style.fontSize = d === "compact" ? "100%" : "106.25%";
+}
+
+function useDensity() {
+  useEffect(() => {
+    applyDensity();
+    window.addEventListener("pms-density", applyDensity);
+    return () => window.removeEventListener("pms-density", applyDensity);
+  }, []);
+}
+
+// --------------------------------------------------------- document title
+let BASE_TITLE = "phosphor";
+function setBaseTitle(t: string) {
+  BASE_TITLE = t;
+  document.title = t;
+}
+
 // ------------------------------------------------------------------ theme
 // Dark-first: the phosphor palette is the intended default experience.
 function useTheme() {
@@ -69,7 +92,7 @@ function ToastHost({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number)
             ${t.kind === "error" ? "border-bad/50" : t.kind === "success" ? "border-acc/50" : "border-line"}`}
         >
           {t.kind === "error" ? <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bad" />
-            : t.kind === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-acc" />
+            : t.kind === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-accText" />
             : <ShieldCheck size={16} className="mt-0.5 shrink-0 text-info" />}
           <span className="whitespace-pre-wrap">{t.text}</span>
           <button
@@ -103,9 +126,9 @@ function NavItem({ id, label, icon: Icon, active, onClick }: {
     <button
       onClick={onClick}
       aria-current={active ? "page" : undefined}
-      className={`flex w-full items-center gap-2.5 rounded-sm border-l-2 px-2.5 py-1.5 font-mono text-[13px] transition-colors
+      className={`flex w-full items-center gap-2.5 rounded-sm border-l-2 px-2.5 py-1.5 font-mono text-sm transition-colors
         ${active
-          ? "border-acc bg-acc/10 text-acc"
+          ? "border-acc bg-acc/10 text-accText"
           : "border-transparent text-ink3 hover:bg-elev hover:text-ink"}`}
     >
       {Icon && <Icon size={15} className="shrink-0" aria-hidden />}
@@ -118,7 +141,7 @@ function GroupHeader({ label, onClick, expanded, collapsible }: {
   label: string; onClick?: (toggleOnly?: boolean) => void; expanded?: boolean; collapsible?: boolean;
 }) {
   const cls =
-    "mb-1 mt-4 flex w-full items-center px-2 font-mono text-[10px] font-medium uppercase tracking-widest text-ink3";
+    "mb-1 mt-4 flex w-full items-center px-2 font-mono text-[0.625rem] font-medium uppercase tracking-widest text-ink3";
   if (!collapsible) {
     return <div className={cls}>{label}</div>;
   }
@@ -219,7 +242,7 @@ function MobileNav() {
           onClick={() => navigate(item.id)}
           aria-current={route === item.id ? "page" : undefined}
           className={`flex shrink-0 items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-xs
-            ${route === item.id ? "bg-acc/10 text-acc" : "text-ink2 hover:bg-elev hover:text-ink"}`}
+            ${route === item.id ? "bg-acc/10 text-accText" : "text-ink2 hover:bg-elev hover:text-ink"}`}
         >
           {item.label}
         </button>
@@ -237,20 +260,20 @@ function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme
     <header className="flex items-center gap-3 border-b border-line bg-panel px-4 py-2.5">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-sm focus:bg-acc focus:px-3 focus:py-1.5 focus:font-mono focus:text-[13px] focus:text-onAcc"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-sm focus:bg-acc focus:px-3 focus:py-1.5 focus:font-mono focus:text-sm focus:text-onAcc"
       >
         skip to content
       </a>
       <div className="flex items-center gap-2.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-acc font-mono text-[15px] font-bold leading-none text-onAcc" aria-hidden>
+        <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-acc font-mono text-[0.9375rem] font-bold leading-none text-onAcc" aria-hidden>
           ❯
         </div>
         <div>
           <h1 className="font-mono text-sm font-semibold leading-tight tracking-tight text-ink">
-            pdf-media-studio<span className="animate-cursor-blink text-acc" aria-hidden>▮</span>
+            phosphor<span className="animate-cursor-blink text-accText" aria-hidden>▮</span>
           </h1>
-          <p className="text-[11px] leading-tight text-ink3">
-            100% local processing - your files never leave this computer
+          <p className="text-[0.6875rem] leading-tight text-ink3">
+            local PDF &amp; media console - nothing leaves this computer
           </p>
         </div>
       </div>
@@ -259,14 +282,14 @@ function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme
           <button
             onClick={() => navigator.clipboard?.writeText(info.output_dir)}
             title={`Output folder: ${info.output_dir} (click to copy path)`}
-            className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-[11px] text-ink3 hover:bg-elev hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc lg:flex"
+            className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-[0.6875rem] text-ink3 hover:bg-elev hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc lg:flex"
           >
             <FolderOutput size={13} aria-hidden /> {info.output_dir}
           </button>
         )}
         <button
           onClick={openPalette}
-          className={`${BTN_GHOST} hidden items-center gap-1.5 px-2 font-mono text-[11px] sm:inline-flex`}
+          className={`${BTN_GHOST} hidden items-center gap-1.5 px-2 font-mono text-[0.6875rem] sm:inline-flex`}
           aria-label="Open command palette"
           title="Command palette (Ctrl+K)"
         >
@@ -290,10 +313,23 @@ function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme
 // ------------------------------------------------------------------ app
 export default function App() {
   const { dark, toggle } = useTheme();
+  useDensity();
   const [route, setRoute] = useState<Route>(routeFromHash);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [introOpen, setIntroOpen] = useState(
+    () => !localStorage.getItem("pms-onboarded-v1"),
+  );
   const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const showIntro = () => {
+      localStorage.removeItem("pms-onboarded-v1");
+      setIntroOpen(true);
+    };
+    window.addEventListener("pms-show-intro", showIntro);
+    return () => window.removeEventListener("pms-show-intro", showIntro);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -315,6 +351,7 @@ export default function App() {
 
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
+    setBaseTitle(`${ROUTE_META[route].title} · phosphor`);
   }, [route]);
 
   const navigate = useCallback((r: Route) => {
@@ -361,18 +398,25 @@ export default function App() {
             toggleTheme={toggle}
             dark={dark}
           />
+          <Onboarding
+            open={introOpen}
+            onClose={() => {
+              localStorage.setItem("pms-onboarded-v1", "1");
+              setIntroOpen(false);
+            }}
+          />
           <MobileNav />
           <div className="flex min-h-0 flex-1">
             <Sidebar />
             <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6 focus:outline-none">
               <div className="mx-auto max-w-4xl">
                 {route !== "dashboard" && (
-                  <nav aria-label="Breadcrumb" className="mb-4 flex items-center font-mono text-[11px] tracking-tight text-ink3">
+                  <nav aria-label="Breadcrumb" className="mb-4 flex items-center font-mono text-[0.6875rem] tracking-tight text-ink3">
                     {inPdfTools ? (
                       <>
                         <button
                           onClick={() => navigate("pdftools")}
-                          className="rounded-sm hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+                          className="rounded-sm hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
                         >
                           ~/pdf-tools
                         </button>

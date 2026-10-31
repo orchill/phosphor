@@ -52,7 +52,7 @@ export default function PdfTools() {
       {CATEGORIES.map((cat) => (
         <section key={cat.title}>
           <div className="mb-3 flex items-baseline gap-3">
-            <h3 className={`${SECTION_TITLE} text-acc`}>{cat.title}</h3>
+            <h3 className={`${SECTION_TITLE} text-accText`}>{cat.title}</h3>
             <span className="hidden text-xs text-ink3 sm:block">{cat.blurb}</span>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -23,7 +23,7 @@ const TOOLS = [
 
 function EngineRow({ name, detail, ok }: { name: string; detail: string; ok: boolean }) {
   return (
-    <li className="flex items-center gap-2 font-mono text-[12px]">
+    <li className="flex items-center gap-2 font-mono text-[0.75rem]">
       <span className={`${DOT} ${ok ? "bg-ok" : "bg-bad"}`} aria-hidden />
       <span className="text-ink">{name}</span>
       <span className="ml-auto truncate text-ink3" title={detail}>{detail}</span>
@@ -33,12 +33,12 @@ function EngineRow({ name, detail, ok }: { name: string; detail: string; ok: boo
 
 function Counter({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 font-mono text-[12px]">
+    <div className="flex items-baseline justify-between gap-2 font-mono text-[0.75rem]">
       <span className="flex items-center gap-2">
         <span className={`${DOT} ${tone}`} aria-hidden />
         <span className="text-ink2">{label}</span>
       </span>
-      <span className="text-[15px] font-semibold text-ink">{value}</span>
+      <span className="text-[0.9375rem] font-semibold text-ink">{value}</span>
     </div>
   );
 }
@@ -59,7 +59,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* status strip - genuine application data only */}
       <section className={`${CARD} p-5`}>
-        <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-tight text-ink3">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[0.6875rem] tracking-tight text-ink3">
           <span className={`${DOT} bg-ok`} aria-hidden />
           <span>ready</span>
           <span aria-hidden>·</span>
@@ -81,7 +81,7 @@ export default function Dashboard() {
           <span className="ml-auto hidden sm:block">~/.local/pdf-media-studio</span>
         </div>
         <h2 className="mt-3 font-mono text-lg font-semibold tracking-tight text-ink">
-          Your private PDF &amp; media toolbox<span className="animate-cursor-blink text-acc" aria-hidden>▮</span>
+          Your private PDF &amp; media toolbox<span className="animate-cursor-blink text-accText" aria-hidden>▮</span>
         </h2>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink2">
           Everything runs on this machine as a localhost service - merge, convert, organize
@@ -95,7 +95,7 @@ export default function Dashboard() {
         <h3 className={`${SECTION_LABEL} mb-2`}>system</h3>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className={`${CARD} p-4`}>
-            <h4 className={`${SECTION_LABEL} mb-2.5 text-acc`}>pdf engine</h4>
+            <h4 className={`${SECTION_LABEL} mb-2.5 text-accText`}>pdf engine</h4>
             <ul className="space-y-1.5">
               <EngineRow name="PyMuPDF" detail={info?.deps.pymupdf ?? "…"} ok={!!info} />
               <EngineRow name="pypdf" detail={info?.deps.pypdf ?? "…"} ok={!!info} />
@@ -103,7 +103,7 @@ export default function Dashboard() {
             </ul>
           </div>
           <div className={`${CARD} p-4`}>
-            <h4 className={`${SECTION_LABEL} mb-2.5 text-acc`}>media engine</h4>
+            <h4 className={`${SECTION_LABEL} mb-2.5 text-accText`}>media engine</h4>
             <ul className="space-y-1.5">
               <EngineRow
                 name="FFmpeg"
@@ -123,7 +123,7 @@ export default function Dashboard() {
             </ul>
           </div>
           <div className={`${CARD} p-4`}>
-            <h4 className={`${SECTION_LABEL} mb-2.5 text-acc`}>tasks</h4>
+            <h4 className={`${SECTION_LABEL} mb-2.5 text-accText`}>tasks</h4>
             <div className="space-y-2">
               <Counter label="active" value={active} tone={active ? "bg-info" : "bg-ink3"} />
               <Counter label="completed" value={count("completed")} tone="bg-ok" />
@@ -155,11 +155,11 @@ export default function Dashboard() {
               {recent.slice(0, 8).map((t) => (
                 <li key={t.id} className="flex items-center gap-2">
                   <StatusBadge status={t.status} />
-                  <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink2" title={t.title}>{t.title}</span>
-                  <span className="shrink-0 font-mono text-[11px] text-ink3">
+                  <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink2" title={t.title}>{t.title}</span>
+                  <span className="shrink-0 font-mono text-[0.6875rem] text-ink3">
                     {t.finished_at ? new Date(t.finished_at).toLocaleTimeString() : ""}
                   </span>
-                  <span className="w-16 shrink-0 text-right font-mono text-[11px] text-ink3">
+                  <span className="w-16 shrink-0 text-right font-mono text-[0.6875rem] text-ink3">
                     {t.result?.outputs?.[0]?.size ? humanSize(t.result.outputs[0].size) : ""}
                   </span>
                 </li>

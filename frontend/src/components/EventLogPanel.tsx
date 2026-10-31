@@ -45,18 +45,18 @@ export default function EventLogPanel() {
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="flex items-center gap-2 rounded-sm font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-ink hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+          className="flex items-center gap-2 rounded-sm font-mono text-sm font-semibold uppercase tracking-[0.08em] text-ink hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
         >
           <ChevronDown size={13} className={`transition-transform ${open ? "" : "-rotate-90"}`} aria-hidden />
           event log
         </button>
         {errors > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-sm border border-bad/40 bg-bad/10 px-1.5 py-0.5 font-mono text-[11px] text-bad">
+          <span className="inline-flex items-center gap-1.5 rounded-sm border border-bad/40 bg-bad/10 px-1.5 py-0.5 font-mono text-[0.6875rem] text-bad">
             <span className={`${DOT} bg-bad`} aria-hidden />{errors} error{errors === 1 ? "" : "s"}
           </span>
         )}
         {warnings > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-sm border border-warn/40 bg-warn/10 px-1.5 py-0.5 font-mono text-[11px] text-warn">
+          <span className="inline-flex items-center gap-1.5 rounded-sm border border-warn/40 bg-warn/10 px-1.5 py-0.5 font-mono text-[0.6875rem] text-warn">
             <span className={`${DOT} bg-warn`} aria-hidden />{warnings} warning{warnings === 1 ? "" : "s"}
           </span>
         )}
@@ -79,8 +79,8 @@ export default function EventLogPanel() {
                 role="radio"
                 aria-checked={filter === f.id}
                 onClick={() => setFilter(f.id)}
-                className={`rounded-sm border px-2.5 py-1 font-mono text-[11px] transition-colors ${
-                  filter === f.id ? "border-acc bg-acc/10 text-acc" : "border-line text-ink3 hover:border-ink3 hover:text-ink2"
+                className={`rounded-sm border px-2.5 py-1 font-mono text-[0.6875rem] transition-colors ${
+                  filter === f.id ? "border-acc bg-acc/10 text-accText" : "border-line text-ink3 hover:border-ink3 hover:text-ink2"
                 }`}
               >
                 {f.label}
@@ -88,7 +88,7 @@ export default function EventLogPanel() {
             ))}
           </div>
           <div
-            className="mt-2 max-h-64 overflow-auto rounded-sm border border-line bg-base p-3 font-mono text-[11px] leading-relaxed"
+            className="mt-2 max-h-64 overflow-auto rounded-sm border border-line bg-base p-3 font-mono text-[0.6875rem] leading-relaxed"
             role="log"
             aria-label="Application events"
           >
@@ -108,7 +108,7 @@ export default function EventLogPanel() {
               </ol>
             )}
           </div>
-          <p className="mt-1.5 text-[11px] text-ink3">
+          <p className="mt-1.5 text-[0.6875rem] text-ink3">
             Session log - kept in memory only, cleared when the app closes.
           </p>
         </>

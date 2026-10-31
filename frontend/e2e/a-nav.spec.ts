@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect, test as base } from "@playwright/test";
+import { test } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 /** The desktop sidebar (mobile chips + page content share the same labels). */
@@ -12,7 +13,8 @@ function nav(page: Page, name: string) {
 test.describe("navigation & routing", () => {
   test("dashboard renders by default", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /pdf-media-studio/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^phosphor/ })).toBeVisible();
+    await expect(page.getByText("local PDF & media console - nothing leaves this computer")).toBeVisible();
     await expect(page.getByRole("heading", { name: /Your private PDF & media toolbox/ })).toBeVisible();
     await expect(sidebar(page)).toBeVisible();
   });
@@ -98,5 +100,23 @@ test.describe("navigation & routing", () => {
     await expect(dialog).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
+  });
+
+  base("first launch shows the onboarding intro exactly once", async ({ page }) => {
+    // raw base test: no seeded flag -> intro appears
+    await page.goto("/");
+    const intro = page.getByRole("dialog", { name: "Welcome to phosphor" });
+    await expect(intro).toBeVisible();
+    const next = intro.getByRole("button", { name: "next" });
+    await next.click();
+    await next.click();
+    await next.click();
+    await intro.getByRole("button", { name: "got it" }).click();
+    await expect(intro).toBeHidden();
+    // does not reappear after reload
+    await page.reload();
+    await expect(
+      page.getByRole("dialog", { name: "Welcome to phosphor" }),
+    ).toBeHidden();
   });
 });

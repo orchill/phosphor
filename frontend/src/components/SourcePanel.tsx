@@ -21,7 +21,7 @@ export default function SourcePanel({ file, onClose, closeLabel = "Close file", 
           <X size={13} aria-hidden /> {closeLabel}
         </button>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[12px]">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[0.75rem]">
         <span className="min-w-0 max-w-full truncate text-ink" title={file.name}>{file.name}</span>
         <span className="text-ink3" aria-hidden>·</span>
         <span className="text-ink3">{humanSize(file.size)}</span>

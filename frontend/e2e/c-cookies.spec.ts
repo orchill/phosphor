@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { BASE_URL } from "./server-manager";
 
 const SECRET_VALUE = "g.000-E2E-secret-9f3a";

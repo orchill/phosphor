@@ -20,8 +20,8 @@ export default {
           "Cantarell", "Noto Sans", "sans-serif", "Helvetica", "Arial",
         ],
         mono: [
-          "ui-monospace", "Cascadia Mono", "Cascadia Code", "Consolas",
-          "JetBrains Mono", "Menlo", "monospace",
+          "JetBrains Mono Variable", "JetBrains Mono", "ui-monospace",
+          "Cascadia Mono", "Cascadia Code", "Consolas", "Menlo", "monospace",
         ],
       },
       colors: {
@@ -36,6 +36,7 @@ export default {
         ink3: token("ink3"),        // muted / metadata
         // phosphor accent + status palette
         acc: token("acc"),          // phosphor green (primary)
+        accText: token("accText"),  // AA-safe accent for text/icons (light: darker)
         accHi: token("accHi"),      // accent hover
         onAcc: token("onAcc"),      // text on accent fills
         info: token("info"),        // cyan (links / info)

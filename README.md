@@ -1,6 +1,6 @@
-# PDF & Media Studio
+# phosphor
 
-A local-first **PDF toolbox + media downloader** for your own machine.
+A local-first **PDF toolbox + media console** for your own machine.
 Merge, split, compress and convert PDFs, and download video/audio through
 yt-dlp — everything processed locally, nothing sent to a cloud.
 

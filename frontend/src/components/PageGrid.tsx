@@ -114,7 +114,7 @@ export default function PageGrid({
               </button>
 
               <div className="flex items-center justify-between gap-0.5 px-2 py-1.5">
-                <span className={`min-w-0 truncate font-mono text-[11px] ${selected ? "text-acc" : "text-ink3"}`}>
+                <span className={`min-w-0 truncate font-mono text-[0.6875rem] ${selected ? "text-accText" : "text-ink3"}`}>
                   {p.rotation ? `p${p.page} (${p.rotation}deg)` : `p${p.page}`}
                 </span>
                 <span className="flex shrink-0 items-center gap-0.5">
@@ -123,7 +123,7 @@ export default function PageGrid({
                       <button
                         onClick={() => move(idx, -1)}
                         disabled={idx === 0}
-                        className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc disabled:opacity-30 disabled:pointer-events-none"
+                        className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc disabled:opacity-30 disabled:pointer-events-none"
                         aria-label={`Move page ${p.page} to an earlier position`}
                         title="Move earlier (Ctrl+←)"
                       >
@@ -132,7 +132,7 @@ export default function PageGrid({
                       <button
                         onClick={() => move(idx, 1)}
                         disabled={idx === pages.length - 1}
-                        className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc disabled:opacity-30 disabled:pointer-events-none"
+                        className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc disabled:opacity-30 disabled:pointer-events-none"
                         aria-label={`Move page ${p.page} to a later position`}
                         title="Move later (Ctrl+→)"
                       >
@@ -142,10 +142,10 @@ export default function PageGrid({
                   )}
                   {allowRotate && (
                     <>
-                      <button onClick={() => rotate(idx, -90)} className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Rotate page ${p.page} left`} title="Rotate left">
+                      <button onClick={() => rotate(idx, -90)} className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Rotate page ${p.page} left`} title="Rotate left">
                         <RotateCcw size={13} aria-hidden />
                       </button>
-                      <button onClick={() => rotate(idx, 90)} className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Rotate page ${p.page} right`} title="Rotate right">
+                      <button onClick={() => rotate(idx, 90)} className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Rotate page ${p.page} right`} title="Rotate right">
                         <RotateCw size={13} aria-hidden />
                       </button>
                     </>
@@ -159,7 +159,7 @@ export default function PageGrid({
               </div>
 
               {selected && (
-                <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-sm bg-acc font-mono text-[11px] font-bold text-onAcc" aria-hidden>
+                <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-sm bg-acc font-mono text-[0.6875rem] font-bold text-onAcc" aria-hidden>
                   ✓
                 </span>
               )}

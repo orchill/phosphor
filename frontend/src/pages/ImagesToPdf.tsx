@@ -119,8 +119,8 @@ export default function ImagesToPdf() {
                         #{i + 1} {img.name}
                       </span>
                       <span className="flex shrink-0">
-                        <button onClick={() => rotate(img.id, -90)} className="rounded p-1 text-ink3 hover:text-acc" aria-label={`Rotate ${img.name} left`}><RotateCcw size={13} /></button>
-                        <button onClick={() => rotate(img.id, 90)} className="rounded p-1 text-ink3 hover:text-acc" aria-label={`Rotate ${img.name} right`}><RotateCw size={13} /></button>
+                        <button onClick={() => rotate(img.id, -90)} className="rounded p-1 text-ink3 hover:text-accText" aria-label={`Rotate ${img.name} left`}><RotateCcw size={13} /></button>
+                        <button onClick={() => rotate(img.id, 90)} className="rounded p-1 text-ink3 hover:text-accText" aria-label={`Rotate ${img.name} right`}><RotateCw size={13} /></button>
                         <button onClick={() => { setImages((c) => c.filter((x) => x.id !== img.id)); deleteFile(img.id).catch(() => {}); }} className="rounded p-1 text-ink3 hover:text-bad" aria-label={`Remove ${img.name}`}>x</button>
                       </span>
                     </div>
@@ -180,7 +180,7 @@ export default function ImagesToPdf() {
         </>
       )}
 
-      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} />
+      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} onRetry={convert} />
     </div>
   );
 }

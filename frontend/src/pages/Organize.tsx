@@ -98,7 +98,7 @@ export default function Organize() {
         <>
           <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close document" />
           <div className="flex flex-wrap items-center gap-2 rounded-sm border border-line bg-panel p-3">
-            <span className="font-mono text-[12px] text-ink2">{pages.length} page(s)</span>
+            <span className="font-mono text-[0.75rem] text-ink2">{pages.length} page(s)</span>
             <span className="ml-auto flex flex-wrap items-center gap-2">
               <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>Select all</button>
               <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>Select none</button>
@@ -141,7 +141,7 @@ allowSelect
         </>
       )}
 
-      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} />
+      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} onRetry={save} />
     </div>
   );
 }

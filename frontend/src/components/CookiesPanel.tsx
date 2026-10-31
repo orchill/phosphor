@@ -17,7 +17,7 @@ type Mode = "none" | "file" | "browser";
 function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <li className="flex gap-2">
-      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-acc/10 text-[10px] font-bold text-acc">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-acc/10 text-[0.625rem] font-bold text-accText">
         {n}
       </span>
       <span>{children}</span>
@@ -160,7 +160,7 @@ key={m}
               onClick={() => setMode(m)}
               className={`flex items-center gap-2 rounded-sm border px-3 py-2.5 text-sm font-medium ${
                 mode === m
-? "border-acc bg-acc/10 text-acc"
+? "border-acc bg-acc/10 text-accText"
                   : "border-line text-ink2"
               }`}
             >
@@ -265,7 +265,7 @@ into the box above.
           <div
 role="status" className={`flex items-start gap-2 rounded-sm border px-3 py-2.5 text-sm ${
               result.ok
-? "border-acc/40 bg-acc/10 text-acc"
+? "border-acc/40 bg-acc/10 text-accText"
                 : "border-bad/40 bg-bad/10 text-bad"
             }`}
           >

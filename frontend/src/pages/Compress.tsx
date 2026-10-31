@@ -99,7 +99,7 @@ export default function Compress() {
         </>
       )}
 
-      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} />
+      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} onRetry={run} />
     </div>
   );
 }

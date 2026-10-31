@@ -132,15 +132,15 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
             placeholder="Type a command or page name…"
             spellCheck={false}
             autoComplete="off"
-            className="w-full bg-transparent font-mono text-[13px] text-ink placeholder:text-ink3 focus:outline-none"
+            className="w-full bg-transparent font-mono text-sm text-ink placeholder:text-ink3 focus:outline-none"
           />
-          <kbd className="shrink-0 rounded-sm border border-line px-1.5 py-0.5 font-mono text-[10px] text-ink3">
+          <kbd className="shrink-0 rounded-sm border border-line px-1.5 py-0.5 font-mono text-[0.625rem] text-ink3">
             esc
           </kbd>
         </div>
         <div ref={listRef} id="command-palette-list" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto p-2">
           {results.length === 0 && (
-            <p className="px-2 py-6 text-center font-mono text-[12px] text-ink3">No matching commands.</p>
+            <p className="px-2 py-6 text-center font-mono text-[0.75rem] text-ink3">No matching commands.</p>
           )}
           {results.map((cmd, i) => {
             const showSection = cmd.section !== lastSection;
@@ -149,7 +149,7 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
             return (
               <div key={cmd.id}>
                 {showSection && (
-                  <div className="px-2 pb-1 pt-2 font-mono text-[10px] uppercase tracking-widest text-ink3">
+                  <div className="px-2 pb-1 pt-2 font-mono text-[0.625rem] uppercase tracking-widest text-ink3">
                     {cmd.section === "navigate" ? "go to" : "actions"}
                   </div>
                 )}
@@ -159,8 +159,8 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
                   aria-selected={i === active}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => runCommand(cmd)}
-                  className={`flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-left font-mono text-[13px] transition-colors ${
-                    i === active ? "bg-acc/10 text-acc" : "text-ink2"
+                  className={`flex w-full items-center gap-2.5 rounded-sm px-2.5 py-2 text-left font-mono text-sm transition-colors ${
+                    i === active ? "bg-acc/10 text-accText" : "text-ink2"
                   }`}
                 >
                   <Icon size={15} className="shrink-0" aria-hidden />

@@ -74,6 +74,7 @@ def main() -> int:
     parser.add_argument("--no-browser", action="store_true", help="do not open the web browser")
     args = parser.parse_args()
 
+    from backend.app import APP_NAME
     from backend.app.config import get_config
     cfg = get_config()
     host = args.host or cfg.get("host")
@@ -81,7 +82,7 @@ def main() -> int:
     url = f"http://{'localhost' if host in ('127.0.0.1',) else host}:{port}"
 
     print("=" * 62)
-    print("  PDF & Media Studio")
+    print(f"  {APP_NAME}")
     print(f"  URL          : {url}")
     print(f"  Output folder: {cfg.output_dir}")
     if host not in ("127.0.0.1", "localhost"):

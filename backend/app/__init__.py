@@ -1,3 +1,3 @@
-"""PDF & Media Studio - local-first PDF toolbox and media downloader."""
-__version__ = "1.1.0"
-APP_NAME = "PDF & Media Studio"
+"""phosphor - local-first PDF toolbox and media console."""
+__version__ = "1.2.0"
+APP_NAME = "phosphor"

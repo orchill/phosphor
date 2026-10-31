@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle, ChevronDown, Cookie, Download, KeyRound, Link2, Loader2, Music,
   RefreshCw, Video,
@@ -63,11 +63,15 @@ const fetchInfo = async () => {
     }
   };
 
+  const lastDownload = useRef<import("../types").MediaDownloadPayload | null>(
+    null,
+  );
+
   const start = async () => {
     if (!info) return;
     setStarting(true);
     try {
-      const { task_id } = await mediaDownload({
+      const payload = {
         url: info.webpage_url || url,
         mode,
         // Mode-specific fields only - a video selection must never leak into
@@ -86,7 +90,9 @@ const fetchInfo = async () => {
         video_id: info.id,
         title: info.title,
         is_live: info.is_live,
-      });
+      };
+      lastDownload.current = payload;
+      const { task_id } = await mediaDownload(payload);
       setTaskId(task_id);
       toast.push("info", "Download started.");
     } catch (e: any) {
@@ -113,7 +119,7 @@ const fetchInfo = async () => {
           Powered by yt-dlp + FFmpeg running locally. Paste a supported URL (YouTube and hundreds
 of other sites). Only download content you have the right to save - DRM and access
 controls are never bypassed. Hitting a bot check? Use the
-<button onClick={() => setTab("cookies")} className="mx-1 font-medium text-acc underline decoration-dotted hover:text-accHi">
+<button onClick={() => setTab("cookies")} className="mx-1 font-medium text-accText underline decoration-dotted hover:text-accHi">
             Cookies / Sign-in
 </button>
           tab.
@@ -142,7 +148,7 @@ role="tab" aria-selected={tab === "downloader"}
           onClick={() => setTab("downloader")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium sm:flex-none sm:px-6 ${
             tab === "downloader"
-              ? "border-acc bg-acc/10 text-acc"
+              ? "border-acc bg-acc/10 text-accText"
               : "border-line text-ink2"
           }`}
         >
@@ -153,7 +159,7 @@ role="tab" aria-selected={tab === "cookies"}
           onClick={() => setTab("cookies")}
           className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium sm:flex-none sm:px-6 ${
             tab === "cookies"
-              ? "border-acc bg-acc/10 text-acc"
+              ? "border-acc bg-acc/10 text-accText"
               : "border-line text-ink2"
           }`}
         >
@@ -222,12 +228,12 @@ src={info.thumbnail}
           <div className={`${CARD} space-y-4 p-4`}>
             <div className="flex gap-2" role="tablist" aria-label="Output type">
               <button role="tab" aria-selected={mode === "video"} onClick={() => setMode("video")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium ${mode === "video" ? "border-acc bg-acc/10 text-acc" : "border-line text-ink2"}`}>
+                className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium ${mode === "video" ? "border-acc bg-acc/10 text-accText" : "border-line text-ink2"}`}>
                 <Video size={16} /> Video (MP4)
               </button>
               <button role="tab" aria-selected={mode === "audio"}
                 onClick={() => { setMode("audio"); setVideoFmt(""); setHeight(0); }}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium ${mode === "audio" ? "border-acc bg-acc/10 text-acc" : "border-line text-ink2"}`}>
+                className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium ${mode === "audio" ? "border-acc bg-acc/10 text-accText" : "border-line text-ink2"}`}>
                 <Music size={16} /> Audio (MP3 / M4A)
               </button>
             </div>
@@ -241,7 +247,7 @@ src={info.thumbnail}
                   </select>
                 </div>
                 <details className="group rounded border border-line bg-base/50 sm:col-span-2">
-                  <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-mono text-[11px] uppercase tracking-widest text-ink3 hover:text-ink2">
+                  <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-mono text-[0.6875rem] uppercase tracking-widest text-ink3 hover:text-ink2">
                     advanced options
                     <ChevronDown size={13} className="transition-transform group-open:rotate-180" aria-hidden />
                   </summary>
@@ -303,7 +309,7 @@ src={info.thumbnail}
               ) : (
                 <span className="text-xs text-ink3">Size estimate unavailable for this selection</span>
               )}
-              <span className="ml-auto flex items-center gap-1 text-[11px] text-ink3">
+              <span className="ml-auto flex items-center gap-1 text-[0.6875rem] text-ink3">
                 <AlertTriangle size={11} /> Respect copyright - download only permitted content
 </span>
             </div>
@@ -313,7 +319,18 @@ src={info.thumbnail}
         </>
       )}
 
-      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} />
+      <TaskPanel
+        taskId={taskId}
+        onDismiss={() => setTaskId(null)}
+        onRetry={lastDownload.current ? () => {
+          if (!lastDownload.current) return;
+          setStarting(true);
+          mediaDownload(lastDownload.current)
+            .then(({ task_id }) => setTaskId(task_id))
+            .catch((e: any) => toast.push("error", e.message))
+            .finally(() => setStarting(false));
+        } : undefined}
+      />
     </div>
   );
 }

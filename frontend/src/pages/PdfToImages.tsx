@@ -123,7 +123,7 @@ export default function PdfToImages() {
         </>
       )}
 
-      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} />
+      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} onRetry={run} />
     </div>
   );
 }

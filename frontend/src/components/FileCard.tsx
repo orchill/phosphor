@@ -36,13 +36,13 @@ export default function FileCard({ file, onRemove, draggable, index, badge }: Pr
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-[13px] font-medium text-ink">{file.name}</p>
-        <p className="flex items-center gap-1.5 font-mono text-[11px] text-ink3">
+        <p className="truncate font-mono text-sm font-medium text-ink">{file.name}</p>
+        <p className="flex items-center gap-1.5 font-mono text-[0.6875rem] text-ink3">
           {file.kind === "pdf" ? <FileText size={11} /> : <ImageIcon size={11} />}
           {file.kind.toUpperCase()} - {humanSize(file.size)}
           {file.kind === "pdf" && ` - ${file.pages} pages`}
           {file.kind === "image" && file.width ? ` - ${file.width}x${file.height}` : ""}
-          {badge && <span className="ml-1 rounded-sm bg-acc/10 px-1.5 py-0.5 text-[10px] font-semibold text-acc">{badge}</span>}
+          {badge && <span className="ml-1 rounded-sm bg-acc/10 px-1.5 py-0.5 text-[0.625rem] font-semibold text-accText">{badge}</span>}
         </p>
       </div>
       {onRemove && (

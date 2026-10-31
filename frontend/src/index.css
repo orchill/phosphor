@@ -1,3 +1,5 @@
+@import "@fontsource-variable/jetbrains-mono";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,6 +16,8 @@
   --c-ink2: 90 99 110;
   --c-ink3: 134 142 152;
   --c-acc: 22 163 74;
+  --c-accHi: 21 128 61;
+  --c-accText: 21 110 55;   /* darker green: AA-safe for small text on light */
   --c-accHi: 21 128 61;
   --c-onAcc: 255 255 255;
   --c-info: 8 145 178;
@@ -32,6 +36,7 @@
   --c-ink3: 95 104 100;
   --c-acc: 74 222 128;
   --c-accHi: 134 239 172;
+  --c-accText: 74 222 128;  /* dark theme: same as accent */
   --c-onAcc: 5 26 14;
   --c-info: 34 211 238;
   --c-ok: 74 222 128;

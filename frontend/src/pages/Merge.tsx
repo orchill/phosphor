@@ -94,7 +94,7 @@ export default function Merge() {
             </button>
             <button
               onClick={() => { files.forEach((f) => deleteFile(f.id).catch(() => {})); setFiles([]); }}
-              className="rounded-sm px-2 py-1 font-mono text-[12px] text-ink3 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+              className="rounded-sm px-2 py-1 font-mono text-[0.75rem] text-ink3 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
             >
               clear list
             </button>
@@ -102,7 +102,7 @@ export default function Merge() {
         </>
       )}
 
-      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} />
+      <TaskPanel taskId={taskId} onDismiss={() => setTaskId(null)} onRetry={merge} />
     </div>
   );
 }

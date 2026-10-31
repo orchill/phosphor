@@ -53,7 +53,7 @@ export default function FileDrop({ onFiles, accept, multiple = true, label, hint
           e.target.value = "";
         }}
       />
-      <UploadCloud size={30} className={over ? "text-acc" : "text-ink3"} aria-hidden />
+      <UploadCloud size={30} className={over ? "text-accText" : "text-ink3"} aria-hidden />
       <p className="text-sm font-medium text-ink2">{label_}</p>
       {hint && <p className="text-xs text-ink3">{hint}</p>}
     </div>

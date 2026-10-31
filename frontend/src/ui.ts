@@ -11,7 +11,7 @@ export const CARD =
 
 export const BTN_BASE =
   "inline-flex items-center justify-center gap-2 rounded-sm px-3.5 py-2 " +
-  "font-mono text-[13px] font-medium tracking-tight transition-colors " +
+  "font-mono text-sm font-medium tracking-tight transition-colors " +
   "focus:outline-none focus-visible:ring-2 focus-visible:ring-acc " +
   "focus-visible:ring-offset-1 focus-visible:ring-offset-base " +
   "disabled:opacity-40 disabled:pointer-events-none";
@@ -25,30 +25,30 @@ export const BTN_GHOST =
   `${BTN_BASE} text-ink2 hover:bg-elev hover:text-ink`;
 
 export const INPUT =
-  "w-full rounded-sm border border-line bg-base px-3 py-2 font-mono text-[13px] " +
+  "w-full rounded-sm border border-line bg-base px-3 py-2 font-mono text-sm " +
   "text-ink placeholder:text-ink3 focus:border-acc focus:outline-none focus:ring-1 focus:ring-acc " +
   "disabled:opacity-40";
 
 export const LABEL =
-  "block font-mono text-[11px] font-medium uppercase tracking-widest text-ink3";
+  "block font-mono text-[0.6875rem] font-medium uppercase tracking-widest text-ink3";
 
 /** Card / panel header: compact uppercase technical label. */
 export const SECTION_LABEL = LABEL;
 
 /** Page and section titles: compact uppercase monospace. */
 export const SECTION_TITLE =
-  "font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-ink";
+  "font-mono text-sm font-semibold uppercase tracking-[0.08em] text-ink";
 
 export const BADGE =
   "inline-flex items-center gap-1.5 rounded-sm border px-1.5 py-0.5 " +
-  "font-mono text-[11px] leading-none";
+  "font-mono text-[0.6875rem] leading-none";
 
 /** Small square status indicator — pair with a token color class. */
 export const DOT = "inline-block h-1.5 w-1.5 shrink-0 rounded-[2px]";
 
 /** Canonical status → token color mapping (badges, dots, terminal rows). */
 export const STATUS_TONES: Record<string, string> = {
-  completed: "border-acc/40 bg-acc/10 text-acc",
+  completed: "border-acc/40 bg-acc/10 text-accText",
   failed: "border-bad/40 bg-bad/10 text-bad",
   cancelled: "border-line bg-elev text-ink3",
   running: "border-info/40 bg-info/10 text-info",
@@ -57,4 +57,4 @@ export const STATUS_TONES: Record<string, string> = {
 
 /** Monospace page path, e.g. ~/pdf/merge — used as the page identity line. */
 export const PAGE_PATH =
-  "font-mono text-[11px] tracking-tight text-ink3";
+  "font-mono text-[0.6875rem] tracking-tight text-ink3";

@@ -9,8 +9,8 @@ function DepRow({ name, found, detail, hint }: { name: string; found: boolean; d
   return (
     <div className="flex flex-wrap items-center gap-2 py-1.5">
       {found ? <CheckCircle2 size={15} className="text-ok" /> : <XCircle size={15} className="text-bad" />}
-      <span className="font-mono text-[13px] font-medium text-ink">{name}</span>
-      <span className={`truncate font-mono text-[11px] ${found ? "text-ink3" : "text-bad"}`}>{detail}</span>
+      <span className="font-mono text-sm font-medium text-ink">{name}</span>
+      <span className={`truncate font-mono text-[0.6875rem] ${found ? "text-ink3" : "text-bad"}`}>{detail}</span>
       {!found && hint && <span className="w-full text-xs text-ink3">{hint}</span>}
     </div>
   );
@@ -19,7 +19,7 @@ function DepRow({ name, found, detail, hint }: { name: string; found: boolean; d
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className={`${CARD} space-y-4 p-4`}>
-      <h3 className={`${SECTION_TITLE} text-acc`}>{title}</h3>
+      <h3 className={`${SECTION_TITLE} text-accText`}>{title}</h3>
       {children}
     </div>
   );
@@ -27,6 +27,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function SettingsPage() {
   const [cfg, setCfg] = useState<Settings | null>(null);
+  const [density, setDensity] = useState(
+    () => localStorage.getItem("pms-density") ?? "comfortable",
+  );
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
@@ -107,6 +110,47 @@ export default function SettingsPage() {
             </label>
           </Section>
 
+          <Section title="appearance">
+            <div>
+              <p className={LABEL}>Interface density</p>
+              <div className="mt-1.5 flex gap-2" role="radiogroup" aria-label="Interface density">
+                {([
+                  ["comfortable", "Comfortable", "larger type"],
+                  ["compact", "Compact", "dense terminal look"],
+                ] as const).map(([id, label, desc]) => (
+                  <button
+                    key={id}
+                    role="radio"
+                    aria-checked={(localStorage.getItem("pms-density") ?? "comfortable") === id}
+                    onClick={() => {
+                      localStorage.setItem("pms-density", id);
+                      window.dispatchEvent(new Event("pms-density"));
+                      setDensity(id);
+                    }}
+                    className={`flex-1 rounded-sm border px-3 py-2 text-left font-mono text-[12px] transition-colors ${
+                      density === id ? "border-acc bg-acc/10 text-accText" : "border-line text-ink2 hover:border-ink3"
+                    }`}
+                  >
+                    <span className="block font-medium">{label}</span>
+                    <span className="block text-[0.6875rem] text-ink3">{desc}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[0.6875rem] text-ink3">
+                Applies immediately. Stored per browser, like the theme.
+              </p>
+            </div>
+            <div>
+              <p className={LABEL}>Onboarding</p>
+              <button
+                onClick={() => window.dispatchEvent(new Event("pms-show-intro"))}
+                className={`${BTN_SECONDARY} mt-1.5`}
+              >
+                Show intro again
+              </button>
+            </div>
+          </Section>
+
           <Section title="network">
             <p className="-mt-2 text-xs text-ink3">
               Requires an application restart. Keep the loopback address unless you
@@ -183,7 +227,7 @@ export default function SettingsPage() {
                 <DepRow name="PyMuPDF" found detail={info.deps.pymupdf} />
                 <DepRow name="pypdf" found detail={info.deps.pypdf} />
                 <DepRow name="Pillow" found detail={info.deps.pillow} />
-                <p className="pt-2 font-mono text-[11px] text-ink3">
+                <p className="pt-2 font-mono text-[0.6875rem] text-ink3">
                   app {info.app_version} - python {info.python} - {info.platform}
                   {info.free_disk_gb != null && <> - {info.free_disk_gb} GB free</>}
                 </p>

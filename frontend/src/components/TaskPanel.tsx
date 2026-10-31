@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, ChevronRight, FolderOutput, Loader2, X, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, FolderOutput, Loader2, RotateCw, X, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cancelTask, downloadUrl, getTaskLog, openOutputFolder } from "../api";
 import { emitEvent } from "../events";
@@ -28,24 +28,52 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ProgressBar({ value, indeterminate }: { value: number | null; indeterminate: boolean }) {
+function ProgressBar({ value, indeterminate, staged }: {
+  value: number | null; indeterminate: boolean; staged: boolean;
+}) {
   const fill = indeterminate
     ? "w-1/3 animate-progress"
     : "";
+  if (indeterminate) {
+    return (
+      <div className="h-1 w-full overflow-hidden rounded-none bg-elev">
+        <div className={`h-full ${fill} rounded-none bg-acc`} />
+      </div>
+    );
+  }
+  if (staged && value != null) {
+    // media tasks: backend maps download onto 0-0.92, post-processing onto
+    // 0.93-1.0 - show the two stages as separate genuine segments.
+    const dl = Math.min(value / 0.92, 1);
+    const proc = Math.max(0, Math.min((value - 0.92) / 0.08, 1));
+    return (
+      <div>
+        <div className="flex gap-1" role="progressbar"
+          aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-1 flex-[92] overflow-hidden rounded-none bg-elev">
+            <div className="h-full bg-acc transition-[width] duration-300" style={{ width: `${dl * 100}%` }} />
+          </div>
+          <div className="h-1 flex-[8] overflow-hidden rounded-none bg-elev">
+            <div className="h-full bg-info transition-[width] duration-300" style={{ width: `${proc * 100}%` }} />
+          </div>
+        </div>
+        <p className="mt-1 flex justify-between font-mono text-[0.625rem] text-ink3">
+          <span>download {Math.round(dl * 100)}%</span>
+          <span>process {Math.round(proc * 100)}%</span>
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="h-1 w-full overflow-hidden rounded-none bg-elev">
-      {indeterminate ? (
-        <div className={`h-full ${fill} rounded-none bg-acc`} />
-      ) : (
-        <div
-          className="h-full rounded-none bg-acc transition-[width] duration-300"
-          style={{ width: `${Math.round((value ?? 0) * 100)}%` }}
-          role="progressbar"
-          aria-valuenow={Math.round((value ?? 0) * 100)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        />
-      )}
+      <div
+        className="h-full rounded-none bg-acc transition-[width] duration-300"
+        style={{ width: `${Math.round((value ?? 0) * 100)}%` }}
+        role="progressbar"
+        aria-valuenow={Math.round((value ?? 0) * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      />
     </div>
   );
 }
@@ -67,12 +95,12 @@ function LogViewer({ taskId }: { taskId: string }) {
     <div>
       <button
         onClick={toggle}
-        className="flex items-center gap-1 font-mono text-[11px] text-ink3 hover:text-acc focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+        className="flex items-center gap-1 font-mono text-[0.6875rem] text-ink3 hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
       >
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />} diagnostics log
       </button>
       {open && (
-        <pre className="mt-1.5 max-h-48 overflow-auto rounded-sm border border-line bg-base p-3 font-mono text-[11px] leading-relaxed text-ink2">
+        <pre className="mt-1.5 max-h-48 overflow-auto rounded-sm border border-line bg-base p-3 font-mono text-[0.6875rem] leading-relaxed text-ink2">
           {lines?.length ? lines.join("\n") : "No log output."}
         </pre>
       )}
@@ -80,7 +108,11 @@ function LogViewer({ taskId }: { taskId: string }) {
   );
 }
 
-export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null; onDismiss?: () => void }) {
+export default function TaskPanel({ taskId, onDismiss, onRetry }: {
+  taskId: string | null;
+  onDismiss?: () => void;
+  onRetry?: () => void;
+}) {
   const task = useTask(taskId);
   const toast = useToast();
   const [cancelling, setCancelling] = useState(false);
@@ -118,8 +150,8 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
     <div className={`${CARD} p-4`} data-testid="task-panel">
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate font-mono text-[13px] font-semibold text-ink">{task.title}</p>
-          <p className="font-mono text-[11px] text-ink3">
+          <p className="truncate font-mono text-sm font-semibold text-ink">{task.title}</p>
+          <p className="font-mono text-[0.6875rem] text-ink3">
             {kindLabel} · #{task.id.slice(0, 8)}
             {task.finished_at && task.started_at && (
               <> · finished in {Math.max(0, (new Date(task.finished_at).getTime() - new Date(task.started_at).getTime()) / 1000).toFixed(1)}s</>
@@ -130,7 +162,7 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
           {running ? (
             <Loader2 size={16} className="animate-spin text-info" aria-hidden />
           ) : task.status === "completed" ? (
-            <CheckCircle2 size={16} className="text-acc" aria-hidden />
+            <CheckCircle2 size={16} className="text-accText" aria-hidden />
           ) : task.status === "failed" ? (
             <XCircle size={16} className="text-bad" aria-hidden />
           ) : null}
@@ -148,10 +180,14 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
 
       {running && (
         <div className="mt-3">
-          <ProgressBar value={task.progress} indeterminate={indeterminate} />
+          <ProgressBar
+            value={task.progress}
+            indeterminate={indeterminate}
+            staged={task.kind.startsWith("media")}
+          />
           {/* terminal-style stage line: real backend progress (speed / ETA
               where yt-dlp reports them) */}
-          <p className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[11px] text-info">
+          <p className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[0.6875rem] text-info">
             <span className="text-ink3" aria-hidden>▸ </span>{task.stage}
           </p>
         </div>
@@ -171,8 +207,8 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
           <ul className="mt-1.5 space-y-1.5">
             {(task.result?.outputs || []).map((o) => (
               <li key={o.path} className="flex flex-wrap items-center gap-2 rounded-sm bg-elev/60 px-3 py-2">
-                <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink" title={o.name}>{o.name}</span>
-                <span className="font-mono text-[11px] text-ink3">{humanSize(o.size)}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink" title={o.name}>{o.name}</span>
+                <span className="font-mono text-[0.6875rem] text-ink3">{humanSize(o.size)}</span>
                 <a href={downloadUrl(o.path)} className={BTN_SECONDARY} download>
                   Download
                 </a>
@@ -193,7 +229,12 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
       {task.status === "failed" && (
         <div className="mt-3 rounded-sm border border-bad/40 bg-bad/10 p-3">
           <p className="text-sm font-medium text-bad">Something went wrong</p>
-          <p className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-bad/90">{task.error}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words font-mono text-[0.6875rem] text-bad/90">{task.error}</p>
+          {onRetry && (
+            <button onClick={onRetry} className={`${BTN_SECONDARY} mt-2`}>
+              <RotateCw size={13} aria-hidden /> Retry
+            </button>
+          )}
         </div>
       )}
 
