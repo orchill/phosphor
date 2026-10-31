@@ -84,36 +84,44 @@ class Config:
 
     # ------------------------------------------------------------- loading
     def load(self) -> None:
-        if self.path.exists():
+        if not self.path.exists():
+            # First start: materialize the documented default config so users
+            # can inspect/edit config.json before touching the UI.
             try:
-                raw = json.loads(self.path.read_text(encoding="utf-8"))
-            except Exception as exc:
-                print(f"[warn] {self.path.name} is unreadable ({exc.__class__.__name__}: "
-                      f"{exc}) - using default settings", file=sys.stderr)
-                raw = {}
-            if isinstance(raw, dict):
-                for key in DEFAULTS:
-                    if key not in raw:
-                        continue
-                    value = raw[key]
-                    if key in _BOOLEAN_KEYS:
-                        # A hand-edited or corrupted value must not be trusted:
-                        # fall back to False rather than guessing (bool("false") is True).
-                        try:
-                            value = _coerce_bool(value, key)
-                        except ConfigError:
-                            print(f"[warn] config: invalid boolean for '{key}' "
-                                  f"({value!r}) - falling back to False", file=sys.stderr)
-                            value = False
-                    elif key == "cookie_source" and value not in COOKIE_SOURCES:
-                        print(f"[warn] config: unknown cookie_source '{value}' "
-                              f"- falling back to 'none'", file=sys.stderr)
-                        value = "none"
-                    elif key == "cookie_browser" and value not in ("",) + COOKIE_BROWSERS:
-                        print(f"[warn] config: unknown cookie_browser '{value}' "
-                              f"- ignoring", file=sys.stderr)
-                        value = ""
-                    self._d[key] = value
+                self._validate()
+                self.save()
+            except Exception:
+                pass  # read-only install locations still work; save() retries later
+            return
+        try:
+            raw = json.loads(self.path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"[warn] {self.path.name} is unreadable ({exc.__class__.__name__}: "
+                  f"{exc}) - using default settings", file=sys.stderr)
+            raw = {}
+        if isinstance(raw, dict):
+            for key in DEFAULTS:
+                if key not in raw:
+                    continue
+                value = raw[key]
+                if key in _BOOLEAN_KEYS:
+                    # A hand-edited or corrupted value must not be trusted:
+                    # fall back to False rather than guessing (bool("false") is True).
+                    try:
+                        value = _coerce_bool(value, key)
+                    except ConfigError:
+                        print(f"[warn] config: invalid boolean for '{key}' "
+                              f"({value!r}) - falling back to False", file=sys.stderr)
+                        value = False
+                elif key == "cookie_source" and value not in COOKIE_SOURCES:
+                    print(f"[warn] config: unknown cookie_source '{value}' "
+                          f"- falling back to 'none'", file=sys.stderr)
+                    value = "none"
+                elif key == "cookie_browser" and value not in ("",) + COOKIE_BROWSERS:
+                    print(f"[warn] config: unknown cookie_browser '{value}' "
+                          f"- ignoring", file=sys.stderr)
+                    value = ""
+                self._d[key] = value
         self._validate()
 
     def _validate(self, d: dict[str, Any] | None = None) -> None:

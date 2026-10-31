@@ -81,6 +81,14 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4">
+      <div>
+        <h2 className={SECTION_TITLE}>Settings</h2>
+        <p className="mt-1 text-sm text-ink2">
+          Preferences are stored in <code className="font-mono text-xs">config.json</code>.
+          Network changes need an application restart.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           <Section title="general">

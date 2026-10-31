@@ -256,6 +256,25 @@ HTTP media server (no reliance on external sites):
 | — | Other yt-dlp sites (TikTok, Vimeo, …), playlists, live streams | ⚠️ not exercised — depends on site availability; yt-dlp handles these natively |
 | — | 4K/8K downloads on slow connections, exotic codecs | ⚠️ unverified |
 
+### Automated tests
+
+```bat
+:: backend (pytest, 83 tests - offline, uses local fixtures)
+.venv\Scripts\python.exe -m pytest
+
+:: frontend type-check + production build
+cd frontend && npm run build
+
+:: frontend E2E (Playwright, real browser + real server, fully offline)
+cd frontend && npm run e2e
+```
+
+The E2E suite covers navigation/deep-links, merge / images-to-PDF / split /
+compress through the real UI, media download with progress and cancellation
+(via a deterministic stub yt-dlp - no external websites), cookie import with
+masked-API assertions, and settings persistence across a server restart.
+See `frontend/e2e/README.md`.
+
 Some YouTube videos may fail with a "sign-in / bot verification" error — this is
 YouTube restricting anonymous automated requests (common on datacenter/VPN IPs).
 The app now shows a hint and offers the **Cookies / Sign-in** tab: providing

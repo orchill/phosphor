@@ -22,3 +22,9 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+
+# E2E test artifacts (isolated run dirs, generated fixtures, reports)
+frontend/e2e/.run/
+frontend/e2e/.fixtures/
+frontend/test-results/
+frontend/playwright-report/

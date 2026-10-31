@@ -64,7 +64,7 @@ function ToastHost({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number)
         <div
           key={t.id}
           role="alert"
-          className={`pointer-events-auto flex items-start gap-2 rounded-md border bg-panel px-3.5 py-3 text-sm text-ink shadow-lg
+          className={`pointer-events-none flex items-start gap-2 rounded-md border bg-panel px-3.5 py-3 text-sm text-ink shadow-lg
             ${t.kind === "error" ? "border-bad/50" : t.kind === "success" ? "border-acc/50" : "border-line"}`}
         >
           {t.kind === "error" ? <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bad" />
@@ -74,7 +74,7 @@ function ToastHost({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number)
           <button
             onClick={() => dismiss(t.id)}
             aria-label="Dismiss"
-            className="ml-auto shrink-0 rounded-sm p-0.5 text-ink3 hover:bg-elev hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+            className="pointer-events-auto ml-auto shrink-0 rounded-sm p-0.5 text-ink3 hover:bg-elev hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
           >
             <X size={14} />
           </button>

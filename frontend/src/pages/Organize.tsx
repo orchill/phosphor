@@ -6,7 +6,7 @@ import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opEditPages, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { UploadedFile } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
 
 export default function Organize() {
   const [pdf, setPdf] = useState<UploadedFile | null>(null);
@@ -102,7 +102,7 @@ export default function Organize() {
               <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>Select none</button>
               <button onClick={() => rotateSelected(-90)} disabled={!selection.size} className={BTN_SECONDARY}><RotateCcw size={14} /> Rotate selected</button>
               <button onClick={() => rotateSelected(90)} disabled={!selection.size} className={BTN_SECONDARY}><RotateCw size={14} /> Rotate selected</button>
-              <button onClick={deleteSelected} disabled={!selection.size} className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium text-bad hover:bg-bad/10 disabled:opacity-50">
+              <button onClick={deleteSelected} disabled={!selection.size} className={BTN_DANGER}>
                 <Trash2 size={14} /> Delete selected
 </button>
               <button onClick={() => rotateAll(90)} className={BTN_SECONDARY}>Rotate all +90</button>

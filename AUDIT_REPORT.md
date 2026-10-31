@@ -77,12 +77,14 @@ the baseline and implemented the missing pieces rather than re-doing what existe
 
 | Check | Result |
 |---|---|
-| Backend suite (pytest, Python 3.13.3, Windows) | **82 passed** / 0 failed / 0 skipped (13.2 s) |
+| Backend suite (pytest, Python 3.13.3, Windows) | **83 passed** / 0 failed / 0 skipped (~13 s) |
+| Frontend E2E (Playwright, real browser + real server) | **18 passed** / 0 failed (~35 s, fully offline via a stub yt-dlp) |
 | `pip check` | clean |
-| `tsc --noEmit` + `vite build` | pass (Vite 8.3.5 / plugin-react 6.1.2 — the toolchain the handover claimed; esbuild dev-server advisory resolved, `npm audit` now 0 findings) |
+| `npm audit` | **0 vulnerabilities** (Vite 8.3.5 / plugin-react 6.1.2) |
+| `tsc --noEmit` + `vite build` | pass |
 | Live security smoke (curl against running server) | evil Origin → 403; same-origin → route reached; cross-site GET → 403; all headers present |
-| Browser verification | Dashboard/Settings/Media/PDF-landing/tool pages in both themes; zero CSP violations; deep-link + back-button verified |
-| Media/FFmpeg tests | executed live (FFmpeg present); no external websites required by the suite |
+| Clean-environment validation | fresh venv built with the exact `setup.bat` steps → first start creates `config.json` with defaults + data dirs + serves the UI; full backend suite passes on the fresh venv (`requirements-dev.txt` supplies test tooling, by design) |
+| Media/FFmpeg tests | executed live (FFmpeg present); neither the backend suite nor the E2E suite requires external websites |
 
 ## 5. Security findings & residual risks (honest)
 
@@ -154,7 +156,33 @@ targets raster images, playlists limited to first entry, no OCR/annotations.
 - Frontend end-to-end tests (the suite covers the backend; UI is verified
   manually/visually).
 
-## 8. Versioning
+## 8. Final improvement cycle (post-audit, same release)
+
+- **Frontend E2E suite (new)**: 18 Playwright tests (`frontend/e2e/`, offline)
+  covering navigation/deep-links/back-forward, merge, images-to-PDF, split,
+  compress, media download with progress + queued/running cancellation,
+  cookie import with masked-API assertions, and settings persistence across a
+  real server restart. The media path runs through a deterministic native
+  `stub-ytdlp.exe` compiled at setup with the Windows .NET compiler — no
+  external sites, no flaky network.
+- **E2E-found product bugs, fixed**: (1) toast cards intercepted pointer
+  events over controls beneath them (e.g. the media Cancel button) — only the
+  dismiss button is interactive now; (2) Task History rendered "Invalid Date"
+  for every row (naive `Z`-append vs the backend's `+00:00` timestamps) —
+  fixed with a robust parser.
+- **A11y**: keyboard page reordering (visible buttons + Ctrl+Arrow shortcuts +
+  `aria-live` announcements), drag-and-drop preserved.
+- **Types**: all API request payloads typed against the FastAPI schemas;
+  `Record<string, any>` op payloads removed.
+- **Cookie storage**: Windows ACL hardening on `cookies.txt` (best-effort
+  `icacls`, byte-compatible with yt-dlp); DPAPI rejected with rationale.
+- **First-start behavior**: `config.json` is now materialized with defaults on
+  first start (README documented this; the code now matches, tested).
+- **UI polish**: Settings regained its page title; History filter/download/
+  remove controls and Organize's destructive button aligned to the shared
+  tokens; screenshots refreshed from the running app.
+
+## 9. Versioning
 
 - Backend `__version__`: **1.1.0** · frontend `package.json`: **1.1.0** (synced)
 - Release checklist: see PUBLISHING.md; push only with explicit owner approval.

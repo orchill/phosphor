@@ -53,7 +53,7 @@ useEffect(() => { refresh(); }, [refresh]);
         <h2 className={SECTION_TITLE}>Task History</h2>
         <span className="text-xs text-ink3">outputs are kept in your output folder until you delete them</span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="rounded-lg border border-line bg-panel px-2.5 py-1.5 text-sm " aria-label="Filter by status">
+          <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[13px] text-ink focus:border-acc focus:outline-none focus:ring-1 focus:ring-acc" aria-label="Filter by status">
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <button onClick={refresh} className={BTN_SECONDARY}><RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh</button>
@@ -87,14 +87,14 @@ useEffect(() => { refresh(); }, [refresh]);
               <span className="flex items-center gap-1.5">
                 {t.result?.outputs?.[0] && (
                   <a href={downloadUrl(t.result.outputs[0].path)} download
-className="rounded-lg border border-line px-2.5 py-1 text-xs font-medium hover:bg-elev">
+className={`${BTN_SECONDARY} px-2.5 py-1 text-xs`}>
                     Download
 </a>
                 )}
                 {t.status === "running" || t.status === "queued" ? (
                   <span className="text-xs text-acc">{t.stage}</span>
                 ) : (
-                  <button onClick={() => remove(t.id)} className="rounded-lg p-1.5 text-ink3 hover:bg-bad/10 hover:text-bad" aria-label="Remove from history" title="Remove from history">
+                  <button onClick={() => remove(t.id)} className="rounded-sm p-1.5 text-ink3 hover:bg-bad/10 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label="Remove from history" title="Remove from history">
                     <Trash2 size={14} />
                   </button>
                 )}

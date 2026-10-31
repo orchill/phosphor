@@ -134,6 +134,22 @@ def test_config_load_sanitizes_bad_file_values(tmp_path):
     assert cfg.get("port") == 8756
 
 
+def test_first_start_writes_default_config(tmp_path):
+    """A clean install materializes config.json with defaults on first start
+    (as the README promises) so users can edit it before opening the UI."""
+    from backend.app.config import Config
+    p = tmp_path / "fresh" / "config.json"
+    assert not p.exists()
+    cfg = Config(p)
+    assert p.exists(), "first start must create the config file"
+    import json
+    on_disk = json.loads(p.read_text(encoding="utf-8"))
+    assert on_disk["host"] == "127.0.0.1"
+    assert on_disk["port"] == 8756
+    assert on_disk["open_browser"] is True
+    assert cfg.get("port") == 8756
+
+
 def test_config_update_rolls_back_on_save_failure(client, monkeypatch):
     """If persisting fails, the previous configuration stays active."""
     from backend.app.config import get_config
