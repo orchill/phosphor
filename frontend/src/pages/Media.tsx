@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle, ChevronDown, Cookie, Download, KeyRound, Link2, Loader2, Music,
-  RefreshCw, Video,
+  ClipboardPaste, RefreshCw, Video,
 } from "lucide-react";
 import TaskPanel from "../components/TaskPanel";
 import CookiesPanel from "../components/CookiesPanel";
@@ -190,6 +190,14 @@ id="mediaurl" value={url}
               autoComplete="off"
             />
           </div>
+          <button
+            onClick={() => navigator.clipboard?.readText().then((t) => { if (t.trim()) setUrl(t.trim()); }).catch(() => {})}
+            className={BTN_SECONDARY}
+            aria-label="Paste URL from clipboard"
+            title="Paste from clipboard"
+          >
+            <ClipboardPaste size={15} aria-hidden />
+          </button>
           <button onClick={fetchInfo} disabled={fetching} className={BTN_SECONDARY}>
             {fetching ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             Fetch info
@@ -262,6 +270,48 @@ src={info.thumbnail}
                           </option>
                         ))}
                       </select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <p className={LABEL}>available formats</p>
+                      <div className="mt-1.5 max-h-56 overflow-auto rounded-sm border border-line bg-base">
+                        <table className="w-full border-collapse font-mono text-[0.6875rem]">
+                          <thead>
+                            <tr className="sticky top-0 bg-elev text-left text-ink3">
+                              <th className="px-2 py-1 font-medium">id</th>
+                              <th className="px-2 py-1 font-medium">ext</th>
+                              <th className="px-2 py-1 font-medium">res</th>
+                              <th className="px-2 py-1 font-medium">fps</th>
+                              <th className="px-2 py-1 text-right font-medium">size</th>
+                              <th className="px-2 py-1 font-medium">audio</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {info.video_formats.map((f) => {
+                              const selected = videoFmt === f.id;
+                              return (
+                                <tr
+                                  key={f.id}
+                                  onClick={() => setVideoFmt(f.id)}
+                                  aria-selected={selected}
+                                  className={`cursor-pointer border-t border-line transition-colors ${
+                                    selected ? "bg-acc/10 text-accText" : "text-ink2 hover:bg-elev"
+                                  }`}
+                                >
+                                  <td className={`px-2 py-1 ${selected ? "font-semibold" : ""}`}>{f.id}</td>
+                                  <td className="px-2 py-1">{f.ext}</td>
+                                  <td className="px-2 py-1">{f.height ? `${f.height}p` : "-"}</td>
+                                  <td className="px-2 py-1">{f.fps ? Math.round(f.fps) : "-"}</td>
+                                  <td className="px-2 py-1 text-right">{formatSize(f) ? humanSize(formatSize(f)) : "-"}</td>
+                                  <td className="px-2 py-1">{f.type === "video-only" ? "no" : "yes"}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="mt-1 text-[0.625rem] text-ink3">
+                        Click a row to lock that exact format (syncs the selector above).
+                      </p>
                     </div>
                     <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
                       <input type="checkbox" checked={preferH264} onChange={(e) => setPreferH264(e.target.checked)} disabled={!!videoFmt} className="accent-acc" />

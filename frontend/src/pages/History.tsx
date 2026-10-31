@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FolderOutput, RefreshCw, Trash2 } from "lucide-react";
+import { FolderOutput, RefreshCw, Scissors, Trash2 } from "lucide-react";
 import { StatusBadge } from "../components/TaskPanel";
 import { deleteTask, downloadUrl, listTasks, openOutputFolder } from "../api";
-import { useToast } from "../ctx";
+import { useNav, useToast } from "../ctx";
 import { TaskRecord, TaskStatus, humanSize } from "../types";
-import { BTN_SECONDARY, CARD, DOT, SECTION_LABEL, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, CARD, DOT, SECTION_LABEL, SECTION_TITLE } from "../ui";
 
 /** Backend timestamps are UTC ISO-8601 ("...+00:00" or "...Z") - both parse
  *  directly; the old naive-"Z" append produced "Invalid Date". */
@@ -34,6 +34,7 @@ function dayLabel(iso: string): string {
 }
 
 export default function History() {
+  const { navigate } = useNav();
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
   const [status, setStatus] = useState<TaskStatus | "all">("all");
   const [loading, setLoading] = useState(false);
@@ -106,8 +107,15 @@ export default function History() {
       </div>
 
       {tasks.length === 0 ? (
-        <div className={`${CARD} p-8 text-center text-sm text-ink2`}>
-          {status === "all" ? "No tasks recorded yet." : `No ${status} tasks.`}
+        <div className={`${CARD} flex flex-col items-center gap-3 p-8 text-center`}>
+          <p className="text-sm text-ink2">
+            {status === "all" ? "No tasks recorded yet." : `No ${status} tasks.`}
+          </p>
+          {status === "all" && (
+            <button onClick={() => navigate("merge")} className={BTN_PRIMARY}>
+              <Scissors size={15} aria-hidden /> Run your first merge
+            </button>
+          )}
         </div>
       ) : (
         groups.map((g) => (

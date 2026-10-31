@@ -20,7 +20,7 @@
   --c-accText: 21 110 55;   /* darker green: AA-safe for small text on light */
   --c-accHi: 21 128 61;
   --c-onAcc: 255 255 255;
-  --c-info: 8 145 178;
+  --c-info: 14 116 144;   /* cyan-700: AA-safe for small text on light */
   --c-ok: 22 163 74;
   --c-warn: 180 83 9;
   --c-bad: 220 38 38;
@@ -79,6 +79,17 @@ body {
 }
 *::-webkit-scrollbar-thumb:hover {
   background-color: rgb(var(--c-ink3));
+}
+
+/* subtle page enter */
+@keyframes pms-fade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+#main > div {
+  animation: pms-fade 140ms ease-out;
 }
 
 /* honor the OS "reduce motion" setting: kill animations and transitions */

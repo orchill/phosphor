@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useFocusTrap } from "../hooks";
 import { X } from "lucide-react";
 import { BTN_GHOST, BTN_PRIMARY, CARD } from "../ui";
 
@@ -17,6 +18,8 @@ const STEPS: { cmd: string; text: string }[] = [
 /** One-time first-launch intro. Terminal-styled, four short steps, skippable. */
 export default function Onboarding({ open, onClose }: Props) {
   const [step, setStep] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
   const close = useCallback(() => {
     setStep(0);
     onClose();
@@ -32,6 +35,7 @@ export default function Onboarding({ open, onClose }: Props) {
       onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Welcome to phosphor"

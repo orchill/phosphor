@@ -50,6 +50,14 @@ export default function Dashboard() {
   useEffect(() => {
     systemInfo().then(setInfo).catch(() => {});
     listTasks(50).then(setRecent).catch(() => {});
+    // keep the console alive while it is on screen: the task list is a
+    // cheap local read; engine info stays fetch-once (it spawns probes)
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        listTasks(50).then(setRecent).catch(() => {});
+      }
+    }, 10_000);
+    return () => clearInterval(timer);
   }, []);
 
   const count = (status: string) => recent.filter((t) => t.status === status).length;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFocusTrap } from "../hooks";
 import {
   Combine, FileOutput, FilePlus2, FileStack, FolderOutput, History as HistoryIcon,
   Images, LayoutDashboard, Moon, Scissors, Search, Settings as SettingsIcon,
@@ -33,6 +34,8 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
 
   const commands = useMemo<Command[]>(() => {
     const routeCmd = (r: Route, label: string, icon: React.ElementType): Command => ({
@@ -113,6 +116,7 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"

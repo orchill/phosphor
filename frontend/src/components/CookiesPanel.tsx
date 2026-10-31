@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
-  CheckCircle2, Cookie, FileText, Globe, KeyRound, Loader2, Lock,
-  ShieldAlert, TestTube2, Trash2, XCircle,
+  Cookie, FileText, Globe, KeyRound, Loader2, Lock,
+  ShieldAlert, TestTube2, Trash2,
 } from "lucide-react";
 import {
   clearCookiePrefs, saveCookiePrefs, testCookiePrefs,
@@ -41,10 +41,13 @@ export default function CookiesPanel({
   const [clearing, setClearing] = useState(false);
   const [result, setResult] = useState<CookieTestResult | null>(null);
 
-  // keep the selected mode in sync with the server state
+  // keep the selected mode in sync with the server state - but never clobber
+  // a selection the user is mid-way through (a background refetch must not
+  // revert "Paste cookies file" back to "Don't sign in" before they hit Save).
+const [modeTouched, setModeTouched] = useState(false);
 useEffect(() => {
-    if (status) setMode(status.source);
-  }, [status?.source]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (status && !modeTouched) setMode(status.source);
+  }, [status?.source, modeTouched]); // eslint-disable-line react-hooks/exhaustive-deps
 const active = status && status.source !== "none";
 
   const save = async () => {
@@ -63,6 +66,7 @@ const active = status && status.source !== "none";
         setText("");
       }
       await refresh();
+      setModeTouched(false);
     } catch (e: any) {
       toast.push("error", e.message);
     } finally {
@@ -97,6 +101,7 @@ const active = status && status.source !== "none";
       toast.push("error", e.message);
     } finally {
       setClearing(false);
+      setModeTouched(false);
     }
   };
 
@@ -111,20 +116,25 @@ const active = status && status.source !== "none";
   return (
     <div className="space-y-4" data-testid="cookies-panel">
       {/* current state */}
-      <div className={`${CARD} flex flex-wrap items-center gap-3 p-4`}>
-        <Cookie size={22} className={active ? "text-ok" : "text-ink3"} />
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-ink">
-            YouTube sign-in status
-</h3>
-          <p className="text-xs text-ink2">{statusText}</p>
-        </div>
-        {active && (
-          <button onClick={clear} disabled={clearing} className={`${BTN_DANGER} py-1.5 text-xs`}>
-            {clearing ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-            Clear cookies
+      <div className={`${CARD} p-4`}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Cookie size={22} className={active ? "text-ok" : "text-ink3"} />
+          <div className="min-w-0 flex-1">
+            <h3 className="font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-ink">
+              sign-in status
+            </h3>
+            <p className="mt-0.5 flex items-center gap-2 font-mono text-[12px] text-ink2">
+              <span className={`inline-block h-1.5 w-1.5 rounded-[2px] ${active ? "bg-ok" : "bg-ink3"}`} aria-hidden />
+              {statusText}
+            </p>
+          </div>
+          {active && (
+            <button onClick={clear} disabled={clearing} className={`${BTN_DANGER} py-1.5 text-xs`}>
+              {clearing ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              Clear cookies
 </button>
-        )}
+          )}
+        </div>
       </div>
 
       {/* explanation */}
@@ -157,7 +167,7 @@ an exported cookies file.
             <button
 key={m}
               role="radio" aria-checked={mode === m}
-              onClick={() => setMode(m)}
+              onClick={() => { setMode(m); setModeTouched(true); }}
               className={`flex items-center gap-2 rounded-sm border px-3 py-2.5 text-sm font-medium ${
                 mode === m
 ? "border-acc bg-acc/10 text-accText"
@@ -263,13 +273,13 @@ into the box above.
 
         {result && (
           <div
-role="status" className={`flex items-start gap-2 rounded-sm border px-3 py-2.5 text-sm ${
-              result.ok
-? "border-acc/40 bg-acc/10 text-accText"
-                : "border-bad/40 bg-bad/10 text-bad"
+role="status" className={`rounded-sm border bg-base px-3 py-2.5 font-mono text-[12px] ${
+              result.ok ? "border-acc/40 text-accText" : "border-bad/40 text-bad"
             }`}
           >
-            {result.ok ? <CheckCircle2 size={16} className="mt-0.5 shrink-0" /> : <XCircle size={16} className="mt-0.5 shrink-0" />}
+            <span className="text-ink3" aria-hidden>
+              {result.ok ? "✓ " : "✗ "}
+            </span>
             <span className="whitespace-pre-wrap">
               {result.message}
               {result.elapsed_s != null && (
