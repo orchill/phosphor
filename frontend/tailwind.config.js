@@ -11,6 +11,9 @@ export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      borderRadius: {
+        DEFAULT: "4px", // card corners; controls use rounded-sm (2px)
+      },
       fontFamily: {
         sans: [
           "Segoe UI", "system-ui", "-apple-system", "Roboto", "Ubuntu",

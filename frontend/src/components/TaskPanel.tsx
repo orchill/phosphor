@@ -4,7 +4,7 @@ import { cancelTask, downloadUrl, getTaskLog, openOutputFolder } from "../api";
 import { useToast } from "../ctx";
 import { useTask } from "../hooks";
 import { TaskRecord, humanSize } from "../types";
-import { BADGE, BTN_DANGER, BTN_GHOST, BTN_SECONDARY, CARD, DOT } from "../ui";
+import { BADGE, BTN_DANGER, BTN_GHOST, BTN_SECONDARY, CARD, DOT, STATUS_TONES } from "../ui";
 
 const KIND_LABELS: Record<string, string> = {
   pdf_merge: "Merge PDFs",
@@ -19,15 +19,8 @@ const KIND_LABELS: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    completed: "border-acc/40 bg-acc/10 text-acc",
-    failed: "border-bad/40 bg-bad/10 text-bad",
-    cancelled: "border-line bg-elev text-ink3",
-    running: "border-info/40 bg-info/10 text-info",
-    queued: "border-warn/40 bg-warn/10 text-warn",
-  };
   return (
-    <span className={`${BADGE} ${map[status] || map.queued}`}>
+    <span className={`${BADGE} ${STATUS_TONES[status] ?? STATUS_TONES.queued}`}>
       <span className={`${DOT} bg-current`} aria-hidden />
       {status}
     </span>
@@ -39,12 +32,12 @@ function ProgressBar({ value, indeterminate }: { value: number | null; indetermi
     ? "w-1/3 animate-progress"
     : "";
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-sm bg-elev">
+    <div className="h-1 w-full overflow-hidden rounded-none bg-elev">
       {indeterminate ? (
-        <div className={`h-full ${fill} rounded-sm bg-acc`} />
+        <div className={`h-full ${fill} rounded-none bg-acc`} />
       ) : (
         <div
-          className="h-full rounded-sm bg-acc transition-[width] duration-300"
+          className="h-full rounded-none bg-acc transition-[width] duration-300"
           style={{ width: `${Math.round((value ?? 0) * 100)}%` }}
           role="progressbar"
           aria-valuenow={Math.round((value ?? 0) * 100)}

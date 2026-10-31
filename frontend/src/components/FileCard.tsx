@@ -19,7 +19,7 @@ export default function FileCard({ file, onRemove, draggable, index, badge }: Pr
         (e.currentTarget as HTMLElement).dataset.index = String(index);
       }}
       onDragOver={(e) => e.preventDefault()}
-      className="flex items-center gap-3 rounded-md border border-line bg-panel p-2.5"
+      className="flex items-center gap-3 rounded border border-line bg-panel p-2.5"
     >
       {draggable && (
         <span className="cursor-grab text-ink3" title="Drag to reorder" aria-hidden>

@@ -64,7 +64,7 @@ function ToastHost({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number)
         <div
           key={t.id}
           role="alert"
-          className={`pointer-events-none flex items-start gap-2 rounded-md border bg-panel px-3.5 py-3 text-sm text-ink shadow-lg
+          className={`pointer-events-none flex items-start gap-2 rounded border bg-panel px-3.5 py-3 text-sm text-ink shadow-lg
             ${t.kind === "error" ? "border-bad/50" : t.kind === "success" ? "border-acc/50" : "border-line"}`}
         >
           {t.kind === "error" ? <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bad" />
@@ -105,7 +105,7 @@ function NavItem({ id, label, icon: Icon, active, onClick }: {
       className={`flex w-full items-center gap-2.5 rounded-sm border-l-2 px-2.5 py-1.5 font-mono text-[13px] transition-colors
         ${active
           ? "border-acc bg-acc/10 text-acc"
-          : "border-transparent text-ink2 hover:bg-elev hover:text-ink"}`}
+          : "border-transparent text-ink3 hover:bg-elev hover:text-ink"}`}
     >
       {Icon && <Icon size={15} className="shrink-0" aria-hidden />}
       {label}

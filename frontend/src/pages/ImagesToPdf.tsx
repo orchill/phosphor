@@ -105,7 +105,7 @@ export default function ImagesToPdf() {
                   onDragStart={reorder.onDragStart(i)}
                   draggable
                 >
-                  <li className="overflow-hidden rounded-lg border border-line bg-panel shadow-sm  ">
+                  <li className="overflow-hidden rounded-sm border border-line bg-panel shadow-sm  ">
                     <div className="flex h-28 items-center justify-center bg-elev">
                       <img
                         src={thumbUrl(img.id, 240)}
@@ -130,7 +130,7 @@ export default function ImagesToPdf() {
             })}
           </ul>
 
-          <div className="grid grid-cols-1 gap-4 rounded-xl border border-line bg-panel p-4   sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 rounded-sm border border-line bg-panel p-4   sm:grid-cols-2">
             <div>
               <label className={LABEL} htmlFor="pagesize">Page size</label>
               <select id="pagesize" value={pageSize} onChange={(e) => setPageSize(e.target.value)} className={`${INPUT} mt-1`}>

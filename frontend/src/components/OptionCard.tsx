@@ -10,7 +10,7 @@ interface Props {
 export default function OptionCard({ name, checked, onChange, label, desc }: Props) {
   return (
     <label
-      className={`cursor-pointer rounded-md border p-3 text-sm transition-colors
+      className={`cursor-pointer rounded border p-3 text-sm transition-colors
         ${checked ? "border-acc bg-acc/10" : "border-line hover:border-ink3"}`}
     >
       <span className="flex items-center gap-2 font-medium text-ink">

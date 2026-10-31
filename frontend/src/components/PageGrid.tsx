@@ -83,7 +83,7 @@ export default function PageGrid({
                 setPages(next);
                 setAnnounce(`Page ${moved.page} moved to position ${idx + 1} of ${next.length}.`);
               }}
-              className={`group relative overflow-hidden rounded-md border-2 bg-panel transition-colors
+              className={`group relative overflow-hidden rounded border-2 bg-panel transition-colors
                 ${selected ? "border-acc ring-1 ring-acc/50" : "border-line"}
                 ${allowReorder ? "cursor-grab" : ""}`}
             >

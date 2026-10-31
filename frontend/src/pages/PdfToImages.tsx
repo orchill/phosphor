@@ -74,7 +74,7 @@ export default function PdfToImages() {
 
       {pdf && (
         <>
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-panel p-3  ">
+          <div className="flex flex-wrap items-end gap-3 rounded-sm border border-line bg-panel p-3  ">
             <div>
               <label className={LABEL} htmlFor="fmt">Format</label>
               <select id="fmt" value={fmt} onChange={(e) => setFmt(e.target.value)} className={`${INPUT} mt-1 w-28`}>

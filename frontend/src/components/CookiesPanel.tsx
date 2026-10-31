@@ -158,7 +158,7 @@ an exported cookies file.
 key={m}
               role="radio" aria-checked={mode === m}
               onClick={() => setMode(m)}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium ${
+              className={`flex items-center gap-2 rounded-sm border px-3 py-2.5 text-sm font-medium ${
                 mode === m
 ? "border-acc bg-acc/10 text-acc"
                   : "border-line text-ink2"
@@ -215,7 +215,7 @@ id="cookiedomain" value={domain}
                 className={`${INPUT} mt-1 font-mono text-xs`}
               />
             </div>
-            <details className="rounded-lg bg-elev p-3 text-xs text-ink2">
+            <details className="rounded-sm bg-elev p-3 text-xs text-ink2">
               <summary className="cursor-pointer font-medium text-ink">
                 How do I get my cookies? (2 ways)
               </summary>
@@ -263,7 +263,7 @@ into the box above.
 
         {result && (
           <div
-role="status" className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-sm ${
+role="status" className={`flex items-start gap-2 rounded-sm border px-3 py-2.5 text-sm ${
               result.ok
 ? "border-acc/40 bg-acc/10 text-acc"
                 : "border-bad/40 bg-bad/10 text-bad"

@@ -7,7 +7,7 @@ import { listTasks, systemInfo } from "../api";
 import { SystemInfo, TaskRecord, humanSize } from "../types";
 import { StatusBadge } from "../components/TaskPanel";
 import ToolCard from "../components/ToolCard";
-import { CARD, DOT, SECTION_TITLE } from "../ui";
+import { CARD, DOT, SECTION_LABEL } from "../ui";
 
 const TOOLS = [
   { id: "merge", icon: Combine, title: "Merge PDFs", desc: "Combine multiple PDFs in any order." },
@@ -20,35 +20,24 @@ const TOOLS = [
   { id: "media", icon: Video, title: "Media Downloader", desc: "Download video/audio via yt-dlp + FFmpeg." },
 ] as const;
 
-function DepsCard({ info }: { info: SystemInfo | null }) {
-  if (!info) return null;
-  const d = info.deps;
-  const items = [
-    { name: "FFmpeg", ok: d.ffmpeg.found, detail: d.ffmpeg.found ? d.ffmpeg.version.split(" ")[0] : "install required" },
-    { name: "yt-dlp", ok: d.ytdlp.found, detail: d.ytdlp.version },
-    { name: "PyMuPDF", ok: true, detail: d.pymupdf },
-    { name: "pypdf", ok: true, detail: d.pypdf },
-    { name: "Pillow", ok: true, detail: d.pillow },
-  ];
+function EngineRow({ name, detail, ok }: { name: string; detail: string; ok: boolean }) {
   return (
-    <div className={`${CARD} p-4`}>
-      <h2 className={`${SECTION_TITLE} mb-3`}>system status</h2>
-      <ul className="space-y-1.5">
-        {items.map((it) => (
-          <li key={it.name} className="flex items-center gap-2 font-mono text-[12px]">
-            <span className={`${DOT} ${it.ok ? "bg-ok" : "bg-bad"}`} aria-hidden />
-            <span className="text-ink">{it.name}</span>
-            <span className="ml-auto truncate text-ink3">{it.detail}</span>
-          </li>
-        ))}
-        <li className="flex items-center gap-2 border-t border-line pt-2 font-mono text-[11px] text-ink3">
-          <span className="shrink-0">output:</span>
-          <span className="truncate">{info.output_dir}</span>
-        </li>
-        {info.free_disk_gb != null && (
-          <li className="font-mono text-[11px] text-ink3">free disk: {info.free_disk_gb} GB</li>
-        )}
-      </ul>
+    <li className="flex items-center gap-2 font-mono text-[12px]">
+      <span className={`${DOT} ${ok ? "bg-ok" : "bg-bad"}`} aria-hidden />
+      <span className="text-ink">{name}</span>
+      <span className="ml-auto truncate text-ink3" title={detail}>{detail}</span>
+    </li>
+  );
+}
+
+function Counter({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 font-mono text-[12px]">
+      <span className="flex items-center gap-2">
+        <span className={`${DOT} ${tone}`} aria-hidden />
+        <span className="text-ink2">{label}</span>
+      </span>
+      <span className="text-[15px] font-semibold text-ink">{value}</span>
     </div>
   );
 }
@@ -59,19 +48,35 @@ export default function Dashboard() {
 
   useEffect(() => {
     systemInfo().then(setInfo).catch(() => {});
-    listTasks(6).then(setRecent).catch(() => {});
+    listTasks(50).then(setRecent).catch(() => {});
   }, []);
+
+  const count = (status: string) => recent.filter((t) => t.status === status).length;
+  const active = recent.filter((t) => t.status === "running" || t.status === "queued").length;
 
   return (
     <div className="space-y-6">
+      {/* status strip - genuine application data only */}
       <section className={`${CARD} p-5`}>
-        <div className="flex items-center gap-2 font-mono text-[11px] tracking-tight text-ink3">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-tight text-ink3">
           <span className={`${DOT} bg-ok`} aria-hidden />
           <span>ready</span>
           <span aria-hidden>·</span>
           <span>100% local</span>
           <span aria-hidden>·</span>
           <span>no cloud</span>
+          {info?.app_version && (
+            <>
+              <span aria-hidden>·</span>
+              <span>v{info.app_version}</span>
+            </>
+          )}
+          {info?.free_disk_gb != null && (
+            <>
+              <span aria-hidden>·</span>
+              <span>{info.free_disk_gb} GB free</span>
+            </>
+          )}
           <span className="ml-auto hidden sm:block">~/.local/pdf-media-studio</span>
         </div>
         <h2 className="mt-3 font-mono text-lg font-semibold tracking-tight text-ink">
@@ -84,8 +89,53 @@ export default function Dashboard() {
         </p>
       </section>
 
+      {/* engines + task counters */}
+      <section aria-label="System status">
+        <h3 className={`${SECTION_LABEL} mb-2`}>system</h3>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className={`${CARD} p-4`}>
+            <h4 className={`${SECTION_LABEL} mb-2.5 text-acc`}>pdf engine</h4>
+            <ul className="space-y-1.5">
+              <EngineRow name="PyMuPDF" detail={info?.deps.pymupdf ?? "…"} ok={!!info} />
+              <EngineRow name="pypdf" detail={info?.deps.pypdf ?? "…"} ok={!!info} />
+              <EngineRow name="Pillow" detail={info?.deps.pillow ?? "…"} ok={!!info} />
+            </ul>
+          </div>
+          <div className={`${CARD} p-4`}>
+            <h4 className={`${SECTION_LABEL} mb-2.5 text-acc`}>media engine</h4>
+            <ul className="space-y-1.5">
+              <EngineRow
+                name="FFmpeg"
+                detail={info ? (info.deps.ffmpeg.found ? info.deps.ffmpeg.version.split(" ")[0] : "install required") : "…"}
+                ok={info ? info.deps.ffmpeg.found : false}
+              />
+              <EngineRow
+                name="ffprobe"
+                detail={info ? (info.deps.ffprobe.found ? "detected" : "not found") : "…"}
+                ok={info ? info.deps.ffprobe.found : false}
+              />
+              <EngineRow
+                name="yt-dlp"
+                detail={info ? info.deps.ytdlp.version : "…"}
+                ok={info ? info.deps.ytdlp.found : false}
+              />
+            </ul>
+          </div>
+          <div className={`${CARD} p-4`}>
+            <h4 className={`${SECTION_LABEL} mb-2.5 text-acc`}>tasks</h4>
+            <div className="space-y-2">
+              <Counter label="active" value={active} tone={active ? "bg-info" : "bg-ink3"} />
+              <Counter label="completed" value={count("completed")} tone="bg-ok" />
+              <Counter label="failed" value={count("failed")} tone={count("failed") ? "bg-bad" : "bg-ink3"} />
+              <Counter label="cancelled" value={count("cancelled")} tone="bg-ink3" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* quick actions */}
       <section>
-        <h2 className={`${SECTION_TITLE} mb-3`}>tools</h2>
+        <h3 className={`${SECTION_LABEL} mb-2`}>quick actions</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {TOOLS.map((t) => (
             <ToolCard key={t.id} {...t} />
@@ -93,19 +143,22 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <DepsCard info={info} />
+      {/* recent operations */}
+      <section>
+        <h3 className={`${SECTION_LABEL} mb-2`}>recent operations</h3>
         <div className={`${CARD} p-4`}>
-          <h2 className={`${SECTION_TITLE} mb-3`}>recent tasks</h2>
           {recent.length === 0 ? (
-            <p className="text-sm text-ink3">No tasks yet - results and downloads will appear here.</p>
+            <p className="text-sm text-ink3">No operations yet - results and downloads will appear here.</p>
           ) : (
             <ul className="space-y-2">
-              {recent.map((t) => (
+              {recent.slice(0, 8).map((t) => (
                 <li key={t.id} className="flex items-center gap-2">
                   <StatusBadge status={t.status} />
-                  <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink2">{t.title}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink2" title={t.title}>{t.title}</span>
                   <span className="shrink-0 font-mono text-[11px] text-ink3">
+                    {t.finished_at ? new Date(t.finished_at).toLocaleTimeString() : ""}
+                  </span>
+                  <span className="w-16 shrink-0 text-right font-mono text-[11px] text-ink3">
                     {t.result?.outputs?.[0]?.size ? humanSize(t.result.outputs[0].size) : ""}
                   </span>
                 </li>
@@ -113,7 +166,7 @@ export default function Dashboard() {
             </ul>
           )}
         </div>
-      </div>
+      </section>
 
       <p className="text-xs text-ink3">
         Only download media you have permission to save. This app does not bypass DRM or access controls.

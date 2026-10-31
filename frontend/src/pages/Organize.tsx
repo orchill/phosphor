@@ -95,7 +95,7 @@ export default function Organize() {
 
       {pdf && (
         <>
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-panel p-3 ">
+          <div className="flex flex-wrap items-center gap-2 rounded-sm border border-line bg-panel p-3 ">
             <span className="text-sm font-medium text-ink">{pdf.name} - {pages.length} page(s)</span>
             <span className="ml-auto flex flex-wrap items-center gap-2">
               <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>Select all</button>
@@ -111,7 +111,7 @@ export default function Organize() {
           </div>
 
           {pages.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-ink2 ">
+            <p className="rounded-sm border border-dashed border-line p-8 text-center text-sm text-ink2 ">
               All pages removed - add pages back by reloading the file.
             </p>
           ) : (

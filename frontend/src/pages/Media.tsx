@@ -140,7 +140,7 @@ fixes this - it takes about a minute.
         <button
 role="tab" aria-selected={tab === "downloader"}
           onClick={() => setTab("downloader")}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium sm:flex-none sm:px-6 ${
+          className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium sm:flex-none sm:px-6 ${
             tab === "downloader"
               ? "border-acc bg-acc/10 text-acc"
               : "border-line text-ink2"
@@ -151,7 +151,7 @@ role="tab" aria-selected={tab === "downloader"}
         <button
 role="tab" aria-selected={tab === "cookies"}
           onClick={() => setTab("cookies")}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium sm:flex-none sm:px-6 ${
+          className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium sm:flex-none sm:px-6 ${
             tab === "cookies"
               ? "border-acc bg-acc/10 text-acc"
               : "border-line text-ink2"
@@ -203,7 +203,7 @@ id="mediaurl" value={url}
             <div className="flex flex-col gap-4 p-4 sm:flex-row">
               <img
 src={info.thumbnail}
-                alt="" className="h-36 w-full max-w-xs rounded-lg bg-elev object-cover " onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+                alt="" className="h-36 w-full max-w-xs rounded-sm bg-elev object-cover " onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
               />
               <div className="min-w-0 flex-1">
                 <h3 className="text-base font-semibold leading-snug text-ink">{info.title}</h3>
@@ -222,12 +222,12 @@ src={info.thumbnail}
           <div className={`${CARD} space-y-4 p-4`}>
             <div className="flex gap-2" role="tablist" aria-label="Output type">
               <button role="tab" aria-selected={mode === "video"} onClick={() => setMode("video")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium ${mode === "video" ? "border-acc bg-acc/10 text-acc" : "border-line text-ink2"}`}>
+                className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium ${mode === "video" ? "border-acc bg-acc/10 text-acc" : "border-line text-ink2"}`}>
                 <Video size={16} /> Video (MP4)
               </button>
               <button role="tab" aria-selected={mode === "audio"}
                 onClick={() => { setMode("audio"); setVideoFmt(""); setHeight(0); }}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium ${mode === "audio" ? "border-acc bg-acc/10 text-acc" : "border-line text-ink2"}`}>
+                className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium ${mode === "audio" ? "border-acc bg-acc/10 text-acc" : "border-line text-ink2"}`}>
                 <Music size={16} /> Audio (MP3 / M4A)
               </button>
             </div>
@@ -240,7 +240,7 @@ src={info.thumbnail}
                     {HEIGHTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
                 </div>
-                <details className="group rounded-md border border-line bg-base/50 sm:col-span-2">
+                <details className="group rounded border border-line bg-base/50 sm:col-span-2">
                   <summary className="flex cursor-pointer select-none items-center gap-2 px-3 py-2 font-mono text-[11px] uppercase tracking-widest text-ink3 hover:text-ink2">
                     advanced options
                     <ChevronDown size={13} className="transition-transform group-open:rotate-180" aria-hidden />
