@@ -102,7 +102,6 @@ cd frontend && npm run e2e              :: Playwright, real browser (19 tests, o
 ```
 
 E2E details: [frontend/e2e/README.md](frontend/e2e/README.md).
-Development notes and the audit trail: [AUDIT_REPORT.md](AUDIT_REPORT.md).
 
 ## Known limitations
 
