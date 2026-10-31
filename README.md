@@ -80,8 +80,8 @@ the light "paper terminal" theme is one click away.
 | | |
 |---|---|
 | OS | **Windows 10/11** (primary), Linux, macOS |
-| Python | 3.10 – 3.13 (developed and tested on 3.12) |
-| Node.js + npm | **optional** — only needed to rebuild the UI (a prebuilt UI is bundled in `frontend/dist/`) |
+| Python | 3.10 – 3.13 (developed and tested on 3.13) |
+| Node.js + npm | **optional** — only needed to rebuild the UI or run E2E tests (a prebuilt UI is bundled in `frontend/dist/`); Node 20.19+ / 22.12+ for Vite 8 |
 | FFmpeg | needed for MP3/M4A conversion and MP4 merging (not needed for PDF tools) |
 | yt-dlp | installed automatically with the Python dependencies |
 | Hardware | any modern PC; no Docker, no database, no paid APIs |
@@ -229,7 +229,7 @@ as if you were browsing; nothing is bypassed.
 
 ## Testing & verification status
 
-The backend test-suite (`pytest backend/tests`, 82 tests) **all pass** and were
+The backend test-suite (`pytest backend/tests`, 83 tests) **all pass** and were
 executed in the development environment against fixture PDFs/images and a local
 HTTP media server (no reliance on external sites):
 
@@ -258,6 +258,12 @@ HTTP media server (no reliance on external sites):
 
 ### Automated tests
 
+Prerequisites for the test tooling: the backend venv with **both** dependency
+files (`pip install -r requirements.txt -r requirements-dev.txt`) and, for the
+E2E suite, Node 20.19+ with Playwright's Chromium (`npx playwright install
+chromium`) plus the .NET Framework compiler that ships with Windows — exact
+steps in `frontend/e2e/README.md`.
+
 ```bat
 :: backend (pytest, 83 tests - offline, uses local fixtures)
 .venv\Scripts\python.exe -m pytest
@@ -265,7 +271,7 @@ HTTP media server (no reliance on external sites):
 :: frontend type-check + production build
 cd frontend && npm run build
 
-:: frontend E2E (Playwright, real browser + real server, fully offline)
+:: frontend E2E (Playwright, 18 tests - real browser + real server, offline)
 cd frontend && npm run e2e
 ```
 
@@ -355,7 +361,7 @@ pdf-media-studio/
 │   │   │   ├── cookie_store.py    # cookie sign-in parse/validate/store
 │   │   │   └── depsinfo.py        # dependency diagnostics
 │   │   └── routers/           # system · files · pdf · media · tasks
-│   └── tests/                 # 82 pytest tests (run: pytest backend/tests)
+│   └── tests/                 # 83 pytest tests (run: pytest backend/tests)
 ├── frontend/
 │   ├── src/                   # React + TypeScript sources (pages, components)
 │   └── dist/                  # prebuilt UI (shipped, no Node needed)

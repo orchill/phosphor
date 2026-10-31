@@ -153,8 +153,9 @@ targets raster images, playlists limited to first entry, no OCR/annotations.
 
 - Python-side validation proxy for yt-dlp traffic (investigated §5.1 — revisit
   only for multi-user/untrusted-network deployments).
-- Frontend end-to-end tests (the suite covers the backend; UI is verified
-  manually/visually).
+- Cross-browser E2E matrix (Chromium is covered; WebKit/Firefox deliberately
+  deferred for maintainability).
+- Styled in-app confirmation dialogs (native `confirm()` retained for now).
 
 ## 8. Final improvement cycle (post-audit, same release)
 
