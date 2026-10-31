@@ -78,7 +78,7 @@ the baseline and implemented the missing pieces rather than re-doing what existe
 | Check | Result |
 |---|---|
 | Backend suite (pytest, Python 3.13.3, Windows) | **83 passed** / 0 failed / 0 skipped (~13 s) |
-| Frontend E2E (Playwright, real browser + real server) | **18 passed** / 0 failed (~35 s, fully offline via a stub yt-dlp) |
+| Frontend E2E (Playwright, real browser + real server) | **19 passed** / 0 failed (~35 s, fully offline via a stub yt-dlp) |
 | `pip check` | clean |
 | `npm audit` | **0 vulnerabilities** (Vite 8.3.5 / plugin-react 6.1.2) |
 | `tsc --noEmit` + `vite build` | pass |
@@ -159,7 +159,7 @@ targets raster images, playlists limited to first entry, no OCR/annotations.
 
 ## 8. Final improvement cycle (post-audit, same release)
 
-- **Frontend E2E suite (new)**: 18 Playwright tests (`frontend/e2e/`, offline)
+- **Frontend E2E suite (new)**: 19 Playwright tests (`frontend/e2e/`, offline)
   covering navigation/deep-links/back-forward, merge, images-to-PDF, split,
   compress, media download with progress + queued/running cancellation,
   cookie import with masked-API assertions, and settings persistence across a

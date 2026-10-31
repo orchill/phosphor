@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle, CheckCircle2, ChevronDown, Combine, FileOutput, FilePlus2,
   FileStack, FolderOutput, History as HistoryIcon, Images, LayoutDashboard, Moon,
-  Scissors, Settings as SettingsIcon, ShieldCheck, Sun, Video, X, Zap,
+  Scissors, Search, Settings as SettingsIcon, ShieldCheck, Sun, Video, X, Zap,
 } from "lucide-react";
 import { NavContext, ToastContext, Toast, Route, useNav, PDF_ROUTES, ROUTE_META } from "./ctx";
 import { systemInfo } from "./api";
 import { SystemInfo } from "./types";
 import { BTN_GHOST } from "./ui";
+import CommandPalette from "./components/CommandPalette";
 import Dashboard from "./pages/Dashboard";
 import PdfTools from "./pages/PdfTools";
 import Merge from "./pages/Merge";
@@ -227,7 +228,7 @@ function MobileNav() {
   );
 }
 
-function Header({ dark, toggleTheme }: { dark: boolean; toggleTheme: () => void }) {
+function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme: () => void; openPalette: () => void }) {
   const [info, setInfo] = useState<SystemInfo | null>(null);
   useEffect(() => {
     systemInfo().then(setInfo).catch(() => {});
@@ -264,6 +265,16 @@ function Header({ dark, toggleTheme }: { dark: boolean; toggleTheme: () => void 
           </button>
         )}
         <button
+          onClick={openPalette}
+          className={`${BTN_GHOST} hidden items-center gap-1.5 px-2 font-mono text-[11px] sm:inline-flex`}
+          aria-label="Open command palette"
+          title="Command palette (Ctrl+K)"
+        >
+          <Search size={14} aria-hidden />
+          <span className="hidden lg:inline">Ctrl</span>
+          <span className="hidden lg:inline">K</span>
+        </button>
+        <button
           onClick={toggleTheme}
           className={BTN_GHOST}
           aria-label="Toggle dark mode"
@@ -281,7 +292,19 @@ export default function App() {
   const { dark, toggle } = useTheme();
   const [route, setRoute] = useState<Route>(routeFromHash);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     if (!window.location.hash) history.replaceState(null, "", "#/");
@@ -331,7 +354,13 @@ export default function App() {
     <NavContext.Provider value={navCtx}>
       <ToastContext.Provider value={toastCtx}>
         <div className="flex h-screen flex-col">
-          <Header dark={dark} toggleTheme={toggle} />
+          <Header dark={dark} toggleTheme={toggle} openPalette={() => setPaletteOpen(true)} />
+          <CommandPalette
+            open={paletteOpen}
+            onClose={() => setPaletteOpen(false)}
+            toggleTheme={toggle}
+            dark={dark}
+          />
           <MobileNav />
           <div className="flex min-h-0 flex-1">
             <Sidebar />

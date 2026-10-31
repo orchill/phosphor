@@ -82,4 +82,21 @@ test.describe("navigation & routing", () => {
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
     await expect(page).toHaveURL(/#\/pdf\/merge/);
   });
+
+  test("command palette opens with Ctrl+K, filters and navigates", async ({ page }) => {
+    await page.goto("/");
+    await page.keyboard.press("Control+K");
+    const dialog = page.getByRole("dialog", { name: "Command palette" });
+    await expect(dialog).toBeVisible();
+    await page.getByRole("combobox", { name: "Search commands" }).fill("comp");
+    await dialog.getByRole("option", { name: "Compress PDF" }).click();
+    await expect(page).toHaveURL(/#\/pdf\/compress/);
+    await expect(page.getByRole("heading", { name: "Compress PDF" })).toBeVisible();
+
+    // Escape closes the palette
+    await page.keyboard.press("Control+K");
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+  });
 });
