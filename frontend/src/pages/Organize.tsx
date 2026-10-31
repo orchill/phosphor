@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FileStack, RotateCcw, RotateCw, Save, Trash2 } from "lucide-react";
 import FileDrop from "../components/FileDrop";
 import PageGrid, { PageState } from "../components/PageGrid";
+import SourcePanel from "../components/SourcePanel";
 import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opEditPages, uploadFiles } from "../api";
 import { useToast } from "../ctx";
@@ -95,8 +96,9 @@ export default function Organize() {
 
       {pdf && (
         <>
-          <div className="flex flex-wrap items-center gap-2 rounded-sm border border-line bg-panel p-3 ">
-            <span className="text-sm font-medium text-ink">{pdf.name} - {pages.length} page(s)</span>
+          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close document" />
+          <div className="flex flex-wrap items-center gap-2 rounded-sm border border-line bg-panel p-3">
+            <span className="font-mono text-[12px] text-ink2">{pages.length} page(s)</span>
             <span className="ml-auto flex flex-wrap items-center gap-2">
               <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>Select all</button>
               <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>Select none</button>
@@ -106,7 +108,6 @@ export default function Organize() {
                 <Trash2 size={14} /> Delete selected
 </button>
               <button onClick={() => rotateAll(90)} className={BTN_SECONDARY}>Rotate all +90</button>
-              <button onClick={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} className={BTN_SECONDARY}>Close file</button>
             </span>
           </div>
 

@@ -7,6 +7,7 @@ import { listTasks, systemInfo } from "../api";
 import { SystemInfo, TaskRecord, humanSize } from "../types";
 import { StatusBadge } from "../components/TaskPanel";
 import ToolCard from "../components/ToolCard";
+import EventLogPanel from "../components/EventLogPanel";
 import { CARD, DOT, SECTION_LABEL } from "../ui";
 
 const TOOLS = [
@@ -167,6 +168,9 @@ export default function Dashboard() {
           )}
         </div>
       </section>
+
+      {/* session event log - real frontend-observed events only */}
+      <EventLogPanel />
 
       <p className="text-xs text-ink3">
         Only download media you have permission to save. This app does not bypass DRM or access controls.

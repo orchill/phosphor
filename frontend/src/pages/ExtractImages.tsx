@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FilePlus2 } from "lucide-react";
 import FileDrop from "../components/FileDrop";
+import SourcePanel from "../components/SourcePanel";
 import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opExtractImages, uploadFiles } from "../api";
 import { useToast } from "../ctx";
@@ -55,13 +56,11 @@ export default function ExtractImages() {
 
       {pdf && (
         <>
-          <div className={`${CARD} flex flex-wrap items-center gap-3 p-4`}>
-            <span className="font-mono text-[13px] text-ink">{pdf.name} - {humanSize(pdf.size)}</span>
-            <span className="ml-auto flex gap-2">
+          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close">
+            <div className="flex flex-wrap items-center gap-3">
               <button onClick={run} disabled={busy} className={BTN_PRIMARY}><FilePlus2 size={16} /> Extract images</button>
-              <button onClick={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} className={BTN_SECONDARY}>Close file</button>
-            </span>
-          </div>
+            </div>
+          </SourcePanel>
         </>
       )}
 

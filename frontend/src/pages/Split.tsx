@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Scissors } from "lucide-react";
 import FileDrop from "../components/FileDrop";
 import OptionCard from "../components/OptionCard";
+import SourcePanel from "../components/SourcePanel";
 import PageGrid, { PageState } from "../components/PageGrid";
 import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opSplit, uploadFiles } from "../api";
@@ -93,6 +94,7 @@ export default function Split() {
 
       {pdf && (
         <>
+          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close document" />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {modes.map((m) => (
               <OptionCard key={m.id} name="splitmode" checked={mode === m.id}
@@ -141,7 +143,6 @@ export default function Split() {
               <Scissors size={16} />
               {mode === "extract" ? `Extract ${selection.size} page(s)` : "Split document"}
             </button>
-            <button onClick={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} className={BTN_SECONDARY}>Close file</button>
           </div>
         </>
       )}

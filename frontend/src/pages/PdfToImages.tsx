@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FileOutput } from "lucide-react";
 import FileDrop from "../components/FileDrop";
 import PageGrid, { PageState } from "../components/PageGrid";
+import SourcePanel from "../components/SourcePanel";
 import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opToImages, uploadFiles } from "../api";
 import { useToast } from "../ctx";
@@ -74,7 +75,8 @@ export default function PdfToImages() {
 
       {pdf && (
         <>
-          <div className="flex flex-wrap items-end gap-3 rounded-sm border border-line bg-panel p-3  ">
+          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close document">
+            <div className="flex flex-wrap items-end gap-3">
             <div>
               <label className={LABEL} htmlFor="fmt">Format</label>
               <select id="fmt" value={fmt} onChange={(e) => setFmt(e.target.value)} className={`${INPUT} mt-1 w-28`}>
@@ -95,12 +97,13 @@ export default function PdfToImages() {
               <input type="checkbox" checked={useAll} onChange={(e) => setUseAll(e.target.checked)} className="accent-acc" />
               All pages
             </label>
-            <span className="ml-auto flex gap-2">
-              <button onClick={run} disabled={busy || (!useAll && !selection.size)} className={BTN_PRIMARY}>
-                <FileOutput size={16} /> Export {useAll ? pdf.pages : selection.size} page(s)
-              </button>
-              <button onClick={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} className={BTN_SECONDARY}>Close file</button>
-            </span>
+            </div>
+          </SourcePanel>
+
+          <div className="flex items-center gap-3">
+            <button onClick={run} disabled={busy || (!useAll && !selection.size)} className={BTN_PRIMARY}>
+              <FileOutput size={16} /> Export {useAll ? pdf.pages : selection.size} page(s)
+            </button>
           </div>
 
           {!useAll && (

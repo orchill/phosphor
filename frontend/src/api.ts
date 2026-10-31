@@ -4,8 +4,10 @@ import type {
   MergePayload, Settings, SettingsPatch, SimpleOpPayload, SplitPayload,
   SystemInfo, TaskRecord, TaskStarted, ToImagesPayload, UploadedFile,
 } from "./types";
+import { emitEvent } from "./events";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
   const res = await fetch(path, init);
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;
@@ -16,7 +18,16 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* not json */
     }
+    // genuine application events only; polling GETs are not logged
+    if (method !== "GET") {
+      emitEvent("error", `${method} ${path.split("?")[0]} failed - ${detail}`);
+    } else if (!path.startsWith("/api/tasks")) {
+      emitEvent("error", `${method} ${path.split("?")[0]} failed - ${detail}`);
+    }
     throw new Error(detail);
+  }
+  if (method !== "GET") {
+    emitEvent("info", `${method} ${path.split("?")[0]}`);
   }
   return res.json() as Promise<T>;
 }

@@ -66,7 +66,7 @@ class Stub {
                 Console.Out.WriteLine("__P__" + written + "|" + payload.Length +
                                       "|" + payload.Length + "|7000|" + ((3 - i) * 1.4).ToString("0.0"));
                 Console.Out.Flush();
-                Thread.Sleep(1400);
+                Thread.Sleep(2500);
             }
         }
         if (File.Exists(final)) File.Delete(final);

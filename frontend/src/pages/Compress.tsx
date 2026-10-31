@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
 import FileDrop from "../components/FileDrop";
 import OptionCard from "../components/OptionCard";
+import SourcePanel from "../components/SourcePanel";
 import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opCompress, uploadFiles } from "../api";
 import { useToast } from "../ctx";
@@ -71,11 +72,8 @@ export default function Compress() {
 
       {pdf && (
         <>
-          <div className={`${CARD} p-4`}>
-            <p className="text-sm text-ink">
-              Source: <span className="font-medium">{pdf.name}</span> ({humanSize(pdf.size)}, {pdf.pages} pages)
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {PRESETS.map((p) => (
                 <OptionCard key={p.id} name="preset" checked={preset === p.id}
                   onChange={() => setPreset(p.id)} label={p.label} desc={p.desc} />
@@ -93,11 +91,10 @@ export default function Compress() {
                 </label>
               </div>
             )}
-          </div>
+          </SourcePanel>
 
           <div className="flex items-center gap-3">
             <button onClick={run} disabled={busy} className={BTN_PRIMARY}><Zap size={16} /> Compress</button>
-            <button onClick={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} className={BTN_SECONDARY}>Close file</button>
           </div>
         </>
       )}

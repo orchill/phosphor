@@ -1,10 +1,11 @@
 import { CheckCircle2, ChevronDown, ChevronRight, FolderOutput, Loader2, X, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cancelTask, downloadUrl, getTaskLog, openOutputFolder } from "../api";
+import { emitEvent } from "../events";
 import { useToast } from "../ctx";
 import { useTask } from "../hooks";
 import { TaskRecord, humanSize } from "../types";
-import { BADGE, BTN_DANGER, BTN_GHOST, BTN_SECONDARY, CARD, DOT, STATUS_TONES } from "../ui";
+import { BADGE, BTN_DANGER, BTN_GHOST, BTN_SECONDARY, CARD, DOT, SECTION_LABEL, STATUS_TONES } from "../ui";
 
 const KIND_LABELS: Record<string, string> = {
   pdf_merge: "Merge PDFs",
@@ -83,6 +84,18 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
   const task = useTask(taskId);
   const toast = useToast();
   const [cancelling, setCancelling] = useState(false);
+  const reportedStatus = useRef<string | null>(null);
+
+  // genuine task lifecycle events for the application event log
+  useEffect(() => {
+    if (!task) return;
+    if (reportedStatus.current === task.status) return;
+    reportedStatus.current = task.status;
+    if (task.status === "completed") emitEvent("info", `${task.title} - completed`, true);
+    else if (task.status === "failed") emitEvent("error", `${task.title} - failed: ${task.error || "unknown error"}`, true);
+    else if (task.status === "cancelled") emitEvent("warning", `${task.title} - cancelled`, true);
+  }, [task]);
+
   if (!taskId || !task) return null;
 
   const running = task.status === "running" || task.status === "queued";
@@ -102,14 +115,14 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
   };
 
   return (
-    <div className={`${CARD} p-4`}>
+    <div className={`${CARD} p-4`} data-testid="task-panel">
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate font-mono text-[13px] font-semibold text-ink">{task.title}</p>
           <p className="font-mono text-[11px] text-ink3">
-            {kindLabel}
+            {kindLabel} · #{task.id.slice(0, 8)}
             {task.finished_at && task.started_at && (
-              <> - finished in {Math.max(0, (new Date(task.finished_at).getTime() - new Date(task.started_at).getTime()) / 1000).toFixed(1)}s</>
+              <> · finished in {Math.max(0, (new Date(task.finished_at).getTime() - new Date(task.started_at).getTime()) / 1000).toFixed(1)}s</>
             )}
           </p>
         </div>
@@ -136,7 +149,11 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
       {running && (
         <div className="mt-3">
           <ProgressBar value={task.progress} indeterminate={indeterminate} />
-          <p className="mt-1.5 font-mono text-[11px] text-ink3">{task.stage}</p>
+          {/* terminal-style stage line: real backend progress (speed / ETA
+              where yt-dlp reports them) */}
+          <p className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[11px] text-info">
+            <span className="text-ink3" aria-hidden>▸ </span>{task.stage}
+          </p>
         </div>
       )}
 
@@ -148,7 +165,10 @@ export default function TaskPanel({ taskId, onDismiss }: { taskId: string | null
               {task.result.note}
             </p>
           )}
-          <ul className="mt-2 space-y-1.5">
+          {(task.result?.outputs || []).length > 0 && (
+            <p className={`${SECTION_LABEL} mt-3`}>output</p>
+          )}
+          <ul className="mt-1.5 space-y-1.5">
             {(task.result?.outputs || []).map((o) => (
               <li key={o.path} className="flex flex-wrap items-center gap-2 rounded-sm bg-elev/60 px-3 py-2">
                 <span className="min-w-0 flex-1 truncate font-mono text-[12px] text-ink" title={o.name}>{o.name}</span>
