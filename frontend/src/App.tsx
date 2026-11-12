@@ -4,11 +4,11 @@ import {
   FileStack, FolderOutput, History as HistoryIcon, Images, LayoutDashboard, Moon,
   Scissors, Search, Settings as SettingsIcon, ShieldCheck, Sun, Video, X, Zap,
 } from "lucide-react";
-import { NavContext, ToastContext, Toast, Route, useNav, PDF_ROUTES, ROUTE_META } from "./ctx";
+import { NavContext, ToastContext, Toast, Route, useNav, useToast, PDF_ROUTES, ROUTE_META } from "./ctx";
 import { systemInfo } from "./api";
 import { SystemInfo } from "./types";
 import { BTN_GHOST } from "./ui";
-import { middleTruncate } from "./format";
+import { copyText, middleTruncate } from "./format";
 import { DENSITY_KEY, applyDensity, readTheme, saveTheme } from "./appearance";
 import CommandPalette from "./components/CommandPalette";
 import Onboarding from "./components/Onboarding";
@@ -273,6 +273,7 @@ function MobileNav() {
 function Header({ dark, toggleTheme, openPalette, info }: {
   dark: boolean; toggleTheme: () => void; openPalette: () => void; info: SystemInfo | null;
 }) {
+  const toast = useToast();
   return (
     <header className="flex items-center gap-3 border-b border-line bg-panel px-4 py-2.5">
       <a
@@ -294,24 +295,40 @@ function Header({ dark, toggleTheme, openPalette, info }: {
           </p>
         </div>
       </div>
-      <div className="ml-auto flex items-center gap-1.5">
+      {/* search-box shaped command palette trigger */}
+      <button
+        onClick={openPalette}
+        aria-label="Open command palette"
+        title="Command palette (Ctrl+K)"
+        className="ml-auto hidden w-full max-w-sm items-center gap-2 rounded-sm border border-line bg-base px-2.5 py-1.5 text-left font-mono text-[0.75rem] text-ink3 transition-colors hover:border-ink3 hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc sm:flex"
+      >
+        <Search size={14} className="shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">search or run a command…</span>
+        <span className="hidden shrink-0 items-center gap-1 lg:inline-flex" aria-hidden>
+          <Kbd>Ctrl</Kbd><Kbd>K</Kbd>
+        </span>
+      </button>
+      <div className="ml-auto flex items-center gap-1.5 sm:ml-0">
+        {/* F1: the active-tasks indicator renders here */}
         {info && (
           <button
-            onClick={() => navigator.clipboard?.writeText(info.output_dir)}
+            onClick={async () => {
+              const ok = await copyText(info.output_dir);
+              toast.push(ok ? "success" : "error", ok ? "Output folder path copied." : "Could not access the clipboard.");
+            }}
             title={`Output folder: ${info.output_dir} (click to copy path)`}
-            className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-[0.6875rem] text-ink3 hover:bg-elev hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc lg:flex"
+            aria-label={`Copy output folder path: ${info.output_dir}`}
+            className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-[0.6875rem] text-ink3 hover:bg-elev hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc xl:flex"
           >
-            <FolderOutput size={13} aria-hidden /> {info.output_dir}
+            <FolderOutput size={13} aria-hidden /> {middleTruncate(info.output_dir, 28)}
           </button>
         )}
         <button
           onClick={openPalette}
-          className={`${BTN_GHOST} hidden items-center gap-1.5 px-2 font-mono text-[0.6875rem] sm:inline-flex`}
+          className={`${BTN_GHOST} sm:hidden`}
           aria-label="Open command palette"
-          title="Command palette (Ctrl+K)"
         >
-          <Search size={14} aria-hidden />
-          <span className="hidden items-center gap-1 lg:inline-flex"><Kbd>Ctrl</Kbd><Kbd>K</Kbd></span>
+          <Search size={16} aria-hidden />
         </button>
         <button
           onClick={toggleTheme}
