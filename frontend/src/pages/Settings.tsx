@@ -8,6 +8,7 @@ import {
 import { Settings, SystemInfo } from "../types";
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, SECTION_TITLE } from "../ui";
 import { Field, PageHeader, Tabs } from "../components/primitives";
+import { useHashQuery } from "../hooks";
 
 function DepRow({ name, found, detail, hint }: { name: string; found: boolean; detail: string; hint?: string }) {
   return (
@@ -31,6 +32,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function SettingsPage() {
   const [cfg, setCfg] = useState<Settings | null>(null);
+  const section = useHashQuery().get("section");
   const [accent, setAccent] = useState<Accent>(readAccent);
   const [crt, setCrt] = useState<Crt>(readCrt);
   const [density, setDensity] = useState<Density>(
@@ -49,6 +51,12 @@ export default function SettingsPage() {
     }
   };
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // deep link: "#/settings?section=diagnostics" scrolls the section into view
+  useEffect(() => {
+    if (!section || !cfg) return;
+    document.getElementById(section)?.scrollIntoView({ block: "start" });
+  }, [section, cfg, info]);
 
   const set = (k: keyof Settings, v: any) => setCfg((c) => (c ? { ...c, [k]: v } : c));
   const setNum = (k: keyof Settings, v: string) => {
@@ -242,7 +250,7 @@ export default function SettingsPage() {
             </div>
           </Section>
 
-          <div className={`${CARD} p-4`}>
+          <div id="diagnostics" className={`${CARD} scroll-mt-4 p-4`}>
             <div className="mb-2 flex items-center gap-2">
               <h3 className={SECTION_TITLE}>diagnostics</h3>
               <button onClick={loadAll} className={`${BTN_SECONDARY} ml-auto py-1 text-xs`}><RefreshCw size={12} /> re-check</button>

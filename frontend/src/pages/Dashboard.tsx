@@ -3,7 +3,9 @@ import {
   Video, Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { listTasks, systemInfo } from "../api";
+import { downloadUrl, listTasks, systemInfo } from "../api";
+import { useToast } from "../ctx";
+import { copyText, middleTruncate } from "../format";
 import { SystemInfo, TaskRecord, humanSize } from "../types";
 import { StatusBadge } from "../components/TaskPanel";
 import ToolCard from "../components/ToolCard";
@@ -22,10 +24,29 @@ const TOOLS = [
   { id: "media", icon: Video, title: "media downloader", desc: "Download video/audio via yt-dlp + FFmpeg." },
 ] as const;
 
-function EngineRow({ name, detail, ok }: { name: string; detail: string; ok: boolean }) {
+type EngineState = "loading" | "ok" | "missing";
+
+/** One compact line per dependency. A missing one turns into a warning row
+ *  with a one-click path to Settings -> diagnostics. */
+function EngineRow({ name, detail, state }: { name: string; detail: string; state: EngineState }) {
+  if (state === "missing") {
+    return (
+      <li className="flex items-center gap-2 font-mono text-[0.75rem]">
+        <span className={`${DOT} bg-warn`} aria-hidden />
+        <span className="text-warn">{name}</span>
+        <span className="truncate text-ink3" title={detail}>{detail}</span>
+        <a
+          href="#/settings?section=diagnostics"
+          className="ml-auto shrink-0 rounded-sm text-warn underline decoration-dotted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+        >
+          how to fix
+        </a>
+      </li>
+    );
+  }
   return (
     <li className="flex items-center gap-2 font-mono text-[0.75rem]">
-      <span className={`${DOT} ${ok ? "bg-ok" : "bg-bad"}`} aria-hidden />
+      <span className={`${DOT} ${state === "ok" ? "bg-ok" : "bg-ink3"}`} aria-hidden />
       <span className="text-ink">{name}</span>
       <span className="ml-auto truncate text-ink3" title={detail}>{detail}</span>
     </li>
@@ -35,9 +56,43 @@ function EngineRow({ name, detail, ok }: { name: string; detail: string; ok: boo
 /** Counters are computed from the most recent tasks only, so say so. */
 const RECENT_LIMIT = 50;
 
+const engine = (found: boolean | undefined): EngineState =>
+  found === undefined ? "loading" : found ? "ok" : "missing";
+
+/** A recent operation. Finished work with a file opens (downloads) it; anything
+ *  else - failed, running, or output gone - opens History narrowed to that task. */
+function RecentRow({ t }: { t: TaskRecord }) {
+  const out = t.result?.outputs?.[0];
+  const canOpen = !!out && out.exists !== false;
+  const inner = (
+    <>
+      <StatusBadge status={t.status} />
+      <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink2 group-hover:text-ink" title={t.title}>{t.title}</span>
+      <span className="shrink-0 font-mono text-[0.6875rem] text-ink3">
+        {t.finished_at ? new Date(t.finished_at).toLocaleTimeString() : ""}
+      </span>
+      <span className="w-16 shrink-0 text-right font-mono text-[0.6875rem] text-ink3">
+        {out?.size ? humanSize(out.size) : ""}
+      </span>
+    </>
+  );
+  const cls =
+    "group -mx-2 flex items-center gap-2 rounded-sm px-2 py-1 transition-colors hover:bg-elev/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc";
+  return (
+    <li>
+      {canOpen ? (
+        <a href={downloadUrl(out!.path)} download className={cls} title={`Download ${out!.name}`}>{inner}</a>
+      ) : (
+        <a href={`#/history?task=${encodeURIComponent(t.id)}`} className={cls} title="Show in history">{inner}</a>
+      )}
+    </li>
+  );
+}
+
 export default function Dashboard() {
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [recent, setRecent] = useState<TaskRecord[]>([]);
+  const toast = useToast();
 
   useEffect(() => {
     systemInfo().then(setInfo).catch(() => {});
@@ -78,7 +133,18 @@ export default function Dashboard() {
               <span>{info.free_disk_gb} GB free</span>
             </>
           )}
-          <span className="ml-auto hidden sm:block">~/.local/pdf-media-studio</span>
+          {info?.output_dir && (
+            <button
+              onClick={async () => {
+                const ok = await copyText(info.output_dir);
+                toast.push(ok ? "success" : "error", ok ? "Output folder path copied." : "Could not access the clipboard.");
+              }}
+              title={`${info.output_dir} (click to copy)`}
+              className="ml-auto hidden max-w-[16rem] truncate rounded-sm hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc sm:block"
+            >
+              {middleTruncate(info.output_dir, 30)}
+            </button>
+          )}
         </div>
         <h2 className="mt-3 font-mono text-lg font-semibold tracking-tight text-ink">
           Your private PDF &amp; media toolbox
@@ -94,23 +160,23 @@ export default function Dashboard() {
       <section aria-label="System status" className={`${CARD} col-span-12 p-4 lg:col-span-5`}>
         <h3 className={`${SECTION_LABEL} mb-2.5 text-accText`}>engines</h3>
         <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          <EngineRow name="PyMuPDF" detail={info?.deps.pymupdf ?? "…"} ok={!!info} />
+          <EngineRow name="PyMuPDF" detail={info?.deps.pymupdf ?? "…"} state={info ? "ok" : "loading"} />
           <EngineRow
             name="FFmpeg"
-            detail={info ? (info.deps.ffmpeg.found ? info.deps.ffmpeg.version.split(" ")[0] : "install required") : "…"}
-            ok={info ? info.deps.ffmpeg.found : false}
+            detail={info ? (info.deps.ffmpeg.found ? info.deps.ffmpeg.version.split(" ")[0] : "not found") : "…"}
+            state={engine(info?.deps.ffmpeg.found)}
           />
-          <EngineRow name="pypdf" detail={info?.deps.pypdf ?? "…"} ok={!!info} />
+          <EngineRow name="pypdf" detail={info?.deps.pypdf ?? "…"} state={info ? "ok" : "loading"} />
           <EngineRow
             name="ffprobe"
             detail={info ? (info.deps.ffprobe.found ? "detected" : "not found") : "…"}
-            ok={info ? info.deps.ffprobe.found : false}
+            state={engine(info?.deps.ffprobe.found)}
           />
-          <EngineRow name="Pillow" detail={info?.deps.pillow ?? "…"} ok={!!info} />
+          <EngineRow name="Pillow" detail={info?.deps.pillow ?? "…"} state={info ? "ok" : "loading"} />
           <EngineRow
             name="yt-dlp"
-            detail={info ? info.deps.ytdlp.version : "…"}
-            ok={info ? info.deps.ytdlp.found : false}
+            detail={info ? (info.deps.ytdlp.found ? info.deps.ytdlp.version : "not found") : "…"}
+            state={engine(info?.deps.ytdlp.found)}
           />
         </ul>
       </section>
@@ -142,18 +208,7 @@ export default function Dashboard() {
             <EmptyState bare>no tasks yet - run a tool to get started</EmptyState>
           ) : (
             <ul className="space-y-2">
-              {recent.slice(0, 8).map((t) => (
-                <li key={t.id} className="flex items-center gap-2">
-                  <StatusBadge status={t.status} />
-                  <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink2" title={t.title}>{t.title}</span>
-                  <span className="shrink-0 font-mono text-[0.6875rem] text-ink3">
-                    {t.finished_at ? new Date(t.finished_at).toLocaleTimeString() : ""}
-                  </span>
-                  <span className="w-16 shrink-0 text-right font-mono text-[0.6875rem] text-ink3">
-                    {t.result?.outputs?.[0]?.size ? humanSize(t.result.outputs[0].size) : ""}
-                  </span>
-                </li>
-              ))}
+              {recent.slice(0, 8).map((t) => <RecentRow key={t.id} t={t} />)}
             </ul>
           )}
         </div>

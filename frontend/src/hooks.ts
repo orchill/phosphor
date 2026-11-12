@@ -57,6 +57,19 @@ export function useTask(taskId: string | null): TaskPoll {
   return state;
 }
 
+/** Query parameters carried in the hash route, e.g. "#/history?task=ab12".
+ *  Re-reads on every hash change. */
+export function useHashQuery(): URLSearchParams {
+  const read = () => new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  const [params, setParams] = useState<URLSearchParams>(read);
+  useEffect(() => {
+    const onHash = () => setParams(read());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return params;
+}
+
 /** Simple list reordering for drag & drop. */
 export function useReorder<T>(items: T[], setItems: (v: T[]) => void) {
   const dragIndex = useRef<number | null>(null);

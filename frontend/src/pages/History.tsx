@@ -6,6 +6,7 @@ import { useNav, useToast } from "../ctx";
 import { TaskRecord, TaskStatus, humanSize } from "../types";
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, SECTION_LABEL } from "../ui";
 import { EmptyState, PageHeader, Tabs } from "../components/primitives";
+import { useHashQuery } from "../hooks";
 
 /** Backend timestamps are UTC ISO-8601 ("...+00:00" or "...Z") - both parse
  *  directly; the old naive-"Z" append produced "Invalid Date". */
@@ -40,6 +41,7 @@ export default function History() {
   const [status, setStatus] = useState<TaskStatus | "all">("all");
   const [loading, setLoading] = useState(false);
   const toast = useToast();
+  const focusTask = useHashQuery().get("task");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -62,17 +64,23 @@ export default function History() {
     }
   };
 
+  // "#/history?task=<id>" (linked from the dashboard) narrows the list to one task
+  const visible = useMemo(
+    () => (focusTask ? tasks.filter((t) => t.id === focusTask) : tasks),
+    [tasks, focusTask],
+  );
+
   // group chronologically (list arrives newest-first)
   const groups = useMemo(() => {
     const out: { day: string; items: TaskRecord[] }[] = [];
-    for (const t of tasks) {
+    for (const t of visible) {
       const day = dayLabel(t.created_at);
       const last = out[out.length - 1];
       if (last && last.day === day) last.items.push(t);
       else out.push({ day, items: [t] });
     }
     return out;
-  }, [tasks]);
+  }, [visible]);
 
   return (
     <div className="space-y-4">
@@ -104,7 +112,19 @@ export default function History() {
         }))}
       />
 
-      {tasks.length === 0 ? (
+      {focusTask && (
+        <p className="flex flex-wrap items-center gap-2 font-mono text-[0.6875rem] text-ink3">
+          showing task #{focusTask.slice(0, 8)}
+          <button
+            onClick={() => { window.location.hash = "#/history"; }}
+            className="rounded-sm text-accText underline decoration-dotted hover:text-accHi focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+          >
+            show all
+          </button>
+        </p>
+      )}
+
+      {visible.length === 0 ? (
         <EmptyState
           action={status === "all" ? (
             <button onClick={() => navigate("merge")} className={BTN_PRIMARY}>

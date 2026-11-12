@@ -54,7 +54,7 @@ const HASH_FOR_ROUTE: Record<Route, string> = {
 };
 
 function routeFromHash(): Route {
-  const h = window.location.hash.replace(/^#\/?/, "").replace(/\/+$/, "");
+  const h = window.location.hash.split("?")[0].replace(/^#\/?/, "").replace(/\/+$/, "");
   return ROUTE_FOR_HASH[h] ?? "dashboard";
 }
 
