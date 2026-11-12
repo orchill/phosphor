@@ -43,18 +43,21 @@ function Counter({ label, value, tone }: { label: string; value: number; tone: s
   );
 }
 
+/** Counters are computed from the most recent tasks only, so say so. */
+const RECENT_LIMIT = 50;
+
 export default function Dashboard() {
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [recent, setRecent] = useState<TaskRecord[]>([]);
 
   useEffect(() => {
     systemInfo().then(setInfo).catch(() => {});
-    listTasks(50).then(setRecent).catch(() => {});
+    listTasks(RECENT_LIMIT).then(setRecent).catch(() => {});
     // keep the console alive while it is on screen: the task list is a
     // cheap local read; engine info stays fetch-once (it spawns probes)
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") {
-        listTasks(50).then(setRecent).catch(() => {});
+        listTasks(RECENT_LIMIT).then(setRecent).catch(() => {});
       }
     }, 10_000);
     return () => clearInterval(timer);
@@ -131,7 +134,9 @@ export default function Dashboard() {
             </ul>
           </div>
           <div className={`${CARD} p-4`}>
-            <h4 className={`${SECTION_LABEL} mb-2.5 text-accText`}>tasks</h4>
+            <h4 className={`${SECTION_LABEL} mb-2.5 text-accText`}>
+              tasks <span className="text-ink3">· last {RECENT_LIMIT}</span>
+            </h4>
             <div className="space-y-2">
               <Counter label="active" value={active} tone={active ? "bg-info" : "bg-ink3"} />
               <Counter label="completed" value={count("completed")} tone="bg-ok" />
