@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launcher for PDF & Media Studio.
+"""Launcher for phosphor.
 
 Usage:
   python run.py [--host 127.0.0.1] [--port 8756] [--no-browser]
@@ -68,7 +68,7 @@ def main() -> int:
         print("       The app will start, but media downloads stay disabled")
         print("       until you install them (see the System page in the UI).")
 
-    parser = argparse.ArgumentParser(description="PDF & Media Studio launcher")
+    parser = argparse.ArgumentParser(description="phosphor launcher")
     parser.add_argument("--host", default=None, help="bind address (default: config, 127.0.0.1)")
     parser.add_argument("--port", type=int, default=None, help="port (default: config, 8756)")
     parser.add_argument("--no-browser", action="store_true", help="do not open the web browser")

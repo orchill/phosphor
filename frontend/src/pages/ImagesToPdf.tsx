@@ -6,7 +6,8 @@ import { deleteFile, opImagesToPdf, thumbUrl, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { useReorder } from "../hooks";
 import { UploadedFile } from "../types";
-import { BTN_PRIMARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, INPUT, LABEL } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 const PAGE_SIZES = [
   ["a4", "A4 (210x297 mm)"],
@@ -75,18 +76,23 @@ export default function ImagesToPdf() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Images to PDF</h2>
-        <p className="mt-1 text-sm text-ink2">
-          Choose page size, margins and orientation; drag thumbnails to reorder and rotate individual
-          images. Original image data is embedded without recompression unless you opt into it.
-        </p>
-      </div>
+      <PageHeader
+        route="images"
+        description={
+          <>
+            Choose page size, margins and orientation; drag thumbnails to reorder and rotate individual images. Original
+            image data is embedded without recompression unless you opt into it.
+          </>
+        }
+      />
 
       {images.length === 0 && (
         <FileDrop
           onFiles={addFiles}
-          accept="image/*" label="Drop images here or click to browse" hint="PNG, JPEG, WebP, GIF, BMP, TIFF" disabled={busy}
+          accept="image/*"
+          label="Drop images here or click to browse"
+          hint="PNG, JPEG, WebP, GIF, BMP, TIFF"
+          disabled={busy}
         />
       )}
 
@@ -98,61 +104,118 @@ export default function ImagesToPdf() {
             {images.map((img, i) => {
               const rot = rotations[img.id] || 0;
               return (
-                <div
+                <li
                   key={img.id}
-                  {...{ onDragOver: reorder.onDragOver }}
+                  draggable
+                  onDragOver={reorder.onDragOver}
                   onDrop={reorder.onDrop(i)}
                   onDragStart={reorder.onDragStart(i)}
-                  draggable
+                  className="overflow-hidden rounded-sm border border-line bg-panel shadow-sm"
                 >
-                  <li className="overflow-hidden rounded-sm border border-line bg-panel shadow-sm  ">
-                    <div className="flex h-28 items-center justify-center bg-elev">
-                      <img
-                        src={thumbUrl(img.id, 240)}
-                        alt={img.name}
-                        className="max-h-full max-w-full object-contain transition-transform" style={{ transform: `rotate(${rot}deg)` }}
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-1 px-2 py-1.5">
-                      <span className="truncate text-xs text-ink2" title={img.name}>
-                        #{i + 1} {img.name}
-                      </span>
-                      <span className="flex shrink-0">
-                        <button onClick={() => rotate(img.id, -90)} className="rounded p-1 text-ink3 hover:text-accText" aria-label={`Rotate ${img.name} left`}><RotateCcw size={13} /></button>
-                        <button onClick={() => rotate(img.id, 90)} className="rounded p-1 text-ink3 hover:text-accText" aria-label={`Rotate ${img.name} right`}><RotateCw size={13} /></button>
-                        <button onClick={() => { setImages((c) => c.filter((x) => x.id !== img.id)); deleteFile(img.id).catch(() => {}); }} className="rounded p-1 text-ink3 hover:text-bad" aria-label={`Remove ${img.name}`}>x</button>
-                      </span>
-                    </div>
-                  </li>
-                </div>
+                  <div className="flex h-28 items-center justify-center bg-elev">
+                    <img
+                      src={thumbUrl(img.id, 240)}
+                      alt={img.name}
+                      className="max-h-full max-w-full object-contain transition-transform"
+                      style={{ transform: `rotate(${rot}deg)` }}
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-1 px-2 py-1.5">
+                    <span className="truncate text-xs text-ink2" title={img.name}>
+                      #{i + 1} {img.name}
+                    </span>
+                    <span className="flex shrink-0">
+                      <button
+                        onClick={() => rotate(img.id, -90)}
+                        className="rounded p-1 text-ink3 hover:text-accText"
+                        aria-label={`Rotate ${img.name} left`}
+                      >
+                        <RotateCcw size={13} />
+                      </button>
+                      <button
+                        onClick={() => rotate(img.id, 90)}
+                        className="rounded p-1 text-ink3 hover:text-accText"
+                        aria-label={`Rotate ${img.name} right`}
+                      >
+                        <RotateCw size={13} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setImages((c) => c.filter((x) => x.id !== img.id));
+                          deleteFile(img.id).catch(() => {});
+                        }}
+                        className="rounded p-1 text-ink3 hover:text-bad"
+                        aria-label={`Remove ${img.name}`}
+                      >
+                        x
+                      </button>
+                    </span>
+                  </div>
+                </li>
               );
             })}
           </ul>
 
           <div className="grid grid-cols-1 gap-4 rounded-sm border border-line bg-panel p-4   sm:grid-cols-2">
             <div>
-              <label className={LABEL} htmlFor="pagesize">Page size</label>
-              <select id="pagesize" value={pageSize} onChange={(e) => setPageSize(e.target.value)} className={`${INPUT} mt-1`}>
-                {PAGE_SIZES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              <label className={LABEL} htmlFor="pagesize">
+                Page size
+              </label>
+              <select
+                id="pagesize"
+                value={pageSize}
+                onChange={(e) => setPageSize(e.target.value)}
+                className={`${INPUT} mt-1`}
+              >
+                {PAGE_SIZES.map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
-              <label className={LABEL} htmlFor="orient">Orientation</label>
-              <select id="orient" value={orientation} onChange={(e) => setOrientation(e.target.value)} className={`${INPUT} mt-1`} disabled={pageSize === "image"}>
+              <label className={LABEL} htmlFor="orient">
+                Orientation
+              </label>
+              <select
+                id="orient"
+                value={orientation}
+                onChange={(e) => setOrientation(e.target.value)}
+                className={`${INPUT} mt-1`}
+                disabled={pageSize === "image"}
+              >
                 <option value="auto">Auto (per image)</option>
                 <option value="portrait">Portrait</option>
                 <option value="landscape">Landscape</option>
               </select>
             </div>
             <div>
-              <label className={LABEL} htmlFor="margin">Margin: {marginMm} mm</label>
-              <input id="margin" type="range" min={0} max={40} value={marginMm} onChange={(e) => setMarginMm(+e.target.value)} className="mt-2 w-full accent-acc" />
+              <label className={LABEL} htmlFor="margin">
+                Margin: {marginMm} mm
+              </label>
+              <input
+                id="margin"
+                type="range"
+                min={0}
+                max={40}
+                value={marginMm}
+                onChange={(e) => setMarginMm(+e.target.value)}
+                className="mt-2 w-full accent-acc"
+              />
             </div>
             {pageSize === "image" && (
               <div>
-                <label className={LABEL} htmlFor="dpi">Image DPI (page size = pixels / DPI)</label>
-                <select id="dpi" value={imageDpi} onChange={(e) => setImageDpi(+e.target.value)} className={`${INPUT} mt-1`}>
+                <label className={LABEL} htmlFor="dpi">
+                  Image DPI (page size = pixels / DPI)
+                </label>
+                <select
+                  id="dpi"
+                  value={imageDpi}
+                  onChange={(e) => setImageDpi(+e.target.value)}
+                  className={`${INPUT} mt-1`}
+                >
                   <option value={72}>72 (screen)</option>
                   <option value={96}>96 (default)</option>
                   <option value={150}>150 (print draft)</option>
@@ -162,20 +225,33 @@ export default function ImagesToPdf() {
             )}
             <div className="sm:col-span-2">
               <label className="flex items-center gap-2 text-sm text-ink">
-                <input type="checkbox" checked={recompress} onChange={(e) => setRecompress(e.target.checked)} className="accent-acc" />
+                <input
+                  type="checkbox"
+                  checked={recompress}
+                  onChange={(e) => setRecompress(e.target.checked)}
+                  className="accent-acc"
+                />
                 Recompress images as JPEG to reduce size (default: off, preserves original quality)
               </label>
               {recompress && (
                 <label className="mt-2 block text-xs text-ink2" htmlFor="q">
                   JPEG quality: {quality}
-                  <input id="q" type="range" min={30} max={95} value={quality} onChange={(e) => setQuality(+e.target.value)} className="ml-3 w-48 accent-acc" />
+                  <input
+                    id="q"
+                    type="range"
+                    min={30}
+                    max={95}
+                    value={quality}
+                    onChange={(e) => setQuality(+e.target.value)}
+                    className="ml-3 w-48 accent-acc"
+                  />
                 </label>
               )}
             </div>
           </div>
 
           <button onClick={convert} disabled={busy} className={BTN_PRIMARY}>
-            <FileImage size={16} /> Convert {images.length} image{images.length > 1 ? "s" : ""} to PDF
+            <FileImage size={16} /> convert {images.length} image{images.length > 1 ? "s" : ""} to PDF
           </button>
         </>
       )}

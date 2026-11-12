@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 from ..config import get_config
 from ..security import ValidationError, validate_order, validate_rotation
 from ..services import pdf_service
-from ..tasks import TaskManager
-from ..utils import sanitize_stem
+from ..tasks import TaskCancelled, TaskManager
+from ..utils import publish_outputs, sanitize_stem
 from .files import get_upload, upload_path
 
 router = APIRouter()
@@ -33,15 +33,34 @@ def _pdf_upload(file_id: str):
 
 def _submit(request: Request, kind: str, title: str, fn, args: tuple,
             meta: dict | None = None) -> dict:
+    """Run a PDF operation in a worker thread as a cooperative task.
+
+    The operation writes into a private staging dir (wherever `args` holds the
+    output directory) and the finished files are moved into the real output
+    dir at the very end. A cancelled task therefore never leaves partial
+    files behind, and cancelling is cooperative (see TaskRecord.cooperative).
+    """
     cfg = get_config()
     cfg.ensure_dirs()
+    out_dir = cfg.output_dir
     temp_dir = Path(tempfile.mkdtemp(prefix=f"{kind}-", dir=cfg.tmp_dir))
+    staging = temp_dir / "out"
+    staging.mkdir()
+    run_args = tuple(staging if (isinstance(a, Path) and a == out_dir) else a
+                     for a in args)
     tm = _tm(request)
 
-    async def runner(rec):
-        return await asyncio.to_thread(fn, rec, *args)
+    def work(rec):
+        result = fn(rec, *run_args)
+        if rec.cancel_event.is_set():
+            raise TaskCancelled("Cancelled by user")
+        return publish_outputs(result, staging, out_dir)
 
-    task_id = tm.submit(kind, title, runner, meta=meta, temp_dir=temp_dir)
+    async def runner(rec):
+        return await asyncio.to_thread(work, rec)
+
+    task_id = tm.submit(kind, title, runner, meta=meta, temp_dir=temp_dir,
+                        cooperative=True)
     return {"task_id": task_id}
 
 

@@ -6,7 +6,8 @@ import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opExtractImages, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { UploadedFile, humanSize } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, CARD, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, CARD } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 export default function ExtractImages() {
   const [pdf, setPdf] = useState<UploadedFile | null>(null);
@@ -16,7 +17,10 @@ export default function ExtractImages() {
 
   const load = async (files: File[]) => {
     const f = files.find((f) => /\.pdf$/i.test(f.name) || f.type === "application/pdf");
-    if (!f) { toast.push("error", "Drop a single PDF."); return; }
+    if (!f) {
+      toast.push("error", "Drop a single PDF.");
+      return;
+    }
     setBusy(true);
     setTaskId(null);
     try {
@@ -44,21 +48,34 @@ export default function ExtractImages() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Extract Images</h2>
-        <p className="mt-1 text-sm text-ink2">
-          Exports the embedded raster images (photos, figures) at their stored resolution, in
-          their original format when possible. Vector graphics are not raster images and are skipped.
-        </p>
-      </div>
+      <PageHeader
+        route="extract"
+        description={
+          <>
+            Exports the embedded raster images (photos, figures) at their stored resolution, in their original format
+            when possible. Vector graphics are not raster images and are skipped.
+          </>
+        }
+      />
 
-      {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF" disabled={busy} />}
+      {!pdf && (
+        <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF" disabled={busy} />
+      )}
 
       {pdf && (
         <>
-          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close">
+          <SourcePanel
+            file={pdf}
+            onClose={() => {
+              setPdf(null);
+              deleteFile(pdf.id).catch(() => {});
+            }}
+            closeLabel="Close"
+          >
             <div className="flex flex-wrap items-center gap-3">
-              <button onClick={run} disabled={busy} className={BTN_PRIMARY}><FilePlus2 size={16} /> Extract images</button>
+              <button onClick={run} disabled={busy} className={BTN_PRIMARY}>
+                <FilePlus2 size={16} /> extract images
+              </button>
             </div>
           </SourcePanel>
         </>

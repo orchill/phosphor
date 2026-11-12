@@ -10,16 +10,18 @@ from __future__ import annotations
 
 import asyncio
 import json
-import shutil
 import threading
 import traceback
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from .utils import atomic_write_text, kill_process_tree, new_id, now_iso
+from .utils import atomic_write_text, kill_process_tree, new_id, now_iso, remove_tree
 
 TERMINAL = {"completed", "failed", "cancelled"}
 LOG_CAP = 400
+# Finished records kept in memory (with their log). Older ones are still
+# served from the persisted history, just without the live log.
+MEMORY_KEEP = 50
 
 
 class TaskCancelled(Exception):
@@ -31,10 +33,11 @@ class TaskRecord:
         "id", "kind", "title", "status", "progress", "stage", "message",
         "error", "result", "log", "meta", "created_at", "started_at",
         "finished_at", "async_task", "cancel_event", "process", "temp_dir",
+        "cooperative",
     )
 
     def __init__(self, kind: str, title: str, meta: dict | None = None,
-                 temp_dir: Path | None = None):
+                 temp_dir: Path | None = None, cooperative: bool = False):
         self.id = new_id()
         self.kind = kind
         self.title = title
@@ -54,6 +57,12 @@ class TaskRecord:
         self.cancel_event = threading.Event()
         self.process: Any = None          # running subprocess handle (media)
         self.temp_dir: Path | None = temp_dir
+        # True for runners that execute in a worker thread (asyncio.to_thread).
+        # A thread cannot be interrupted, so cancelling its asyncio wrapper
+        # would release the semaphore and delete temp_dir while it still runs.
+        # Such tasks are cancelled cooperatively only: cancel_event is set and
+        # the worker raises TaskCancelled at its next check.
+        self.cooperative = cooperative
 
     # ------------------------------------------------------------- helpers
     def add_log(self, line: str) -> None:
@@ -92,7 +101,8 @@ class TaskManager:
     def __init__(self, history_path: Path, history_limit: int, max_concurrent: int):
         self.history_path = history_path
         self.history_limit = max(5, int(history_limit))
-        self.sem = asyncio.Semaphore(max(1, int(max_concurrent)))
+        self.max_concurrent = max(1, int(max_concurrent))
+        self.sem = asyncio.Semaphore(self.max_concurrent)
         self.tasks: dict[str, TaskRecord] = {}
         self.history: list[dict] = []
         self._load_history()
@@ -119,6 +129,33 @@ class TaskManager:
                 json.dumps(self.history[:self.history_limit], indent=1, ensure_ascii=False))
         except OSError:
             pass  # history persistence is best-effort; runtime keeps working
+        self._trim_memory()
+
+    def reconfigure(self, history_limit: int | None = None,
+                    max_concurrent: int | None = None) -> None:
+        """Apply changed settings without a restart.
+
+        A new concurrency limit replaces the semaphore: tasks already running
+        or waiting keep the old one (`async with` holds the object it entered
+        with), so the change affects tasks submitted from now on.
+        """
+        if history_limit is not None:
+            self.history_limit = max(5, int(history_limit))
+            del self.history[self.history_limit:]
+        if max_concurrent is not None:
+            n = max(1, int(max_concurrent))
+            if n != self.max_concurrent:
+                self.max_concurrent = n
+                self.sem = asyncio.Semaphore(n)
+
+    def _trim_memory(self) -> None:
+        """Drop the oldest finished records beyond MEMORY_KEEP (B11)."""
+        finished = [r for r in self.tasks.values() if r.status in TERMINAL]
+        if len(finished) <= MEMORY_KEEP:
+            return
+        finished.sort(key=lambda r: r.finished_at or "")
+        for rec in finished[:-MEMORY_KEEP]:
+            self.tasks.pop(rec.id, None)
 
     # -------------------------------------------------------------- submit
     def submit(
@@ -128,8 +165,10 @@ class TaskManager:
         runner: Callable[[TaskRecord], Awaitable[dict]],
         meta: dict | None = None,
         temp_dir: Path | None = None,
+        cooperative: bool = False,
     ) -> str:
-        rec = TaskRecord(kind, title, meta=meta, temp_dir=temp_dir)
+        rec = TaskRecord(kind, title, meta=meta, temp_dir=temp_dir,
+                         cooperative=cooperative)
         self.tasks[rec.id] = rec
         rec.async_task = asyncio.get_running_loop().create_task(self._wrap(rec, runner))
         return rec.id
@@ -147,6 +186,15 @@ class TaskManager:
                 rec.report("Starting")
                 result = await runner(rec) or {}
                 outputs = result.get("outputs", []) or []
+                if rec.cooperative and rec.cancel_event.is_set():
+                    # Cancel landed after the worker's last check: honour it
+                    # and do not leave a result the user asked to abort.
+                    for out in outputs:
+                        try:
+                            Path(out.get("path", "")).unlink(missing_ok=True)
+                        except OSError:
+                            pass
+                    raise TaskCancelled("Cancelled by user")
                 for out in outputs:
                     p = Path(out.get("path", ""))
                     if not p.is_file() or p.stat().st_size <= 0:
@@ -173,9 +221,9 @@ class TaskManager:
             rec.finished_at = rec.finished_at or now_iso()
             rec.process = None
             rec.async_task = None
-            if rec.temp_dir:
-                shutil.rmtree(rec.temp_dir, ignore_errors=True)
             self._archive(rec)
+            if rec.temp_dir:
+                await remove_tree(rec.temp_dir)
 
     # -------------------------------------------------------------- cancel
     def cancel(self, task_id: str) -> bool:
@@ -184,19 +232,28 @@ class TaskManager:
             return False
         rec.cancel_event.set()
         rec.message = "Cancellation requested"
-        if rec.status == "queued":
+        was_queued = rec.status == "queued"
+        if was_queued:
             rec.status = "cancelled"
             rec.stage = "Cancelled"
         kill_process_tree(rec.process)
-        if rec.async_task is not None:
+        # A running thread worker unwinds by itself once it sees cancel_event;
+        # only queued tasks (no thread yet) and subprocess/async runners are
+        # hard-cancelled.
+        if rec.async_task is not None and (was_queued or not rec.cooperative):
             rec.async_task.cancel()
         return True
 
     def remove(self, task_id: str) -> bool:
-        """Remove a finished task from memory + history."""
-        rec = self.tasks.pop(task_id, None)
+        """Remove a finished task from memory + history.
+
+        A task that is still queued/running is refused *and left registered*,
+        so it can still be cancelled and is still seen by shutdown().
+        """
+        rec = self.tasks.get(task_id)
         if rec is not None and rec.status not in TERMINAL:
             return False  # refuse to forget running tasks; cancel first
+        self.tasks.pop(task_id, None)
         before = len(self.history)
         self.history = [h for h in self.history if h.get("id") != task_id]
         if len(self.history) != before:
@@ -209,6 +266,27 @@ class TaskManager:
         return True
 
     # ---------------------------------------------------------------- list
+    @staticmethod
+    def annotate(entry: dict) -> dict:
+        """Copy of a task dict whose outputs say whether the file still exists.
+
+        History outlives the files (the user may delete or move them), so the
+        UI must not offer a dead download link. The stored entry is left
+        untouched: `exists` is a point-in-time fact and is never persisted.
+        """
+        result = entry.get("result")
+        outputs = result.get("outputs") if isinstance(result, dict) else None
+        if not outputs:
+            return entry
+        annotated = []
+        for o in outputs:
+            try:
+                exists = Path(o["path"]).is_file()
+            except (KeyError, TypeError, OSError, ValueError):
+                exists = False
+            annotated.append({**o, "exists": exists})
+        return {**entry, "result": {**result, "outputs": annotated}}
+
     def list_tasks(self, limit: int = 50, status: str | None = None,
                    kind: str | None = None) -> list[dict]:
         items: list[dict] = [r.public() for r in self.tasks.values()]
@@ -219,22 +297,36 @@ class TaskManager:
         if kind:
             items = [i for i in items if i["kind"] == kind]
         items.sort(key=lambda i: i.get("created_at") or "", reverse=True)
-        return items[: max(1, min(int(limit), 500))]
+        return [self.annotate(i) for i in items[: max(1, min(int(limit), 500))]]
 
     def get(self, task_id: str) -> TaskRecord | None:
         return self.tasks.get(task_id)
 
-    async def shutdown(self) -> None:
+    async def shutdown(self, grace: float = 20.0) -> None:
         """Terminate running subprocesses, cancel tasks and WAIT for workers
         to unwind - the app must not log 'shutdown complete' while threads or
-        subprocesses are still active."""
+        subprocesses are still active.
+
+        Thread workers are asked to stop via cancel_event and given `grace`
+        seconds; only then is their wrapper hard-cancelled.
+        """
         pending = []
+        cooperative = []
         for rec in list(self.tasks.values()):
             if rec.status in ("queued", "running"):
                 rec.cancel_event.set()
                 kill_process_tree(rec.process)
-                if rec.async_task is not None:
+                if rec.async_task is None:
+                    continue
+                pending.append(rec.async_task)
+                if rec.cooperative and rec.status == "running":
+                    cooperative.append(rec.async_task)
+                else:
                     rec.async_task.cancel()
-                    pending.append(rec.async_task)
+        if cooperative:
+            await asyncio.wait(cooperative, timeout=grace)
+            for t in cooperative:
+                if not t.done():
+                    t.cancel()
         if pending:
             await asyncio.gather(*pending, return_exceptions=True)

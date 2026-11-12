@@ -69,6 +69,26 @@ def parse_pages(spec: str | list | None, max_page: int) -> list[int]:
     return sorted(pages)
 
 
+def format_page_ranges(pages: list[int]) -> str:
+    """Compact, truthful description of a page list: [1,2,3,5,9] -> '1-3, 5, 9'.
+
+    (A non-contiguous selection must never be described as 'pages 1-9'.)
+    """
+    nums = sorted(set(int(p) for p in pages))
+    if not nums:
+        return ""
+    runs: list[tuple[int, int]] = []
+    start = prev = nums[0]
+    for n in nums[1:]:
+        if n == prev + 1:
+            prev = n
+            continue
+        runs.append((start, prev))
+        start = prev = n
+    runs.append((start, prev))
+    return ", ".join(str(a) if a == b else f"{a}-{b}" for a, b in runs)
+
+
 def parse_page_groups(spec: str, max_page: int) -> list[tuple[int, int]]:
     """Parse '1-3,5,8-10' into ordered (start, end) groups. Empty -> error."""
     if not spec or not str(spec).strip():

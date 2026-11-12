@@ -2,7 +2,7 @@
 setlocal
 set "PORT=8756"
 if not "%~1"=="" set "PORT=%~1"
-echo Stopping PDF ^& Media Studio (port %PORT%) ...
+echo Stopping phosphor (port %PORT%) ...
 set "FOUND="
 for /f "tokens=5" %%p in ('netstat -aon ^| findstr ":%PORT% " ^| findstr LISTENING') do (
   set FOUND=1

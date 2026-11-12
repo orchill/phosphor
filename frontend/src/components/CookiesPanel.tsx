@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
-import {
-  Cookie, FileText, Globe, KeyRound, Loader2, Lock,
-  ShieldAlert, TestTube2, Trash2,
-} from "lucide-react";
-import {
-  clearCookiePrefs, saveCookiePrefs, testCookiePrefs,
-} from "../api";
+import { Cookie, FileText, Globe, KeyRound, Loader2, Lock, ShieldAlert, TestTube2, Trash2 } from "lucide-react";
+import { clearCookiePrefs, saveCookiePrefs, testCookiePrefs } from "../api";
 import { useToast } from "../ctx";
 import { CookieStatus, CookieTestResult } from "../types";
-import {
-  BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL,
-} from "../ui";
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL } from "../ui";
 
 type Mode = "none" | "file" | "browser";
 
@@ -26,7 +19,8 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 }
 
 export default function CookiesPanel({
-  status, refresh,
+  status,
+  refresh,
 }: {
   status: CookieStatus | null;
   refresh: () => Promise<CookieStatus>;
@@ -44,11 +38,11 @@ export default function CookiesPanel({
   // keep the selected mode in sync with the server state - but never clobber
   // a selection the user is mid-way through (a background refetch must not
   // revert "Paste cookies file" back to "Don't sign in" before they hit Save).
-const [modeTouched, setModeTouched] = useState(false);
-useEffect(() => {
+  const [modeTouched, setModeTouched] = useState(false);
+  useEffect(() => {
     if (status && !modeTouched) setMode(status.source);
   }, [status?.source, modeTouched]); // eslint-disable-line react-hooks/exhaustive-deps
-const active = status && status.source !== "none";
+  const active = status && status.source !== "none";
 
   const save = async () => {
     setSaving(true);
@@ -106,9 +100,9 @@ const active = status && status.source !== "none";
   };
 
   const statusText = !status
-? "Loading..."
+    ? "Loading..."
     : status.source === "file" && status.file_present
-? `Active - cookie file with ${status.cookie_count} cookie${status.cookie_count === 1 ? "" : "s"} for ${(status.domains || []).join(", ") || "your sites"}`
+      ? `Active - cookie file with ${status.cookie_count} cookie${status.cookie_count === 1 ? "" : "s"} for ${(status.domains || []).join(", ") || "your sites"}`
       : status.source === "browser"
         ? `Active - reading cookies from ${status.browser} on every download (close ${status.browser} fully first)`
         : "Not configured - downloads run signed out";
@@ -120,9 +114,7 @@ const active = status && status.source !== "none";
         <div className="flex flex-wrap items-center gap-3">
           <Cookie size={22} className={active ? "text-ok" : "text-ink3"} />
           <div className="min-w-0 flex-1">
-            <h3 className="font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-ink">
-              sign-in status
-            </h3>
+            <h3 className="font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-ink">sign-in status</h3>
             <p className="mt-0.5 flex items-center gap-2 font-mono text-[12px] text-ink2">
               <span className={`inline-block h-1.5 w-1.5 rounded-[2px] ${active ? "bg-ok" : "bg-ink3"}`} aria-hidden />
               {statusText}
@@ -131,47 +123,48 @@ const active = status && status.source !== "none";
           {active && (
             <button onClick={clear} disabled={clearing} className={`${BTN_DANGER} py-1.5 text-xs`}>
               {clearing ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-              Clear cookies
-</button>
+              clear cookies
+            </button>
           )}
         </div>
       </div>
 
       {/* explanation */}
       <div className={`${CARD} space-y-3 p-4 text-sm leading-relaxed text-ink`}>
-        <h3 className="font-semibold text-ink">
-          Why does YouTube ask to &quot;confirm you&apos;re not a bot&quot;?
-        </h3>
+        <h3 className="font-semibold text-ink">Why does YouTube ask to &quot;confirm you&apos;re not a bot&quot;?</h3>
         <p>
-          When YouTube sees automated, signed-out requests (especially from VPNs or cloud IPs) it
-asks for verification and blocks the download. The reliable, officially supported fix is
-to <strong className="text-ink">sign in with your own
-account</strong>: yt-dlp then sends your session cookies exactly like your browser does.
-          This is normal authentication, not a bypass - content you cannot access while signed in
-(private, members-only, DRM) stays inaccessible.
+          When YouTube sees automated, signed-out requests (especially from VPNs or cloud IPs) it asks for verification
+          and blocks the download. The reliable, officially supported fix is to{" "}
+          <strong className="text-ink">sign in with your own account</strong>: yt-dlp then sends your session cookies
+          exactly like your browser does. This is normal authentication, not a bypass - content you cannot access while
+          signed in (private, members-only, DRM) stays inaccessible.
         </p>
         <p className="text-xs text-ink2">
-          Two ways to sign in below: let yt-dlp read cookies straight from your browser, or paste
-an exported cookies file.
+          Two ways to sign in below: let yt-dlp read cookies straight from your browser, or paste an exported cookies
+          file.
         </p>
       </div>
 
       {/* mode selection */}
       <div className={`${CARD} space-y-4 p-4`}>
         <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Sign-in method">
-          {([
-            ["none", "Don't sign in", Globe],
-            ["browser", "Use browser cookies", KeyRound],
-            ["file", "Paste cookies file", FileText],
-          ] as [Mode, string, React.ElementType][]).map(([m, label, Icon]) => (
+          {(
+            [
+              ["none", "Don't sign in", Globe],
+              ["browser", "Use browser cookies", KeyRound],
+              ["file", "Paste cookies file", FileText],
+            ] as [Mode, string, React.ElementType][]
+          ).map(([m, label, Icon]) => (
             <button
-key={m}
-              role="radio" aria-checked={mode === m}
-              onClick={() => { setMode(m); setModeTouched(true); }}
+              key={m}
+              role="radio"
+              aria-checked={mode === m}
+              onClick={() => {
+                setMode(m);
+                setModeTouched(true);
+              }}
               className={`flex items-center gap-2 rounded-sm border px-3 py-2.5 text-sm font-medium ${
-                mode === m
-? "border-acc bg-acc/10 text-accText"
-                  : "border-line text-ink2"
+                mode === m ? "border-acc bg-acc/10 text-accText" : "border-line text-ink2"
               }`}
             >
               <Icon size={15} /> {label}
@@ -181,23 +174,29 @@ key={m}
 
         {mode === "browser" && (
           <div className="space-y-2">
-            <label className={LABEL} htmlFor="cookiebrowser">Browser to read cookies from</label>
-            <select
-id="cookiebrowser" value={browser}
-              onChange={(e) => setBrowser(e.target.value)}
-              className={INPUT}
-            >
+            <label className={LABEL} htmlFor="cookiebrowser">
+              Browser to read cookies from
+            </label>
+            <select id="cookiebrowser" value={browser} onChange={(e) => setBrowser(e.target.value)} className={INPUT}>
               {(status?.supported_browsers || ["chrome", "firefox", "edge"]).map((b) => (
-                <option key={b} value={b}>{b}</option>
+                <option key={b} value={b}>
+                  {b}
+                </option>
               ))}
             </select>
             <ul className="list-disc space-y-1 pl-5 text-xs text-ink2">
-              <li>Fully close the browser (all windows) before downloading, otherwise its
-cookie database is locked and yt-dlp cannot read it.</li>
-              <li>Sign in to youtube.com in that browser at least once, and only select a
-browser you actually use for YouTube.</li>
-              <li>On Windows, Chrome/Edge cookies are encrypted per user - run the app under
-the same Windows user as the browser.</li>
+              <li>
+                Fully close the browser (all windows) before downloading, otherwise its cookie database is locked and
+                yt-dlp cannot read it.
+              </li>
+              <li>
+                Sign in to youtube.com in that browser at least once, and only select a browser you actually use for
+                YouTube.
+              </li>
+              <li>
+                On Windows, Chrome/Edge cookies are encrypted per user - run the app under the same Windows user as the
+                browser.
+              </li>
             </ul>
           </div>
         )}
@@ -205,13 +204,19 @@ the same Windows user as the browser.</li>
         {mode === "file" && (
           <div className="space-y-3">
             <div>
-              <label className={LABEL} htmlFor="cookietext">cookies.txt export or Cookie header</label>
+              <label className={LABEL} htmlFor="cookietext">
+                cookies.txt export or Cookie header
+              </label>
               <textarea
-id="cookietext" value={text}
+                id="cookietext"
+                value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={7}
                 spellCheck={false}
-                autoComplete="off" placeholder={"# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t1900000000\tSID\t...\n\n-- or a single line: --\nVISITOR_INFO1_LIVE=...; SID=...; HSID=..."}
+                autoComplete="off"
+                placeholder={
+                  "# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tTRUE\t1900000000\tSID\t...\n\n-- or a single line: --\nVISITOR_INFO1_LIVE=...; SID=...; HSID=..."
+                }
                 className={`${INPUT} mt-1 font-mono text-xs`}
               />
             </div>
@@ -220,35 +225,29 @@ id="cookietext" value={text}
                 Cookie domain (only used for header-style input - leave as .youtube.com for YouTube)
               </label>
               <input
-id="cookiedomain" value={domain}
+                id="cookiedomain"
+                value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 className={`${INPUT} mt-1 font-mono text-xs`}
               />
             </div>
             <details className="rounded-sm bg-elev p-3 text-xs text-ink2">
-              <summary className="cursor-pointer font-medium text-ink">
-                How do I get my cookies? (2 ways)
-              </summary>
+              <summary className="cursor-pointer font-medium text-ink">How do I get my cookies? (2 ways)</summary>
               <ol className="mt-2 space-y-2">
-                <Step n={1}>
-                  Log in to youtube.com in your normal browser.
-                </Step>
+                <Step n={1}>Log in to youtube.com in your normal browser.</Step>
                 <Step n={2}>
-                  Install a cookie-export extension such as
-&quot;Get cookies.txt LOCALLY&quot; (Chrome/Edge/Firefox store).
+                  Install a cookie-export extension such as &quot;Get cookies.txt LOCALLY&quot; (Chrome/Edge/Firefox
+                  store).
                 </Step>
                 <Step n={3}>
-                  While on youtube.com, click the extension and export the cookies
-for the current site.
+                  While on youtube.com, click the extension and export the cookies for the current site.
                 </Step>
                 <Step n={4}>
-                  Open the downloaded .txt file, copy <em>everything</em> and paste it
-into the box above.
+                  Open the downloaded .txt file, copy <em>everything</em> and paste it into the box above.
                 </Step>
                 <Step n={1}>
-                  Devtools alternative: F12 &rarr; Network tab &rarr; refresh the page
-&rarr; click the first request &rarr; under &quot;Request Headers&quot;
-                  copy the whole <code>Cookie:</code> value and paste it above.
+                  Devtools alternative: F12 &rarr; Network tab &rarr; refresh the page &rarr; click the first request
+                  &rarr; under &quot;Request Headers&quot; copy the whole <code>Cookie:</code> value and paste it above.
                 </Step>
               </ol>
             </details>
@@ -259,11 +258,11 @@ into the box above.
           <button onClick={save} disabled={saving} className={BTN_PRIMARY}>
             {saving ? <Loader2 size={15} className="animate-spin" /> : <Lock size={15} />}
             Save sign-in settings
-</button>
+          </button>
           <button onClick={runTest} disabled={testing} className={BTN_SECONDARY}>
             {testing ? <Loader2 size={15} className="animate-spin" /> : <TestTube2 size={15} />}
             Test sign-in
-</button>
+          </button>
           {status?.file_present && status.source !== "file" && (
             <span className="text-xs text-ink3">
               A stored cookies file exists and will be re-used if you select file mode.
@@ -273,7 +272,8 @@ into the box above.
 
         {result && (
           <div
-role="status" className={`rounded-sm border bg-base px-3 py-2.5 font-mono text-[12px] ${
+            role="status"
+            className={`rounded-sm border bg-base px-3 py-2.5 font-mono text-[12px] ${
               result.ok ? "border-acc/40 text-accText" : "border-bad/40 text-bad"
             }`}
           >
@@ -282,9 +282,7 @@ role="status" className={`rounded-sm border bg-base px-3 py-2.5 font-mono text-[
             </span>
             <span className="whitespace-pre-wrap">
               {result.message}
-              {result.elapsed_s != null && (
-                <span className="ml-1 opacity-70">({result.elapsed_s}s)</span>
-              )}
+              {result.elapsed_s != null && <span className="ml-1 opacity-70">({result.elapsed_s}s)</span>}
             </span>
           </div>
         )}
@@ -294,16 +292,24 @@ role="status" className={`rounded-sm border bg-base px-3 py-2.5 font-mono text-[
       <div className={`${CARD} border-warn/50 p-4`}>
         <h3 className="flex items-center gap-2 text-sm font-semibold text-warn">
           <ShieldAlert size={15} /> Keep your cookies private
-</h3>
+        </h3>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed text-ink2">
-          <li>Cookies are your login session - anyone holding them can use your YouTube
-account. Treat the cookies file like a password.</li>
-          <li>Storage is local only: <code>data/cookies.txt</code> inside the app folder.
-            Values are never displayed, logged, or sent anywhere except to the video site itself.</li>
-          <li>Use your own account only, and only download content you have the right to
-save. Private, members-only and DRM-protected content stays inaccessible.</li>
-          <li>Clear the cookies here before sharing your data folder or screen, and
-re-export fresh cookies if downloads start failing again (they expire).</li>
+          <li>
+            Cookies are your login session - anyone holding them can use your YouTube account. Treat the cookies file
+            like a password.
+          </li>
+          <li>
+            Storage is local only: <code>data/cookies.txt</code> inside the app folder. Values are never displayed,
+            logged, or sent anywhere except to the video site itself.
+          </li>
+          <li>
+            Use your own account only, and only download content you have the right to save. Private, members-only and
+            DRM-protected content stays inaccessible.
+          </li>
+          <li>
+            Clear the cookies here before sharing your data folder or screen, and re-export fresh cookies if downloads
+            start failing again (they expire).
+          </li>
         </ul>
       </div>
     </div>

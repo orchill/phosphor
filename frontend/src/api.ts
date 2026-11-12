@@ -1,10 +1,34 @@
 import type {
-  CompressPayload, CookiePrefsPayload, CookieStatus, CookieTestResult,
-  EditPagesPayload, ImagesToPdfPayload, MediaDownloadPayload, MediaInfo,
-  MergePayload, Settings, SettingsPatch, SimpleOpPayload, SplitPayload,
-  SystemInfo, TaskRecord, TaskStarted, ToImagesPayload, UploadedFile,
+  CompressPayload,
+  CookiePrefsPayload,
+  CookieStatus,
+  CookieTestResult,
+  EditPagesPayload,
+  ImagesToPdfPayload,
+  MediaDownloadPayload,
+  MediaInfo,
+  MergePayload,
+  Settings,
+  SettingsPatch,
+  SimpleOpPayload,
+  SplitPayload,
+  SystemInfo,
+  TaskRecord,
+  TaskStarted,
+  ToImagesPayload,
+  UploadedFile,
 } from "./types";
 import { emitEvent } from "./events";
+
+/** Error carrying the HTTP status so callers can tell 404 from a network blip. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
@@ -24,7 +48,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     } else if (!path.startsWith("/api/tasks")) {
       emitEvent("error", `${method} ${path.split("?")[0]} failed - ${detail}`);
     }
-    throw new Error(detail);
+    throw new ApiError(detail, res.status);
   }
   if (method !== "GET") {
     emitEvent("info", `${method} ${path.split("?")[0]}`);
@@ -45,8 +69,7 @@ export const deleteFile = (id: string) => api<{ deleted: string }>(`/api/files/$
 export const clearWorkspace = () => api<{ removed: number }>("/api/system/clear-workspace", { method: "POST" });
 export const rawUrl = (id: string) => `/api/file/${id}/raw`;
 export const thumbUrl = (id: string, w = 240) => `/api/file/${id}/thumbnail?width=${w}`;
-export const pageThumbUrl = (id: string, page: number, w = 200) =>
-  `/api/pdf/${id}/page/${page}/thumbnail?width=${w}`;
+export const pageThumbUrl = (id: string, page: number, w = 200) => `/api/pdf/${id}/page/${page}/thumbnail?width=${w}`;
 export const downloadUrl = (path: string) => `/api/download?path=${encodeURIComponent(path)}`;
 
 // ---------------------------------------------------------------- tasks
@@ -59,8 +82,7 @@ export const listTasks = (limit = 50, status?: string, kind?: string) => {
 };
 export const cancelTask = (id: string) => api<{ cancelled: string }>(`/api/tasks/${id}/cancel`, { method: "POST" });
 export const deleteTask = (id: string) => api<{ removed: string }>(`/api/tasks/${id}`, { method: "DELETE" });
-export const getTaskLog = (id: string) =>
-  api<{ id: string; log: string[] }>(`/api/tasks/${id}/log`);
+export const getTaskLog = (id: string) => api<{ id: string; log: string[] }>(`/api/tasks/${id}/log`);
 
 // ---------------------------------------------------------------- pdf ops
 // Payloads are typed against the FastAPI request schemas (see types.ts).
@@ -80,8 +102,7 @@ export const opExtractImages = (payload: SimpleOpPayload) => startOp("extract-im
 export const opToImages = (payload: ToImagesPayload) => startOp("to-images", payload);
 
 // ---------------------------------------------------------------- media
-export const mediaInfo = (url: string) =>
-  api<MediaInfo>(`/api/media/info?url=${encodeURIComponent(url)}`);
+export const mediaInfo = (url: string) => api<MediaInfo>(`/api/media/info?url=${encodeURIComponent(url)}`);
 export const mediaDownload = (payload: MediaDownloadPayload) =>
   api<TaskStarted>("/api/media/download", {
     method: "POST",
@@ -95,10 +116,8 @@ export const saveCookiePrefs = (payload: CookiePrefsPayload) =>
     headers: JSON_HDR,
     body: JSON.stringify(payload),
   });
-export const clearCookiePrefs = () =>
-  api<CookieStatus>("/api/media/cookies", { method: "DELETE" });
-export const testCookiePrefs = () =>
-  api<CookieTestResult>("/api/media/cookies/test", { method: "POST" });
+export const clearCookiePrefs = () => api<CookieStatus>("/api/media/cookies", { method: "DELETE" });
+export const testCookiePrefs = () => api<CookieTestResult>("/api/media/cookies/test", { method: "POST" });
 
 // ---------------------------------------------------------------- system
 export const systemInfo = () => api<SystemInfo>("/api/system/info");

@@ -5,25 +5,30 @@
 @tailwind utilities;
 
 /* ============================================================= design tokens
-   Light theme = "paper terminal" (default). Dark theme = phosphor on carbon.
-   Values are R G B triplets consumed by tailwind.config.js with alpha support. */
+   Dark (phosphor on carbon) is the default theme - theme-init.js and
+   appearance.ts apply `.dark` unless the user picked light. Light is the
+   "paper terminal": warm off-white, ink-black type, the darker AA-safe green
+   for text. Values are R G B triplets consumed by tailwind.config.js with
+   alpha support. Every text/background pair below was checked for WCAG AA
+   (>= 4.5:1) on base, panel and elev; accent presets are in the next block. */
 :root {
-  --c-base: 244 245 242;
-  --c-panel: 255 255 255;
-  --c-elev: 238 240 236;
-  --c-line: 224 227 221;
-  --c-ink: 24 31 39;
-  --c-ink2: 90 99 110;
-  --c-ink3: 134 142 152;
-  --c-acc: 22 163 74;
-  --c-accHi: 21 128 61;
-  --c-accText: 21 110 55;   /* darker green: AA-safe for small text on light */
-  --c-accHi: 21 128 61;
+  --c-base: 250 249 245;
+  --c-panel: 255 255 252;
+  --c-elev: 243 241 234;
+  --c-line: 229 226 218;
+  --c-ink: 28 30 26;
+  --c-ink2: 84 88 80;
+  --c-ink3: 102 106 96;
+  --c-acc: 21 128 61; /* green-700: white text on it is 5.0:1 */
+  --c-accHi: 22 101 52;
+  --c-accText: 21 110 55; /* darker green: AA-safe for small text on light */
   --c-onAcc: 255 255 255;
-  --c-info: 14 116 144;   /* cyan-700: AA-safe for small text on light */
-  --c-ok: 22 163 74;
-  --c-warn: 180 83 9;
-  --c-bad: 220 38 38;
+  --c-info: 14 116 144; /* cyan-700 */
+  --c-ok: 20 118 56;
+  --c-warn: 161 72 8;
+  --c-bad: 185 28 28;
+  /* paper depth: a 1px highlight inside the card edge, no drop shadow */
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.9);
 }
 
 .dark {
@@ -33,28 +38,66 @@
   --c-line: 33 37 37;
   --c-ink: 228 232 229;
   --c-ink2: 143 152 147;
-  --c-ink3: 95 104 100;
+  --c-ink3: 128 138 133;
   --c-acc: 74 222 128;
   --c-accHi: 134 239 172;
-  --c-accText: 74 222 128;  /* dark theme: same as accent */
+  --c-accText: 74 222 128; /* dark theme: same as accent */
   --c-onAcc: 5 26 14;
   --c-info: 34 211 238;
   --c-ok: 74 222 128;
   --c-warn: 251 191 36;
   --c-bad: 248 113 113;
+  --shadow-card: none;
+}
+
+/* ------------------------------------------------------------ accent presets
+   P1 green is the default palette above. P3 amber and P4 ice only swap the
+   four accent tokens, selected by data-accent on <html> (see appearance.ts).
+   Selectors also match nested elements so Settings can show swatches.
+   Every pair was checked for WCAG AA: accText on base/panel/elev >= 4.5:1,
+   onAcc on acc and accHi >= 4.5:1, acc as a UI colour >= 3:1. */
+[data-accent="amber"] {
+  --c-acc: 180 83 9;
+  --c-accHi: 146 64 14;
+  --c-accText: 146 64 14;
+  --c-onAcc: 255 255 255;
+}
+.dark [data-accent="amber"],
+.dark[data-accent="amber"] {
+  --c-acc: 251 191 36;
+  --c-accHi: 252 211 77;
+  --c-accText: 251 191 36;
+  --c-onAcc: 40 26 2;
+}
+[data-accent="ice"] {
+  --c-acc: 3 105 161;
+  --c-accHi: 7 89 133;
+  --c-accText: 3 105 161;
+  --c-onAcc: 255 255 255;
+}
+.dark [data-accent="ice"],
+.dark[data-accent="ice"] {
+  --c-acc: 186 230 253;
+  --c-accHi: 224 242 254;
+  --c-accText: 186 230 253;
+  --c-onAcc: 8 30 45;
 }
 
 html {
   scrollbar-gutter: stable;
+  /* page background even before/behind <body> (overscroll, first paint) */
+  background-color: rgb(var(--c-base));
 }
 
 body {
-  @apply bg-base text-ink font-sans antialiased;
+  @apply bg-base text-ink font-mono antialiased;
+  /* one typeface everywhere (JetBrains Mono); `font-sans` is opt-in for long prose */
+  font-variant-ligatures: none;
 }
 
 /* phosphor selection */
 ::selection {
-  background: rgb(var(--c-acc) / 0.30);
+  background: rgb(var(--c-acc) / 0.3);
 }
 
 /* keyboard focus everywhere, even where components don't add their own ring */
@@ -64,21 +107,73 @@ body {
   border-radius: 2px;
 }
 
+/* thin, accent-tinted scrollbars (Firefox + WebKit/Blink) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--c-acc) / 0.3) transparent;
+}
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  border-radius: 6px;
-  border: 2px solid transparent;
-  background-clip: content-box;
-  background-color: rgb(var(--c-line));
+  border-radius: 3px;
+  background-color: rgb(var(--c-acc) / 0.3);
 }
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(var(--c-ink3));
+  background-color: rgb(var(--c-acc) / 0.55);
+}
+
+/* progress bar glow: dark theme only */
+.dark .bar-glow {
+  box-shadow: 0 0 6px rgb(var(--c-acc) / 0.6);
+}
+
+/* ----------------------------------------------------------- phosphor glow
+   Dark theme only, and only on headings / the active nav item (`.glow`) -
+   never on body text. Static, so it needs no reduced-motion handling. */
+.dark .glow {
+  text-shadow: 0 0 8px rgb(var(--c-acc) / 0.35);
+}
+/* focus glow, only where the element has no Tailwind ring of its own (a rule
+   here would otherwise replace that ring's box-shadow) */
+.dark :focus-visible:not([class*="focus-visible:ring"]) {
+  box-shadow: 0 0 0 4px rgb(var(--c-acc) / 0.14);
+}
+
+/* -------------------------------------------------------------- CRT effect
+   Optional (Settings -> appearance). A fixed, click-through overlay on <html>
+   with 2px scanlines at ~4% and a very faint vignette. Off under
+   prefers-reduced-motion. */
+html[data-crt="subtle"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.04) 0, rgb(0 0 0 / 0.04) 1px, transparent 1px, transparent 2px),
+    radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / 0.1) 100%);
+}
+/* black lines vanish on a near-black page, so dark scanlines are phosphor-tinted */
+.dark[data-crt="subtle"]::after {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(var(--c-acc) / 0.04) 0,
+      rgb(var(--c-acc) / 0.04) 1px,
+      transparent 1px,
+      transparent 2px
+    ),
+    radial-gradient(ellipse at center, transparent 58%, rgb(0 0 0 / 0.28) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-crt="subtle"]::after {
+    display: none;
+  }
 }
 
 /* subtle page enter */

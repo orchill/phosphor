@@ -51,7 +51,15 @@ The suite is **fully offline** — no external website is ever contacted.
 | `b-pdf.spec.ts` | merge (2 uploads → download byte-checked `%PDF-`), images→PDF, split by page selection → download, compress → download (the fallback path itself is asserted deterministically by the backend unit test `test_compress_fallback_delivers_original_when_not_smaller`) |
 | `c-cookies.spec.ts` | cookie paste import → masked UI status, **values never appear in any API response**, generic settings API carries no cookie data, clear flow |
 | `d-media.spec.ts` | metadata fetch, download task with live progress → output download (byte-checked), queued-task cancellation, running-task cancellation with `.part` cleanup |
+| `e-appearance.spec.ts` | accent preset and CRT setting persist across reload, applied before paint |
+| `e-organize.spec.ts` | Organize pages grid: reorder, rotate, delete, output |
+| `e-polling.spec.ts` | polling stops on a vanished task and shows the "task gone" notice |
+| `e-dashboard.spec.ts` | real output dir, clickable recent rows, diagnostics deep-link |
+| `e-tray.spec.ts` | task tray badge, drawer, clear finished |
 | `z-restart.spec.ts` | settings change survives a full server restart (real process kill + start) |
+
+`screenshots.spec.ts` is a separate harness (`npm run shots`, own Playwright
+config); it is excluded from `npm run e2e`.
 
 ## Notes
 

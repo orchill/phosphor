@@ -1,15 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, CheckCircle2, ChevronDown, Combine, FileOutput, FilePlus2,
-  FileStack, FolderOutput, History as HistoryIcon, Images, LayoutDashboard, Moon,
-  Scissors, Search, Settings as SettingsIcon, ShieldCheck, Sun, Video, X, Zap,
+  ChevronDown,
+  Combine,
+  FileOutput,
+  FilePlus2,
+  FileStack,
+  FolderOutput,
+  History as HistoryIcon,
+  Images,
+  LayoutDashboard,
+  Moon,
+  Scissors,
+  Search,
+  Settings as SettingsIcon,
+  Sun,
+  Video,
+  X,
+  Zap,
 } from "lucide-react";
-import { NavContext, ToastContext, Toast, Route, useNav, PDF_ROUTES, ROUTE_META } from "./ctx";
+import { NavContext, ToastContext, Toast, Route, useNav, useToast, PDF_ROUTES, ROUTE_META } from "./ctx";
 import { systemInfo } from "./api";
 import { SystemInfo } from "./types";
 import { BTN_GHOST } from "./ui";
+import { copyText, middleTruncate } from "./format";
+import { setBaseTitle } from "./title";
+import { TasksProvider } from "./tasks";
+import TaskTray from "./components/TaskTray";
+import { DENSITY_KEY, applyDensity, readTheme, saveTheme } from "./appearance";
 import CommandPalette from "./components/CommandPalette";
 import Onboarding from "./components/Onboarding";
+import { Kbd } from "./components/primitives";
 import Dashboard from "./pages/Dashboard";
 import PdfTools from "./pages/PdfTools";
 import Merge from "./pages/Merge";
@@ -23,87 +43,119 @@ import Media from "./pages/Media";
 import History from "./pages/History";
 import SettingsPage from "./pages/Settings";
 
+// ---------------------------------------------------------------- layout
+// Overview pages use the wide column; single-form tools stay narrow so their
+// forms do not stretch; pages with thumbnail grids sit in between.
+const WIDE = "max-w-6xl";
+const FORM = "max-w-3xl";
+const MID = "max-w-4xl";
+const CONTENT_WIDTH: Record<Route, string> = {
+  dashboard: WIDE,
+  pdftools: WIDE,
+  history: WIDE,
+  media: WIDE,
+  merge: FORM,
+  split: FORM,
+  compress: FORM,
+  extract: FORM,
+  images: MID,
+  organize: MID,
+  toimages: MID,
+  settings: MID,
+};
+
 // ------------------------------------------------------------------ routing
 // Hash-based routes survive reloads, support deep links and back/forward.
 const ROUTE_FOR_HASH: Record<string, Route> = {
-  "": "dashboard", "pdf": "pdftools", "pdf/merge": "merge", "pdf/images": "images",
-  "pdf/organize": "organize", "pdf/split": "split", "pdf/compress": "compress",
-  "pdf/extract": "extract", "pdf/toimages": "toimages", "media": "media",
-  "history": "history", "settings": "settings",
+  "": "dashboard",
+  pdf: "pdftools",
+  "pdf/merge": "merge",
+  "pdf/images": "images",
+  "pdf/organize": "organize",
+  "pdf/split": "split",
+  "pdf/compress": "compress",
+  "pdf/extract": "extract",
+  "pdf/toimages": "toimages",
+  media: "media",
+  history: "history",
+  settings: "settings",
 };
 const HASH_FOR_ROUTE: Record<Route, string> = {
-  dashboard: "", pdftools: "pdf", merge: "pdf/merge", images: "pdf/images",
-  organize: "pdf/organize", split: "pdf/split", compress: "pdf/compress",
-  extract: "pdf/extract", toimages: "pdf/toimages", media: "media",
-  history: "history", settings: "settings",
+  dashboard: "",
+  pdftools: "pdf",
+  merge: "pdf/merge",
+  images: "pdf/images",
+  organize: "pdf/organize",
+  split: "pdf/split",
+  compress: "pdf/compress",
+  extract: "pdf/extract",
+  toimages: "pdf/toimages",
+  media: "media",
+  history: "history",
+  settings: "settings",
 };
 
 function routeFromHash(): Route {
-  const h = window.location.hash.replace(/^#\/?/, "").replace(/\/+$/, "");
+  const h = window.location.hash.split("?")[0].replace(/^#\/?/, "").replace(/\/+$/, "");
   return ROUTE_FOR_HASH[h] ?? "dashboard";
 }
 
 // ------------------------------------------------------------------ density
 // Interface density: root font-size scaling (rem-based layout follows).
-function applyDensity() {
-  const d = localStorage.getItem("pms-density") ?? "comfortable";
-  document.documentElement.style.fontSize = d === "compact" ? "100%" : "106.25%";
-}
-
 function useDensity() {
   useEffect(() => {
-    applyDensity();
-    window.addEventListener("pms-density", applyDensity);
-    return () => window.removeEventListener("pms-density", applyDensity);
+    const sync = () => applyDensity();
+    sync();
+    window.addEventListener(DENSITY_KEY, sync);
+    return () => window.removeEventListener(DENSITY_KEY, sync);
   }, []);
 }
 
-// --------------------------------------------------------- document title
-let BASE_TITLE = "phosphor";
-function setBaseTitle(t: string) {
-  BASE_TITLE = t;
-  document.title = t;
-}
-
 // ------------------------------------------------------------------ theme
-// Dark-first: the phosphor palette is the intended default experience.
+// Dark-first: the phosphor palette is the intended default experience. The
+// class is already set before first paint (main.tsx / theme-init.js); this
+// hook only keeps React state and storage in sync afterwards.
 function useTheme() {
-  const [dark, setDark] = useState<boolean>(() => {
-    const saved = localStorage.getItem("pms-theme");
-    if (saved) return saved === "dark";
-    return true;
-  });
+  const [dark, setDark] = useState<boolean>(() => readTheme() === "dark");
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("pms-theme", dark ? "dark" : "light");
+    saveTheme(dark ? "dark" : "light");
   }, [dark]);
   return { dark, toggle: () => setDark((d) => !d) };
 }
 
 // ------------------------------------------------------------------ toasts
+const TOAST_PREFIX: Record<Toast["kind"], { text: string; cls: string }> = {
+  success: { text: "ok", cls: "text-accText" },
+  error: { text: "err", cls: "text-bad" },
+  info: { text: "info", cls: "text-info" },
+};
+
+/** Toasts are terminal-style lines. Only the container ignores the pointer, so
+ *  the text itself can be selected and copied (error details, paths). */
 function ToastHost({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number) => void }) {
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          role="alert"
-          className={`pointer-events-none flex items-start gap-2 rounded border bg-panel px-3.5 py-3 text-sm text-ink shadow-lg
-            ${t.kind === "error" ? "border-bad/50" : t.kind === "success" ? "border-acc/50" : "border-line"}`}
-        >
-          {t.kind === "error" ? <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bad" />
-            : t.kind === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-accText" />
-            : <ShieldCheck size={16} className="mt-0.5 shrink-0 text-info" />}
-          <span className="whitespace-pre-wrap">{t.text}</span>
-          <button
-            onClick={() => dismiss(t.id)}
-            aria-label="Dismiss"
-            className="pointer-events-auto ml-auto shrink-0 rounded-sm p-0.5 text-ink3 hover:bg-elev hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+      {toasts.map((t) => {
+        const prefix = TOAST_PREFIX[t.kind];
+        return (
+          <div
+            key={t.id}
+            role="alert"
+            className={`flex select-text items-start gap-2 rounded border bg-panel px-3.5 py-3 font-mono text-[0.8125rem] text-ink shadow-lg
+              ${t.kind === "error" ? "border-bad/50" : t.kind === "success" ? "border-acc/50" : "border-line"}`}
           >
-            <X size={14} />
-          </button>
-        </div>
-      ))}
+            <span className={`shrink-0 font-semibold ${prefix.cls}`}>{prefix.text}:</span>
+            <span className="min-w-0 whitespace-pre-wrap break-words">{t.text}</span>
+            <button
+              onClick={() => dismiss(t.id)}
+              aria-label="Dismiss"
+              className="ml-auto shrink-0 rounded-sm p-0.5 text-ink3 hover:bg-elev hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -119,17 +171,29 @@ const PDF_TOOLS_NAV: { id: Route; label: string; icon: React.ElementType }[] = [
   { id: "toimages", label: "pdf to images", icon: FileOutput },
 ];
 
-function NavItem({ id, label, icon: Icon, active, onClick }: {
-  id: string; label: string; icon?: React.ElementType; active: boolean; onClick: () => void;
+function NavItem({
+  id,
+  label,
+  icon: Icon,
+  active,
+  onClick,
+}: {
+  id: string;
+  label: string;
+  icon?: React.ElementType;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={`flex w-full items-center gap-2.5 rounded-sm border-l-2 px-2.5 py-1.5 font-mono text-sm transition-colors
-        ${active
-          ? "border-acc bg-acc/10 text-accText"
-          : "border-transparent text-ink3 hover:bg-elev hover:text-ink"}`}
+        ${
+          active
+            ? "glow border-acc bg-acc/10 text-accText"
+            : "border-transparent text-ink3 hover:bg-elev hover:text-ink"
+        }`}
     >
       {Icon && <Icon size={15} className="shrink-0" aria-hidden />}
       {label}
@@ -137,8 +201,16 @@ function NavItem({ id, label, icon: Icon, active, onClick }: {
   );
 }
 
-function GroupHeader({ label, onClick, expanded, collapsible }: {
-  label: string; onClick?: (toggleOnly?: boolean) => void; expanded?: boolean; collapsible?: boolean;
+function GroupHeader({
+  label,
+  onClick,
+  expanded,
+  collapsible,
+}: {
+  label: string;
+  onClick?: (toggleOnly?: boolean) => void;
+  expanded?: boolean;
+  collapsible?: boolean;
 }) {
   const cls =
     "mb-1 mt-4 flex w-full items-center px-2 font-mono text-[0.625rem] font-medium uppercase tracking-widest text-ink3";
@@ -159,61 +231,85 @@ function GroupHeader({ label, onClick, expanded, collapsible }: {
         aria-label={`${expanded ? "Collapse" : "Expand"} ${label} section`}
         className="ml-auto rounded-sm p-0.5 hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
       >
-        <ChevronDown
-          size={13}
-          className={`transition-transform ${expanded ? "" : "-rotate-90"}`}
-          aria-hidden
-        />
+        <ChevronDown size={13} className={`transition-transform ${expanded ? "" : "-rotate-90"}`} aria-hidden />
       </button>
     </span>
   );
 }
 
-function Sidebar() {
+function Sidebar({ info }: { info: SystemInfo | null }) {
   const { route, navigate } = useNav();
   const pdfActive = PDF_ROUTES.includes(route);
   const [pdfOpen, setPdfOpen] = useState(pdfActive);
-  useEffect(() => { if (pdfActive) setPdfOpen(true); }, [pdfActive]);
+  useEffect(() => {
+    if (pdfActive) setPdfOpen(true);
+  }, [pdfActive]);
 
   return (
     <nav
       aria-label="Main navigation"
-      className="hidden w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-panel p-2.5 md:flex"
+      className="hidden w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-panel p-2.5 md:flex"
     >
       <NavItem
-        id="dashboard" label="home" icon={LayoutDashboard}
-        active={route === "dashboard"} onClick={() => navigate("dashboard")}
+        id="dashboard"
+        label="home"
+        icon={LayoutDashboard}
+        active={route === "dashboard"}
+        onClick={() => navigate("dashboard")}
       />
 
       <GroupHeader
-        label="pdf tools" collapsible expanded={pdfOpen}
+        label="pdf tools"
+        collapsible
+        expanded={pdfOpen}
         onClick={(toggleOnly?: boolean) => {
           if (toggleOnly) setPdfOpen((o) => !o);
-          else { navigate("pdftools"); setPdfOpen(true); }
+          else {
+            navigate("pdftools");
+            setPdfOpen(true);
+          }
         }}
       />
-      {pdfOpen && PDF_TOOLS_NAV.map((item) => (
-        <NavItem
-          key={item.id} {...item}
-          active={route === item.id} onClick={() => navigate(item.id)}
-        />
-      ))}
+      {pdfOpen &&
+        PDF_TOOLS_NAV.map((item) => (
+          <NavItem key={item.id} {...item} active={route === item.id} onClick={() => navigate(item.id)} />
+        ))}
 
       <GroupHeader label="media" />
       <NavItem
-        id="media" label="media downloader" icon={Video}
-        active={route === "media"} onClick={() => navigate("media")}
+        id="media"
+        label="media downloader"
+        icon={Video}
+        active={route === "media"}
+        onClick={() => navigate("media")}
       />
 
       <GroupHeader label="system" />
       <NavItem
-        id="history" label="task history" icon={HistoryIcon}
-        active={route === "history"} onClick={() => navigate("history")}
+        id="history"
+        label="task history"
+        icon={HistoryIcon}
+        active={route === "history"}
+        onClick={() => navigate("history")}
       />
       <NavItem
-        id="settings" label="settings" icon={SettingsIcon}
-        active={route === "settings"} onClick={() => navigate("settings")}
+        id="settings"
+        label="settings"
+        icon={SettingsIcon}
+        active={route === "settings"}
+        onClick={() => navigate("settings")}
       />
+
+      {/* footer: version + output folder, pinned to the bottom of the sidebar */}
+      <div className="mt-auto space-y-1 border-t border-line px-2 pb-1 pt-3 font-mono text-[0.6875rem] text-ink3">
+        <p>phosphor{info?.app_version ? ` v${info.app_version}` : ""}</p>
+        {info && (
+          <p className="flex items-center gap-1.5" title={info.output_dir}>
+            <FolderOutput size={12} className="shrink-0" aria-hidden />
+            <span className="min-w-0 truncate">{middleTruncate(info.output_dir, 26)}</span>
+          </p>
+        )}
+      </div>
     </nav>
   );
 }
@@ -251,11 +347,18 @@ function MobileNav() {
   );
 }
 
-function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme: () => void; openPalette: () => void }) {
-  const [info, setInfo] = useState<SystemInfo | null>(null);
-  useEffect(() => {
-    systemInfo().then(setInfo).catch(() => {});
-  }, []);
+function Header({
+  dark,
+  toggleTheme,
+  openPalette,
+  info,
+}: {
+  dark: boolean;
+  toggleTheme: () => void;
+  openPalette: () => void;
+  info: SystemInfo | null;
+}) {
+  const toast = useToast();
   return (
     <header className="flex items-center gap-3 border-b border-line bg-panel px-4 py-2.5">
       <a
@@ -264,45 +367,61 @@ function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme
       >
         skip to content
       </a>
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-acc font-mono text-[0.9375rem] font-bold leading-none text-onAcc" aria-hidden>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <div
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-acc font-mono text-[0.9375rem] font-bold leading-none text-onAcc"
+          aria-hidden
+        >
           ❯
         </div>
-        <div>
-          <h1 className="font-mono text-sm font-semibold leading-tight tracking-tight text-ink">
-            phosphor<span className="animate-cursor-blink text-accText" aria-hidden>▮</span>
+        <div className="min-w-0">
+          <h1 className="glow font-mono text-sm font-semibold leading-tight tracking-tight text-ink">
+            phosphor
+            <span className="animate-cursor-blink text-accText" aria-hidden>
+              ▮
+            </span>
           </h1>
-          <p className="text-[0.6875rem] leading-tight text-ink3">
+          <p className="truncate text-[0.6875rem] leading-tight text-ink3">
             local PDF &amp; media console - nothing leaves this computer
           </p>
         </div>
       </div>
-      <div className="ml-auto flex items-center gap-1.5">
+      {/* search-box shaped command palette trigger */}
+      <button
+        onClick={openPalette}
+        aria-label="Open command palette"
+        title="Command palette (Ctrl+K)"
+        className="ml-auto hidden w-full min-w-[9rem] max-w-sm items-center gap-2 rounded-sm border border-line bg-base px-2.5 py-1.5 text-left font-mono text-[0.75rem] text-ink3 transition-colors hover:border-ink3 hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc sm:flex"
+      >
+        <Search size={14} className="shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">search or run a command…</span>
+        <span className="hidden shrink-0 items-center gap-1 lg:inline-flex" aria-hidden>
+          <Kbd>Ctrl</Kbd>
+          <Kbd>K</Kbd>
+        </span>
+      </button>
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:ml-0">
+        <TaskTray />
         {info && (
           <button
-            onClick={() => navigator.clipboard?.writeText(info.output_dir)}
+            onClick={async () => {
+              const ok = await copyText(info.output_dir);
+              toast.push(
+                ok ? "success" : "error",
+                ok ? "Output folder path copied." : "Could not access the clipboard.",
+              );
+            }}
             title={`Output folder: ${info.output_dir} (click to copy path)`}
-            className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-[0.6875rem] text-ink3 hover:bg-elev hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc lg:flex"
+            aria-label={`Copy output folder path: ${info.output_dir}`}
+            className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1.5 font-mono text-[0.6875rem] text-ink3 hover:bg-elev hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc xl:flex"
           >
-            <FolderOutput size={13} aria-hidden /> {info.output_dir}
+            <FolderOutput size={13} aria-hidden /> {middleTruncate(info.output_dir, 28)}
           </button>
         )}
-        <button
-          onClick={openPalette}
-          className={`${BTN_GHOST} hidden items-center gap-1.5 px-2 font-mono text-[0.6875rem] sm:inline-flex`}
-          aria-label="Open command palette"
-          title="Command palette (Ctrl+K)"
-        >
-          <Search size={14} aria-hidden />
-          <span className="hidden lg:inline">Ctrl</span>
-          <span className="hidden lg:inline">K</span>
+        <button onClick={openPalette} className={`${BTN_GHOST} sm:hidden`} aria-label="Open command palette">
+          <Search size={16} aria-hidden />
         </button>
-        <button
-          onClick={toggleTheme}
-          className={BTN_GHOST}
-          aria-label="Toggle dark mode"
-          title="Toggle theme"
-        >
+        <button onClick={toggleTheme} className={BTN_GHOST} aria-label="Toggle dark mode" title="Toggle theme">
           {dark ? <Sun size={16} /> : <Moon size={16} />}
         </button>
       </div>
@@ -317,10 +436,14 @@ export default function App() {
   const [route, setRoute] = useState<Route>(routeFromHash);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [introOpen, setIntroOpen] = useState(
-    () => !localStorage.getItem("pms-onboarded-v1"),
-  );
+  const [introOpen, setIntroOpen] = useState(() => !localStorage.getItem("pms-onboarded-v1"));
   const mainRef = useRef<HTMLElement>(null);
+  const [info, setInfo] = useState<SystemInfo | null>(null);
+  useEffect(() => {
+    systemInfo()
+      .then(setInfo)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const showIntro = () => {
@@ -384,56 +507,30 @@ export default function App() {
     settings: <SettingsPage />,
   }[route];
 
-  const meta = ROUTE_META[route];
-  const inPdfTools = PDF_ROUTES.includes(route) && route !== "pdftools";
-
   return (
     <NavContext.Provider value={navCtx}>
       <ToastContext.Provider value={toastCtx}>
-        <div className="flex h-screen flex-col">
-          <Header dark={dark} toggleTheme={toggle} openPalette={() => setPaletteOpen(true)} />
-          <CommandPalette
-            open={paletteOpen}
-            onClose={() => setPaletteOpen(false)}
-            toggleTheme={toggle}
-            dark={dark}
-          />
-          <Onboarding
-            open={introOpen}
-            onClose={() => {
-              localStorage.setItem("pms-onboarded-v1", "1");
-              setIntroOpen(false);
-            }}
-          />
-          <MobileNav />
-          <div className="flex min-h-0 flex-1">
-            <Sidebar />
-            <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6 focus:outline-none">
-              <div className="mx-auto max-w-4xl">
-                {route !== "dashboard" && (
-                  <nav aria-label="Breadcrumb" className="mb-4 flex items-center font-mono text-[0.6875rem] tracking-tight text-ink3">
-                    {inPdfTools ? (
-                      <>
-                        <button
-                          onClick={() => navigate("pdftools")}
-                          className="rounded-sm hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
-                        >
-                          ~/pdf-tools
-                        </button>
-                        <span className="mx-1.5" aria-hidden>/</span>
-                        <span className="text-ink2">{meta.crumb.split("/").pop()}</span>
-                      </>
-                    ) : (
-                      <span>{meta.crumb}</span>
-                    )}
-                  </nav>
-                )}
-                {page}
-              </div>
-            </main>
+        <TasksProvider>
+          <div className="flex h-screen flex-col">
+            <Header dark={dark} toggleTheme={toggle} openPalette={() => setPaletteOpen(true)} info={info} />
+            <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} toggleTheme={toggle} dark={dark} />
+            <Onboarding
+              open={introOpen}
+              onClose={() => {
+                localStorage.setItem("pms-onboarded-v1", "1");
+                setIntroOpen(false);
+              }}
+            />
+            <MobileNav />
+            <div className="flex min-h-0 flex-1">
+              <Sidebar info={info} />
+              <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6 focus:outline-none">
+                <div className={`mx-auto ${CONTENT_WIDTH[route]}`}>{page}</div>
+              </main>
+            </div>
+            <ToastHost toasts={toasts} dismiss={dismiss} />
           </div>
-          <ToastHost toasts={toasts} dismiss={dismiss} />
-        </div>
+        </TasksProvider>
       </ToastContext.Provider>
     </NavContext.Provider>
   );

@@ -7,7 +7,8 @@ import { deleteFile, opMerge, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { useReorder } from "../hooks";
 import { UploadedFile } from "../types";
-import { BTN_PRIMARY, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 export default function Merge() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -58,13 +59,15 @@ export default function Merge() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Merge PDFs</h2>
-        <p className="mt-1 text-sm text-ink2">
-          Drop PDFs, drag to set the order, then merge. Outputs are written to your output folder -
-          original files are never modified.
-        </p>
-      </div>
+      <PageHeader
+        route="merge"
+        description={
+          <>
+            Drop PDFs, drag to set the order, then merge. Outputs are written to your output folder - original files are
+            never modified.
+          </>
+        }
+      />
 
       {files.length === 0 && (
         <FileDrop
@@ -81,19 +84,27 @@ export default function Merge() {
           <FileDrop onFiles={addFiles} accept=".pdf,application/pdf" label="Add more PDFs" disabled={busy} />
           <ul className="space-y-2">
             {files.map((f, i) => (
-              <div key={f.id} {...{ onDragOver: reorder.onDragOver }} onDrop={reorder.onDrop(i)}>
-                <div onDragStart={reorder.onDragStart(i)}>
-                  <FileCard file={f} draggable index={i} badge={`#${i + 1}`} onRemove={() => remove(f)} />
-                </div>
-              </div>
+              <FileCard
+                key={f.id}
+                file={f}
+                draggable
+                badge={`#${i + 1}`}
+                onRemove={() => remove(f)}
+                onDragStart={reorder.onDragStart(i)}
+                onDragOver={reorder.onDragOver}
+                onDrop={reorder.onDrop(i)}
+              />
             ))}
           </ul>
           <div className="flex items-center gap-3">
             <button onClick={merge} disabled={busy || files.length < 2} className={BTN_PRIMARY}>
-              <Combine size={16} /> Merge {files.length} PDFs
+              <Combine size={16} /> merge {files.length} pdfs
             </button>
             <button
-              onClick={() => { files.forEach((f) => deleteFile(f.id).catch(() => {})); setFiles([]); }}
+              onClick={() => {
+                files.forEach((f) => deleteFile(f.id).catch(() => {}));
+                setFiles([]);
+              }}
               className="rounded-sm px-2 py-1 font-mono text-[0.75rem] text-ink3 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
             >
               clear list

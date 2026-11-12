@@ -1,11 +1,14 @@
 """Media endpoints: metadata lookup, download tasks, cookie sign-in."""
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import subprocess
+import tempfile
 import threading
 import time
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -172,7 +175,8 @@ async def test_cookies():
 async def media_info(url: str):
     cfg = get_config()
     try:
-        url = validate_media_url(url)
+        # getaddrinfo can block for seconds: keep it off the event loop
+        url = await asyncio.to_thread(validate_media_url, url)
     except ValidationError as exc:
         raise HTTPException(400, str(exc))
     try:
@@ -211,7 +215,7 @@ class MediaDownloadIn(BaseModel):
 async def media_download(request: Request, body: MediaDownloadIn):
     cfg = get_config()
     try:
-        url = validate_media_url(body.url)
+        url = await asyncio.to_thread(validate_media_url, body.url)
     except ValidationError as exc:
         raise HTTPException(400, str(exc))
     if body.mode not in ("video", "audio"):
@@ -242,7 +246,12 @@ async def media_download(request: Request, body: MediaDownloadIn):
     }
     tm = _tm(request)
     kind = "media_audio" if body.mode == "audio" else "media_video"
+    # Private temp dir per download: partial/intermediate files never mix
+    # with other tasks'. The task manager removes it when the task ends.
+    cfg.ensure_dirs()
+    temp_dir = Path(tempfile.mkdtemp(prefix=f"{kind}-", dir=cfg.tmp_dir))
     task_id = tm.submit(kind, f"Download: {title or url[:60]}",
                         media_service.download_task_wrapper(cfg, params),
-                        meta={"mode": body.mode, "video_id": vid})
+                        meta={"mode": body.mode, "video_id": vid},
+                        temp_dir=temp_dir)
     return {"task_id": task_id}

@@ -10,10 +10,10 @@ export type EventSeverity = "info" | "warning" | "error";
 
 export interface AppEvent {
   id: number;
-  ts: number;            // epoch ms
+  ts: number; // epoch ms
   severity: EventSeverity;
   message: string;
-  task?: boolean;        // task lifecycle event
+  task?: boolean; // task lifecycle event
 }
 
 type Listener = (events: AppEvent[]) => void;

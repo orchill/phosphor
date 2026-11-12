@@ -7,7 +7,8 @@ import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opToImages, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { UploadedFile } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 export default function PdfToImages() {
   const [pdf, setPdf] = useState<UploadedFile | null>(null);
@@ -29,7 +30,10 @@ export default function PdfToImages() {
 
   const load = async (files: File[]) => {
     const f = files.find((f) => /\.pdf$/i.test(f.name) || f.type === "application/pdf");
-    if (!f) { toast.push("error", "Drop a single PDF."); return; }
+    if (!f) {
+      toast.push("error", "Drop a single PDF.");
+      return;
+    }
     setBusy(true);
     setTaskId(null);
     try {
@@ -47,11 +51,12 @@ export default function PdfToImages() {
     if (!pdf) return;
     setBusy(true);
     try {
-      const pagesSpec = useAll
-        ? null
-        : [...selection].sort((a, b) => a - b).join(",") || null;
+      const pagesSpec = useAll ? null : [...selection].sort((a, b) => a - b).join(",") || null;
       const { task_id } = await opToImages({
-        file_id: pdf.id, format: fmt as "png" | "jpg", dpi, pages: pagesSpec,
+        file_id: pdf.id,
+        format: fmt as "png" | "jpg",
+        dpi,
+        pages: pagesSpec,
       });
       setTaskId(task_id);
     } catch (e: any) {
@@ -63,53 +68,76 @@ export default function PdfToImages() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>PDF to Images</h2>
-        <p className="mt-1 text-sm text-ink2">
-          Render pages to PNG (lossless) or JPG at the chosen DPI. Select specific pages if you do
-          not need the whole document; multiple outputs arrive as a ZIP.
-        </p>
-      </div>
+      <PageHeader
+        route="toimages"
+        description={
+          <>
+            Render pages to PNG (lossless) or JPG at the chosen DPI. Select specific pages if you do not need the whole
+            document; multiple outputs arrive as a ZIP.
+          </>
+        }
+      />
 
-      {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF" disabled={busy} />}
+      {!pdf && (
+        <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF" disabled={busy} />
+      )}
 
       {pdf && (
         <>
-          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close document">
+          <SourcePanel
+            file={pdf}
+            onClose={() => {
+              setPdf(null);
+              deleteFile(pdf.id).catch(() => {});
+            }}
+            closeLabel="Close document"
+          >
             <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className={LABEL} htmlFor="fmt">Format</label>
-              <select id="fmt" value={fmt} onChange={(e) => setFmt(e.target.value)} className={`${INPUT} mt-1 w-28`}>
-                <option value="png">PNG</option>
-                <option value="jpg">JPG</option>
-              </select>
-            </div>
-            <div>
-              <label className={LABEL} htmlFor="tdpi">DPI</label>
-              <select id="tdpi" value={dpi} onChange={(e) => setDpi(+e.target.value)} className={`${INPUT} mt-1 w-32`}>
-                <option value={72}>72 - screen</option>
-                <option value={150}>150 - good</option>
-                <option value={300}>300 - print</option>
-                <option value={600}>600 - archive</option>
-              </select>
-            </div>
-            <label className="flex items-center gap-2 pb-2 text-sm text-ink">
-              <input type="checkbox" checked={useAll} onChange={(e) => setUseAll(e.target.checked)} className="accent-acc" />
-              All pages
-            </label>
+              <div>
+                <label className={LABEL} htmlFor="fmt">
+                  Format
+                </label>
+                <select id="fmt" value={fmt} onChange={(e) => setFmt(e.target.value)} className={`${INPUT} mt-1 w-28`}>
+                  <option value="png">PNG</option>
+                  <option value="jpg">JPG</option>
+                </select>
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="tdpi">
+                  DPI
+                </label>
+                <select
+                  id="tdpi"
+                  value={dpi}
+                  onChange={(e) => setDpi(+e.target.value)}
+                  className={`${INPUT} mt-1 w-32`}
+                >
+                  <option value={72}>72 - screen</option>
+                  <option value={150}>150 - good</option>
+                  <option value={300}>300 - print</option>
+                  <option value={600}>600 - archive</option>
+                </select>
+              </div>
+              <label className="flex items-center gap-2 pb-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={useAll}
+                  onChange={(e) => setUseAll(e.target.checked)}
+                  className="accent-acc"
+                />
+                All pages
+              </label>
             </div>
           </SourcePanel>
 
           <div className="flex items-center gap-3">
             <button onClick={run} disabled={busy || (!useAll && !selection.size)} className={BTN_PRIMARY}>
-              <FileOutput size={16} /> Export {useAll ? pdf.pages : selection.size} page(s)
+              <FileOutput size={16} /> export {useAll ? pdf.pages : selection.size} page(s)
             </button>
           </div>
 
           {!useAll && (
-            <p className="text-xs text-ink2">
-              Click thumbnails below to pick pages ({selection.size} selected).
-            </p>
+            <p className="text-xs text-ink2">Click thumbnails below to pick pages ({selection.size} selected).</p>
           )}
           <PageGrid
             fileId={pdf.id}

@@ -35,6 +35,7 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     make_pdf("a.pdf", 3, "ALPHA")
     make_pdf("b.pdf", 2, "BETA")
+    make_pdf("six.pdf", 6, "SIX")  # screenshot harness: Organize with 6 pages
     make_png("red.png", (220, 40, 40))
     make_png("blue.png", (40, 90, 220))
     print(f"fixtures written to {OUT}")

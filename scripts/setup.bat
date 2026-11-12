@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0.."
 
 echo ==============================================
-echo  PDF ^& Media Studio - first-time setup
+echo  phosphor - first-time setup
 echo ==============================================
 
 where python >nul 2>nul || (echo [error] Python 3.10+ not found. Install from https://www.python.org/downloads/ and check "Add python.exe to PATH". & pause & exit /b 1)

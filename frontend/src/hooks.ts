@@ -1,33 +1,29 @@
-import { useEffect, useRef, useState } from "react";
-import { getTask } from "./api";
-import { TaskRecord, isTerminal } from "./types";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { TaskPoll, getTaskPoll, subscribeTask } from "./taskStore";
 
-/** Poll a task by id until it reaches a terminal state. */
-export function useTask(taskId: string | null): TaskRecord | null {
-  const [task, setTask] = useState<TaskRecord | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+export type { TaskPoll } from "./taskStore";
 
+/** Watch a task by id (shared poller, see taskStore.ts). Stops by itself once
+ *  the task is finished or turns out not to exist (B19). */
+export function useTask(taskId: string | null): TaskPoll {
+  const subscribe = useCallback(
+    (listener: () => void) => (taskId ? subscribeTask(taskId, listener) : () => {}),
+    [taskId],
+  );
+  return useSyncExternalStore(subscribe, () => getTaskPoll(taskId));
+}
+
+/** Query parameters carried in the hash route, e.g. "#/history?task=ab12".
+ *  Re-reads on every hash change. */
+export function useHashQuery(): URLSearchParams {
+  const read = () => new URLSearchParams(window.location.hash.split("?")[1] ?? "");
+  const [params, setParams] = useState<URLSearchParams>(read);
   useEffect(() => {
-    setTask(null);
-    if (!taskId) return;
-    let stopped = false;
-    const poll = async () => {
-      try {
-        const t = await getTask(taskId);
-        if (stopped) return;
-        setTask(t);
-        if (!isTerminal(t.status)) timer.current = setTimeout(poll, 800);
-      } catch {
-        if (!stopped) timer.current = setTimeout(poll, 2000);
-      }
-    };
-    poll();
-    return () => {
-      stopped = true;
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [taskId]);
-  return task;
+    const onHash = () => setParams(read());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return params;
 }
 
 /** Simple list reordering for drag & drop. */
@@ -52,16 +48,12 @@ export function useReorder<T>(items: T[], setItems: (v: T[]) => void) {
   };
 }
 
-
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Trap Tab focus inside a modal while `active`; restore focus on close.
  *  Initial focus is left to the component (autofocus / explicit). */
-export function useFocusTrap(
-  ref: React.RefObject<HTMLElement | null>,
-  active: boolean,
-): void {
+export function useFocusTrap(ref: React.RefObject<HTMLElement | null>, active: boolean): void {
   useEffect(() => {
     if (!active) return;
     const container = ref.current;
@@ -69,9 +61,9 @@ export function useFocusTrap(
     const prev = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
-      const items = Array.from(
-        container.querySelectorAll<HTMLElement>(FOCUSABLE),
-      ).filter((el) => el.offsetParent !== null);
+      const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null,
+      );
       if (items.length === 0) return;
       const first = items[0];
       const last = items[items.length - 1];

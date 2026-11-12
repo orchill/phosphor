@@ -7,7 +7,8 @@ import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opCompress, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { UploadedFile, humanSize } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, CARD, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, CARD } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 const PRESETS = [
   { id: "high", label: "High quality", quality: 80, dpi: 150, desc: "Crisp images, moderate saving" },
@@ -27,12 +28,18 @@ export default function Compress() {
 
   useEffect(() => {
     const p = PRESETS.find((p) => p.id === preset);
-    if (p && preset !== "custom") { setQuality(p.quality); setDpi(p.dpi); }
+    if (p && preset !== "custom") {
+      setQuality(p.quality);
+      setDpi(p.dpi);
+    }
   }, [preset]);
 
   const load = async (files: File[]) => {
     const f = files.find((f) => /\.pdf$/i.test(f.name) || f.type === "application/pdf");
-    if (!f) { toast.push("error", "Drop a single PDF."); return; }
+    if (!f) {
+      toast.push("error", "Drop a single PDF.");
+      return;
+    }
     setBusy(true);
     try {
       const [meta] = await uploadFiles([f]);
@@ -60,41 +67,83 @@ export default function Compress() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Compress PDF</h2>
-        <p className="mt-1 text-sm text-ink2">
-          Downscales oversized embedded images and re-encodes them as JPEG. The tool reports the
-          real output size after processing; if the file is already optimized, the original is kept.
-        </p>
-      </div>
+      <PageHeader
+        route="compress"
+        description={
+          <>
+            Downscales oversized embedded images and re-encodes them as JPEG. The tool reports the real output size
+            after processing; if the file is already optimized, the original is kept.
+          </>
+        }
+      />
 
-      {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF to compress" hint={pdf ? undefined : "Image-heavy documents shrink the most"} disabled={busy} />}
+      {!pdf && (
+        <FileDrop
+          onFiles={load}
+          accept=".pdf,application/pdf"
+          multiple={false}
+          label="Drop a PDF to compress"
+          hint={pdf ? undefined : "Image-heavy documents shrink the most"}
+          disabled={busy}
+        />
+      )}
 
       {pdf && (
         <>
-          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }}>
+          <SourcePanel
+            file={pdf}
+            onClose={() => {
+              setPdf(null);
+              deleteFile(pdf.id).catch(() => {});
+            }}
+          >
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {PRESETS.map((p) => (
-                <OptionCard key={p.id} name="preset" checked={preset === p.id}
-                  onChange={() => setPreset(p.id)} label={p.label} desc={p.desc} />
+                <OptionCard
+                  key={p.id}
+                  name="preset"
+                  checked={preset === p.id}
+                  onChange={() => setPreset(p.id)}
+                  label={p.label}
+                  desc={p.desc}
+                />
               ))}
             </div>
             {preset === "custom" && (
               <div className="mt-4 space-y-3">
                 <label className="block text-xs text-ink2" htmlFor="cq">
                   JPEG quality: {quality}
-                  <input id="cq" type="range" min={20} max={95} value={quality} onChange={(e) => setQuality(+e.target.value)} className="ml-3 w-56 accent-acc" />
+                  <input
+                    id="cq"
+                    type="range"
+                    min={20}
+                    max={95}
+                    value={quality}
+                    onChange={(e) => setQuality(+e.target.value)}
+                    className="ml-3 w-56 accent-acc"
+                  />
                 </label>
                 <label className="block text-xs text-ink2" htmlFor="cdpi">
                   Max image DPI: {dpi}
-                  <input id="cdpi" type="range" min={60} max={250} step={10} value={dpi} onChange={(e) => setDpi(+e.target.value)} className="ml-3 w-56 accent-acc" />
+                  <input
+                    id="cdpi"
+                    type="range"
+                    min={60}
+                    max={250}
+                    step={10}
+                    value={dpi}
+                    onChange={(e) => setDpi(+e.target.value)}
+                    className="ml-3 w-56 accent-acc"
+                  />
                 </label>
               </div>
             )}
           </SourcePanel>
 
           <div className="flex items-center gap-3">
-            <button onClick={run} disabled={busy} className={BTN_PRIMARY}><Zap size={16} /> Compress</button>
+            <button onClick={run} disabled={busy} className={BTN_PRIMARY}>
+              <Zap size={16} /> compress
+            </button>
           </div>
         </>
       )}

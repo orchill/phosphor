@@ -17,14 +17,13 @@ import threading
 import zipfile
 from pathlib import Path
 from typing import Callable
-from urllib.parse import quote
 
 import fitz  # PyMuPDF
 from PIL import Image, ImageOps
 
-from ..security import ValidationError
+from ..security import ValidationError, format_page_ranges
 from ..tasks import TaskCancelled, TaskRecord
-from ..utils import sanitize_stem, unique_path
+from ..utils import file_entry, sanitize_stem, unique_path
 
 ReportFn = Callable[[str, float | None], None]
 
@@ -48,7 +47,10 @@ def _mm_to_pt(mm: float) -> float:
 
 def open_pdf(path: Path) -> fitz.Document:
     try:
-        doc = fitz.open(str(path))
+        # filetype="pdf": uploads are stored as {id}.bin and PyMuPDF would
+        # otherwise sniff the extension first (and can leak a handle on Windows
+        # when that guess fails).
+        doc = fitz.open(str(path), filetype="pdf")
         if doc.needs_pass:
             doc.close()
             raise ValidationError("This PDF is password-protected and cannot be processed")
@@ -62,7 +64,7 @@ def open_pdf(path: Path) -> fitz.Document:
 def verify_pdf(path: Path, expected_pages: int | None = None) -> int:
     """Re-open a produced PDF to confirm it is valid; return page count."""
     try:
-        doc = fitz.open(str(path))
+        doc = fitz.open(str(path), filetype="pdf")
         count = doc.page_count
         doc.close()
     except Exception as exc:
@@ -79,8 +81,7 @@ def make_output(cfg_dir: Path, stem: str, suffix: str) -> Path:
 
 
 def output_entry(path: Path) -> dict:
-    return {"name": path.name, "path": str(path), "size": path.stat().st_size,
-            "url": f"/api/download?path={quote(path.as_posix())}"}
+    return file_entry(path)
 
 
 # =============================================================== merge
@@ -132,6 +133,25 @@ def _embed_bytes(data: bytes, img_format: str | None) -> tuple[bytes, str]:
         return buf.getvalue(), "JPEG"
 
 
+def _exif_orientation(im: Image.Image) -> int:
+    try:
+        return int(im.getexif().get(0x0112, 1) or 1)
+    except Exception:
+        return 1
+
+
+def _encode_upright(im: Image.Image, src_format: str) -> bytes:
+    """Encode an already-transposed image without EXIF: JPEG stays JPEG
+    (q95, no chroma subsampling to limit generation loss), the rest is PNG."""
+    buf = io.BytesIO()
+    if src_format == "JPEG":
+        out = im if im.mode in ("L", "RGB", "CMYK") else im.convert("RGB")
+        out.save(buf, format="JPEG", quality=95, subsampling=0)
+    else:
+        im.save(buf, format="PNG")
+    return buf.getvalue()
+
+
 def images_to_pdf_task(rec: TaskRecord, images: list[dict], opts: dict,
                        out_dir: Path) -> dict:
     """images: [{id, path, rotation}] in final order; opts from the UI."""
@@ -164,8 +184,15 @@ def images_to_pdf_task(rec: TaskRecord, images: list[dict], opts: dict,
 
             with Image.open(io.BytesIO(data)) as im:
                 im.load()
+                src_format = (im.format or "").upper()
+                needs_upright = _exif_orientation(im) not in (0, 1)
                 im = ImageOps.exif_transpose(im)
                 px_w, px_h = im.size
+                if needs_upright:
+                    # Page size is computed from the upright dimensions, so
+                    # the embedded pixels must be upright too (and carry no
+                    # orientation tag a viewer could apply a second time).
+                    embed = _encode_upright(im, src_format)
 
             if page_size == "image":
                 pw = px_w * 72.0 / dpi + 2 * margin
@@ -266,6 +293,10 @@ def _write_pages_with_pypdf(src: Path, page_numbers: list[int], out: Path) -> No
         writer.write(fh)
 
 
+def _pages_label(sel: list[int]) -> str:
+    return ("page " if len(sel) == 1 else "pages ") + format_page_ranges(sel)
+
+
 def split_task(rec: TaskRecord, src: Path, mode: str, ranges: str | None,
                every_n: int | None, pages: str | None, out_dir: Path,
                base_name: str | None = None) -> dict:
@@ -284,7 +315,7 @@ def split_task(rec: TaskRecord, src: Path, mode: str, ranges: str | None,
         out = make_output(out_dir, f"{stem}_extract", ".pdf")
         rec.report(f"Extracting {len(sel)} pages", 0.4)
         _write_pages_with_pypdf(src, sel, out)
-        parts.append((f"pages {sel[0]}-{sel[-1]}", out, sel))
+        parts.append((_pages_label(sel), out, sel))
 
     elif mode == "every_n":
         if not every_n or every_n < 1:
@@ -295,7 +326,7 @@ def split_task(rec: TaskRecord, src: Path, mode: str, ranges: str | None,
             rec.report(f"Writing part {k}/{len(groups)}", (k - 1) / len(groups))
             out = make_output(out_dir, f"{stem}_part{k:02d}", ".pdf")
             _write_pages_with_pypdf(src, group, out)
-            parts.append((f"pages {group[0]}-{group[-1]}", out, group))
+            parts.append((_pages_label(group), out, group))
 
     elif mode == "ranges":
         from ..security import parse_page_groups
@@ -306,7 +337,7 @@ def split_task(rec: TaskRecord, src: Path, mode: str, ranges: str | None,
             sel = list(range(a, b + 1))
             out = make_output(out_dir, f"{stem}_p{a}-{b}", ".pdf")
             _write_pages_with_pypdf(src, sel, out)
-            parts.append((f"pages {a}-{b}", out, sel))
+            parts.append((_pages_label(sel), out, sel))
     else:
         raise ValidationError(f"Unknown split mode: {mode}")
 
@@ -571,14 +602,18 @@ def to_images_task(rec: TaskRecord, src: Path, fmt: str, dpi: int,
 
 # ------------------------------------------------------------- thumbnails
 def render_page_thumbnail(src: Path, page_no: int, width: int) -> bytes:
-    """Render one page to a PNG thumbnail (cached by the caller)."""
+    """Render one page to a JPEG thumbnail (cached by the caller).
+
+    JPEG, not PNG: the endpoint serves image/jpeg and the Organize grid loads
+    dozens of these at once.
+    """
     doc = open_pdf(src)
     try:
         page_no = max(1, min(page_no, doc.page_count))
         page = doc[page_no - 1]
         zoom = max(0.2, min(3.0, width / max(1.0, page.rect.width)))
         pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
-        return pix.tobytes("png")
+        return pix.tobytes("jpeg", jpg_quality=82)
     finally:
         doc.close()
 

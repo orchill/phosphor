@@ -17,6 +17,8 @@ from .config import get_config
 from .security import SecurityMiddleware, ValidationError
 from .tasks import TaskManager
 
+# Logger names keep the historical "pms." prefix (from before the phosphor
+# rename) so existing log filters and configs keep matching.
 log = logging.getLogger("pms.main")
 
 

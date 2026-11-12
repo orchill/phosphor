@@ -28,3 +28,6 @@ frontend/e2e/.run/
 frontend/e2e/.fixtures/
 frontend/test-results/
 frontend/playwright-report/
+
+# Visual study harness output (npm run shots)
+frontend/e2e/.shots/

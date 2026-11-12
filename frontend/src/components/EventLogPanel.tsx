@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { AppEvent, EventSeverity, clearEvents, getEvents, subscribeEvents } from "../events";
 import { BTN_GHOST, CARD, DOT, SECTION_LABEL } from "../ui";
+import { EmptyState } from "./primitives";
 
 type Filter = "all" | "info" | "warning" | "error" | "tasks";
 
@@ -23,9 +24,9 @@ function dotTone(sev: EventSeverity): string {
 /** Collapsible session event panel. Entries are real frontend-observed
  *  application events (API operations and task lifecycle) — session-scoped,
  *  never persisted, and free of cookie/path/subprocess data. */
-export default function EventLogPanel() {
+export default function EventLogPanel({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [events, setEvents] = useState<AppEvent[]>(getEvents);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => subscribeEvents(setEvents), []);
@@ -52,17 +53,22 @@ export default function EventLogPanel() {
         </button>
         {errors > 0 && (
           <span className="inline-flex items-center gap-1.5 rounded-sm border border-bad/40 bg-bad/10 px-1.5 py-0.5 font-mono text-[0.6875rem] text-bad">
-            <span className={`${DOT} bg-bad`} aria-hidden />{errors} error{errors === 1 ? "" : "s"}
+            <span className={`${DOT} bg-bad`} aria-hidden />
+            {errors} error{errors === 1 ? "" : "s"}
           </span>
         )}
         {warnings > 0 && (
           <span className="inline-flex items-center gap-1.5 rounded-sm border border-warn/40 bg-warn/10 px-1.5 py-0.5 font-mono text-[0.6875rem] text-warn">
-            <span className={`${DOT} bg-warn`} aria-hidden />{warnings} warning{warnings === 1 ? "" : "s"}
+            <span className={`${DOT} bg-warn`} aria-hidden />
+            {warnings} warning{warnings === 1 ? "" : "s"}
           </span>
         )}
         {open && (
           <button
-            onClick={() => { clearEvents(); setFilter("all"); }}
+            onClick={() => {
+              clearEvents();
+              setFilter("all");
+            }}
             className={`${BTN_GHOST} ml-auto px-2 py-1 text-xs`}
           >
             <Trash2 size={13} aria-hidden /> clear
@@ -80,7 +86,9 @@ export default function EventLogPanel() {
                 aria-checked={filter === f.id}
                 onClick={() => setFilter(f.id)}
                 className={`rounded-sm border px-2.5 py-1 font-mono text-[0.6875rem] transition-colors ${
-                  filter === f.id ? "border-acc bg-acc/10 text-accText" : "border-line text-ink3 hover:border-ink3 hover:text-ink2"
+                  filter === f.id
+                    ? "border-acc bg-acc/10 text-accText"
+                    : "border-line text-ink3 hover:border-ink3 hover:text-ink2"
                 }`}
               >
                 {f.label}
@@ -93,14 +101,12 @@ export default function EventLogPanel() {
             aria-label="Application events"
           >
             {filtered.length === 0 ? (
-              <p className="text-ink3">No {filter === "all" ? "" : `${filter} `}events this session.</p>
+              <EmptyState bare>no {filter === "all" ? "" : `${filter} `}events this session</EmptyState>
             ) : (
               <ol className="space-y-1">
                 {filtered.map((e) => (
                   <li key={e.id} className="flex items-start gap-2">
-                    <span className="shrink-0 text-ink3">
-                      {new Date(e.ts).toLocaleTimeString()}
-                    </span>
+                    <span className="shrink-0 text-ink3">{new Date(e.ts).toLocaleTimeString()}</span>
                     <span className={`${DOT} mt-1 ${dotTone(e.severity)}`} aria-hidden />
                     <span className={`min-w-0 break-words ${tone(e.severity)}`}>{e.message}</span>
                   </li>

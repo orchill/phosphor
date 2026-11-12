@@ -14,13 +14,7 @@ export default function OptionCard({ name, checked, onChange, label, desc }: Pro
         ${checked ? "border-acc bg-acc/10" : "border-line hover:border-ink3"}`}
     >
       <span className="flex items-center gap-2 font-medium text-ink">
-        <input
-          type="radio"
-          name={name}
-          checked={checked}
-          onChange={onChange}
-          className="accent-acc"
-        />
+        <input type="radio" name={name} checked={checked} onChange={onChange} className="accent-acc" />
         {label}
       </span>
       {desc && <span className="mt-1 block text-xs leading-relaxed text-ink2">{desc}</span>}

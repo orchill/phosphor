@@ -5,6 +5,8 @@ export interface OutputFile {
   path: string;
   size: number;
   url: string;
+  /** Set by the API when listing/reading tasks; false once the file was deleted or moved. */
+  exists?: boolean;
 }
 
 export interface TaskRecord {
@@ -128,11 +130,11 @@ export interface MergePayload {
 /** POST /api/pdf/images-to-pdf */
 export interface ImagesToPdfPayload {
   items: { id: string; rotation: number }[];
-  page_size: string;                       // a4 | a3 | a5 | letter | legal | image
-  orientation: string;                     // auto | portrait | landscape
+  page_size: string; // a4 | a3 | a5 | letter | legal | image
+  orientation: string; // auto | portrait | landscape
   margin_mm: number;
   image_dpi: number;
-  jpeg_quality: number | null;             // null = preserve original bytes
+  jpeg_quality: number | null; // null = preserve original bytes
   output_name?: string | null;
 }
 
@@ -140,7 +142,7 @@ export interface ImagesToPdfPayload {
 export interface EditPagesPayload {
   file_id: string;
   order: number[];
-  rotate: Record<string, number>;          // page number (as string) -> degrees
+  rotate: Record<string, number>; // page number (as string) -> degrees
   output_name?: string | null;
 }
 
@@ -148,17 +150,17 @@ export interface EditPagesPayload {
 export interface SplitPayload {
   file_id: string;
   mode: "extract" | "ranges" | "every_n";
-  ranges?: string | null;                  // mode=ranges: "1-3,5,8-10"
-  every_n?: number | null;                 // mode=every_n
-  pages?: string | null;                   // mode=extract: "1,2,5-8" (empty = all)
+  ranges?: string | null; // mode=ranges: "1-3,5,8-10"
+  every_n?: number | null; // mode=every_n
+  pages?: string | null; // mode=extract: "1,2,5-8" (empty = all)
   output_name?: string | null;
 }
 
 /** POST /api/pdf/compress */
 export interface CompressPayload {
   file_id: string;
-  quality: number;                         // 10-95
-  dpi_cap: number;                         // 36-300
+  quality: number; // 10-95
+  dpi_cap: number; // 36-300
 }
 
 /** POST /api/pdf/extract-images */
@@ -178,12 +180,12 @@ export interface ToImagesPayload {
 export interface MediaDownloadPayload {
   url: string;
   mode: "video" | "audio";
-  video_format?: string;                   // mp4 | best (video mode)
-  audio_format?: string;                   // mp3 | m4a | best (audio mode)
-  audio_quality?: number | null;           // kbps: 320/256/192/128/96/64
-  height?: number | null;                  // resolution cap (video mode)
-  prefer_h264?: boolean;                   // video mode
-  format_ids?: { video: string; audio: string } | null;  // explicit ids (advanced)
+  video_format?: string; // mp4 | best (video mode)
+  audio_format?: string; // mp3 | m4a | best (audio mode)
+  audio_quality?: number | null; // kbps: 320/256/192/128/96/64
+  height?: number | null; // resolution cap (video mode)
+  prefer_h264?: boolean; // video mode
+  format_ids?: { video: string; audio: string } | null; // explicit ids (advanced)
   video_id: string;
   title: string;
   is_live: boolean;

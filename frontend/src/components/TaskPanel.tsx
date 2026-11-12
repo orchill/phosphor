@@ -1,9 +1,20 @@
-import { CheckCircle2, ChevronDown, ChevronRight, FolderOutput, Loader2, RotateCw, X, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  FolderOutput,
+  Loader2,
+  RotateCw,
+  X,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cancelTask, downloadUrl, getTaskLog, openOutputFolder } from "../api";
 import { emitEvent } from "../events";
 import { useToast } from "../ctx";
 import { useTask } from "../hooks";
+import { useTasks } from "../tasks";
 import { TaskRecord, humanSize } from "../types";
 import { BADGE, BTN_DANGER, BTN_GHOST, BTN_SECONDARY, CARD, DOT, SECTION_LABEL, STATUS_TONES } from "../ui";
 
@@ -19,6 +30,12 @@ const KIND_LABELS: Record<string, string> = {
   media_audio: "Audio download",
 };
 
+/** File extension for the badge ("report.PDF" -> "pdf"; no extension -> "file"). */
+function extOf(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i > 0 && i < name.length - 1 ? name.slice(i + 1, i + 6).toLowerCase() : "file";
+}
+
 export function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`${BADGE} ${STATUS_TONES[status] ?? STATUS_TONES.queued}`}>
@@ -28,16 +45,21 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ProgressBar({ value, indeterminate, staged }: {
-  value: number | null; indeterminate: boolean; staged: boolean;
+/** 2px bar with a soft accent glow in dark mode (see .bar-glow in index.css).
+ *  The shimmer is only used while progress is genuinely unknown. */
+function ProgressBar({
+  value,
+  indeterminate,
+  staged,
+}: {
+  value: number | null;
+  indeterminate: boolean;
+  staged: boolean;
 }) {
-  const fill = indeterminate
-    ? "w-1/3 animate-progress"
-    : "";
   if (indeterminate) {
     return (
-      <div className="h-1 w-full overflow-hidden rounded-none bg-elev">
-        <div className={`h-full ${fill} rounded-none bg-acc`} />
+      <div className="h-0.5 w-full overflow-hidden bg-elev" role="progressbar" aria-label="Progress unknown">
+        <div className="bar-glow h-full w-1/3 animate-progress bg-acc" />
       </div>
     );
   }
@@ -48,12 +70,17 @@ function ProgressBar({ value, indeterminate, staged }: {
     const proc = Math.max(0, Math.min((value - 0.92) / 0.08, 1));
     return (
       <div>
-        <div className="flex gap-1" role="progressbar"
-          aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
-          <div className="h-1 flex-[92] overflow-hidden rounded-none bg-elev">
-            <div className="h-full bg-acc transition-[width] duration-300" style={{ width: `${dl * 100}%` }} />
+        <div
+          className="flex gap-1"
+          role="progressbar"
+          aria-valuenow={Math.round(value * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div className="h-0.5 flex-[92] overflow-hidden bg-elev">
+            <div className="bar-glow h-full bg-acc transition-[width] duration-300" style={{ width: `${dl * 100}%` }} />
           </div>
-          <div className="h-1 flex-[8] overflow-hidden rounded-none bg-elev">
+          <div className="h-0.5 flex-[8] overflow-hidden bg-elev">
             <div className="h-full bg-info transition-[width] duration-300" style={{ width: `${proc * 100}%` }} />
           </div>
         </div>
@@ -65,9 +92,9 @@ function ProgressBar({ value, indeterminate, staged }: {
     );
   }
   return (
-    <div className="h-1 w-full overflow-hidden rounded-none bg-elev">
+    <div className="h-0.5 w-full overflow-hidden bg-elev">
       <div
-        className="h-full rounded-none bg-acc transition-[width] duration-300"
+        className="bar-glow h-full bg-acc transition-[width] duration-300"
         style={{ width: `${Math.round((value ?? 0) * 100)}%` }}
         role="progressbar"
         aria-valuenow={Math.round((value ?? 0) * 100)}
@@ -82,7 +109,10 @@ function LogViewer({ taskId }: { taskId: string }) {
   const [lines, setLines] = useState<string[] | null>(null);
   const [open, setOpen] = useState(false);
   const toggle = async () => {
-    if (open) { setOpen(false); return; }
+    if (open) {
+      setOpen(false);
+      return;
+    }
     try {
       const r = await getTaskLog(taskId);
       setLines(r.log.slice(-120));
@@ -108,13 +138,31 @@ function LogViewer({ taskId }: { taskId: string }) {
   );
 }
 
-export default function TaskPanel({ taskId, onDismiss, onRetry }: {
+export default function TaskPanel({
+  taskId,
+  onDismiss,
+  onRetry,
+}: {
   taskId: string | null;
   onDismiss?: () => void;
   onRetry?: () => void;
 }) {
-  const task = useTask(taskId);
+  const { task, error: pollError, gone } = useTask(taskId);
+  const { track, untrack } = useTasks();
   const toast = useToast();
+
+  // every panel registers its task with the global tray (F1)
+  useEffect(() => {
+    if (taskId) track(taskId);
+  }, [taskId, track]);
+  // dismissing a panel also removes the task from the tray
+  const dismiss =
+    onDismiss && taskId
+      ? () => {
+          untrack(taskId);
+          onDismiss();
+        }
+      : onDismiss;
   const [cancelling, setCancelling] = useState(false);
   const reportedStatus = useRef<string | null>(null);
 
@@ -124,11 +172,27 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
     if (reportedStatus.current === task.status) return;
     reportedStatus.current = task.status;
     if (task.status === "completed") emitEvent("info", `${task.title} - completed`, true);
-    else if (task.status === "failed") emitEvent("error", `${task.title} - failed: ${task.error || "unknown error"}`, true);
+    else if (task.status === "failed")
+      emitEvent("error", `${task.title} - failed: ${task.error || "unknown error"}`, true);
     else if (task.status === "cancelled") emitEvent("warning", `${task.title} - cancelled`, true);
   }, [task]);
 
-  if (!taskId || !task) return null;
+  if (!taskId) return null;
+  if (gone) {
+    return (
+      <div className={`${CARD} flex items-center gap-2 border-warn/50 p-4`} data-testid="task-gone" role="alert">
+        <p className="min-w-0 flex-1 text-sm text-warn">
+          This task no longer exists on the server (it was probably restarted). {pollError}
+        </p>
+        {dismiss && (
+          <button onClick={dismiss} className={BTN_GHOST} aria-label="Dismiss panel">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+    );
+  }
+  if (!task) return null;
 
   const running = task.status === "running" || task.status === "queued";
   const indeterminate = task.status === "running" && task.progress == null;
@@ -148,17 +212,26 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
 
   return (
     <div className={`${CARD} p-4`} data-testid="task-panel">
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
+      {/* wraps on narrow screens so the title and meta keep a usable width */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-[12rem] flex-1">
           <p className="truncate font-mono text-sm font-semibold text-ink">{task.title}</p>
           <p className="font-mono text-[0.6875rem] text-ink3">
             {kindLabel} · #{task.id.slice(0, 8)}
             {task.finished_at && task.started_at && (
-              <> · finished in {Math.max(0, (new Date(task.finished_at).getTime() - new Date(task.started_at).getTime()) / 1000).toFixed(1)}s</>
+              <>
+                {" "}
+                · finished in{" "}
+                {Math.max(
+                  0,
+                  (new Date(task.finished_at).getTime() - new Date(task.started_at).getTime()) / 1000,
+                ).toFixed(1)}
+                s
+              </>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           {running ? (
             <Loader2 size={16} className="animate-spin text-info" aria-hidden />
           ) : task.status === "completed" ? (
@@ -169,26 +242,36 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           <StatusBadge status={task.status} />
           {running && (
             <button onClick={doCancel} disabled={cancelling} className={BTN_DANGER} aria-label="Cancel task">
-              <X size={14} /> Cancel
+              <X size={14} /> cancel
             </button>
           )}
-          {onDismiss && !running && (
-            <button onClick={onDismiss} className={BTN_GHOST} aria-label="Dismiss panel"><X size={14} /></button>
+          {dismiss && !running && (
+            <button onClick={dismiss} className={BTN_GHOST} aria-label="Dismiss panel">
+              <X size={14} />
+            </button>
           )}
         </div>
       </div>
 
+      {pollError && (
+        <p className="mt-2 rounded-sm border border-warn/40 bg-warn/10 px-3 py-1.5 text-xs text-warn" role="status">
+          Lost contact with the server ({pollError}) - retrying...
+        </p>
+      )}
+
       {running && (
         <div className="mt-3">
-          <ProgressBar
-            value={task.progress}
-            indeterminate={indeterminate}
-            staged={task.kind.startsWith("media")}
-          />
+          <ProgressBar value={task.progress} indeterminate={indeterminate} staged={task.kind.startsWith("media")} />
           {/* terminal-style stage line: real backend progress (speed / ETA
               where yt-dlp reports them) */}
-          <p className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[0.6875rem] text-info">
-            <span className="text-ink3" aria-hidden>▸ </span>{task.stage}
+          <p
+            className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[0.6875rem] text-info"
+            title={task.stage}
+          >
+            <span className="text-accText" aria-hidden>
+              ❯{" "}
+            </span>
+            <span className="whitespace-pre">{task.stage}</span>
           </p>
         </div>
       )}
@@ -201,28 +284,42 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
               {task.result.note}
             </p>
           )}
-          {(task.result?.outputs || []).length > 0 && (
-            <p className={`${SECTION_LABEL} mt-3`}>output</p>
-          )}
+          {(task.result?.outputs || []).length > 0 && <p className={`${SECTION_LABEL} mt-3`}>output</p>}
           <ul className="mt-1.5 space-y-1.5">
             {(task.result?.outputs || []).map((o) => (
               <li key={o.path} className="flex flex-wrap items-center gap-2 rounded-sm bg-elev/60 px-3 py-2">
-                <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink" title={o.name}>{o.name}</span>
+                <span className="rounded-sm border border-line bg-base px-1.5 py-0.5 font-mono text-[0.625rem] font-semibold uppercase text-accText">
+                  {extOf(o.name)}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink" title={o.name}>
+                  {o.name}
+                </span>
                 <span className="font-mono text-[0.6875rem] text-ink3">{humanSize(o.size)}</span>
-                <a href={downloadUrl(o.path)} className={BTN_SECONDARY} download>
-                  Download
-                </a>
+                {o.exists === false ? (
+                  <span className="font-mono text-[0.6875rem] text-ink3">file missing</span>
+                ) : (
+                  <>
+                    <a href={downloadUrl(o.path)} className={`${BTN_SECONDARY} px-2.5 py-1 text-xs`} download>
+                      <Download size={13} aria-hidden /> download
+                    </a>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await openOutputFolder();
+                        } catch (e: any) {
+                          toast.push("error", e.message);
+                        }
+                      }}
+                      className={`${BTN_GHOST} px-2.5 py-1 text-xs`}
+                      title="Open the output folder"
+                    >
+                      <FolderOutput size={13} aria-hidden /> show in folder
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ul>
-          <button
-            onClick={async () => {
-              try { await openOutputFolder(); } catch (e: any) { toast.push("error", e.message); }
-            }}
-            className={`${BTN_GHOST} mt-2 text-xs`}
-          >
-            <FolderOutput size={14} /> Open output folder
-          </button>
         </div>
       )}
 
@@ -232,14 +329,16 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           <p className="mt-1 whitespace-pre-wrap break-words font-mono text-[0.6875rem] text-bad/90">{task.error}</p>
           {onRetry && (
             <button onClick={onRetry} className={`${BTN_SECONDARY} mt-2`}>
-              <RotateCw size={13} aria-hidden /> Retry
+              <RotateCw size={13} aria-hidden /> retry
             </button>
           )}
         </div>
       )}
 
       {(task.status === "failed" || (task.status === "completed" && task.kind.startsWith("media"))) && (
-        <div className="mt-3"><LogViewer taskId={task.id} /></div>
+        <div className="mt-3">
+          <LogViewer taskId={task.id} />
+        </div>
       )}
     </div>
   );

@@ -8,7 +8,7 @@ async function expectCompletedDownload(page: import("@playwright/test").Page) {
     timeout: 45_000,
   });
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Download" }).first().click();
+  await page.getByRole("link", { name: "download" }).first().click();
   const download = await downloadPromise;
   return fs.readFileSync(await download.path());
 }
@@ -52,7 +52,8 @@ test.describe("PDF tools end-to-end", () => {
   test("compress completes and delivers a downloadable PDF", async ({ page }) => {
     await page.goto("/#/pdf/compress");
     await page.locator('input[type="file"]').setInputFiles(path.join(FIXTURES, "b.pdf"));
-    await page.getByRole("button", { name: "Compress", exact: true }).click();
+    // Scoped to <main>: the sidebar also has a "compress" nav button.
+    await page.locator("main").getByRole("button", { name: "compress", exact: true }).click();
     const bytes = await expectCompletedDownload(page);
     expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
     // The fallback path (original delivered when recompression cannot shrink)

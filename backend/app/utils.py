@@ -1,13 +1,16 @@
 """Small shared helpers: ids, timestamps, filename sanitation, formatting."""
 from __future__ import annotations
 
+import asyncio
 import os
 import re
+import shutil
 import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 
 def new_id() -> str:
@@ -43,6 +46,67 @@ def unique_path(path: Path) -> Path:
     raise RuntimeError("Could not allocate a free filename in the output directory")
 
 
+def file_entry(path: Path) -> dict:
+    """The `outputs[]` record the UI uses to offer a download."""
+    return {"name": path.name, "path": str(path), "size": path.stat().st_size,
+            "url": f"/api/download?path={quote(path.as_posix())}"}
+
+
+def _move_file(src: Path, dst: Path) -> None:
+    """Move a file, replacing `dst`; falls back to copy for cross-device moves
+    (the task temp dir and the output dir can be on different drives)."""
+    try:
+        os.replace(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+        src.unlink()
+
+
+def publish_outputs(result: dict | None, staging: Path, out_dir: Path) -> dict:
+    """Move a finished task's staged output files into `out_dir`.
+
+    Runners write into a private staging dir, so an aborted task never leaves
+    partial files in the user's output folder. Each file gets a free name
+    (`name (1).ext` if taken), is reserved atomically, and the `outputs`
+    entries are rewritten to point at the final location. On failure
+    everything already moved is removed again.
+    """
+    result = dict(result or {})
+    outputs = list(result.get("outputs") or [])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    moved: list[Path] = []
+    final: list[dict] = []
+    try:
+        for out in outputs:
+            src = Path(out.get("path", ""))
+            if not src.is_file():
+                final.append(out)       # let the task wrapper report it
+                continue
+            dest = None
+            for _ in range(50):
+                cand = unique_path(out_dir / src.name)
+                try:
+                    cand.touch(exist_ok=False)      # reserve the name
+                except FileExistsError:
+                    continue
+                dest = cand
+                break
+            if dest is None:
+                raise RuntimeError("Could not allocate a free filename in the output directory")
+            moved.append(dest)
+            _move_file(src, dest)
+            final.append({**out, **file_entry(dest)})
+    except Exception:
+        for p in moved:
+            try:
+                p.unlink()
+            except OSError:
+                pass
+        raise
+    result["outputs"] = final
+    return result
+
+
 def atomic_write_text(path: Path, text: str) -> None:
     """Write text to `path` atomically (tmp file in the same dir + os.replace).
 
@@ -54,34 +118,104 @@ def atomic_write_text(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+async def remove_tree(path: Path, keep_root: bool = False) -> None:
+    """Delete a directory tree, retrying briefly: on Windows a killed
+    process keeps its file handles for a moment."""
+    for attempt in range(6):
+        if keep_root and path.exists():
+            for child in path.iterdir():
+                try:
+                    if child.is_dir():
+                        shutil.rmtree(child, ignore_errors=True)
+                    else:
+                        child.unlink()
+                except OSError:
+                    pass
+            if not any(path.iterdir()):
+                return
+        else:
+            shutil.rmtree(path, ignore_errors=True)
+            if not path.exists():
+                return
+        await asyncio.sleep(0.05 * (attempt + 1))
+
+
+def popen_group_kwargs() -> dict:
+    """Spawn kwargs that make a child the leader of its own process group.
+
+    On POSIX this lets `kill_process_tree` signal the whole group (yt-dlp plus
+    the ffmpeg it spawns) with one `killpg`. Windows needs nothing: `taskkill
+    /T` walks the tree by parent pid.
+    """
+    return {} if sys.platform == "win32" else {"start_new_session": True}
+
+
+def _is_alive(proc) -> bool:
+    """True while `proc` has not exited.
+
+    Handles both `subprocess.Popen` (has `poll()`) and
+    `asyncio.subprocess.Process` (no `poll()`; `returncode` is None until the
+    loop has reaped it).
+    """
+    poll = getattr(proc, "poll", None)
+    if callable(poll):
+        return poll() is None
+    return getattr(proc, "returncode", None) is None
+
+
+def _signal_posix_tree(proc, sig: int) -> None:
+    """Signal the process group when `proc` leads one, else just `proc`."""
+    import os as _os
+    try:
+        pgid = _os.getpgid(proc.pid)
+    except OSError:
+        return  # already gone
+    # Never signal our own group: only a child started with a new session
+    # (see `popen_group_kwargs`) is its own leader.
+    if pgid == proc.pid and pgid != _os.getpgrp():
+        try:
+            _os.killpg(pgid, sig)
+        except OSError:
+            pass
+    else:
+        try:
+            _os.kill(proc.pid, sig)
+        except OSError:
+            pass
+
+
 def kill_process_tree(proc) -> None:
     """Terminate a spawned subprocess together with its children.
 
     Media tools nest: yt-dlp (a python process) spawns ffmpeg. Killing only
-    the parent would leave the child running. On Windows `taskkill /T`
-    handles the whole tree; on POSIX the plain terminate/kill pair is kept
-    (no process group is created for children today).
+    the parent would leave the child running and holding file locks.
+    - Windows: `taskkill /T /F` handles the whole tree.
+    - POSIX: the child is started in its own session (`popen_group_kwargs`),
+      so the whole process group gets SIGTERM and then SIGKILL.
+    Works for `subprocess.Popen` and `asyncio.subprocess.Process` alike.
     """
     if proc is None:
         return
     try:
-        if proc.poll() is None:
-            if sys.platform == "win32":
-                try:
-                    subprocess.run(
-                        ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
-                        capture_output=True, timeout=10, check=False)
-                except (OSError, subprocess.TimeoutExpired):
-                    pass
-            else:
-                try:
-                    proc.terminate()
-                except OSError:
-                    pass
+        if not _is_alive(proc):
+            return
     except Exception:
-        pass
+        return
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                capture_output=True, timeout=10, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    else:
+        import signal
+        _signal_posix_tree(proc, signal.SIGTERM)
+        # No grace period: this runs on the event loop and the task's output
+        # is discarded anyway, so go straight on to SIGKILL for the group.
+        _signal_posix_tree(proc, signal.SIGKILL)
     try:
-        if proc.poll() is None:
+        if _is_alive(proc):
             proc.kill()
     except Exception:
         pass

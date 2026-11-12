@@ -15,6 +15,7 @@ export default {
         DEFAULT: "4px", // card corners; controls use rounded-sm (2px)
       },
       fontFamily: {
+        // opt-in only (`font-sans`): the app body and every control use `mono`
         sans: [
           "Segoe UI", "system-ui", "-apple-system", "Roboto", "Ubuntu",
           "Cantarell", "Noto Sans", "sans-serif", "Helvetica", "Arial",
@@ -43,6 +44,9 @@ export default {
         ok: token("ok"),            // success
         warn: token("warn"),        // warning
         bad: token("bad"),          // danger
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
       },
       keyframes: {
         progress: {

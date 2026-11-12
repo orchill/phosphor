@@ -245,3 +245,85 @@ def test_extract_images_none_found_fails_clearly(client):
     task = run_pdf_task(client, "/api/pdf/extract-images", {"file_id": meta["id"]})
     assert task["status"] == "failed"
     assert "No embedded raster images" in task["error"]
+
+
+# ------------------------------------------------- cancellation (B2 / B4)
+def _wait_status(client, task_id: str, wanted: set[str], timeout: float = 30.0) -> dict:
+    import time
+    deadline = time.time() + timeout
+    data: dict = {}
+    while time.time() < deadline:
+        data = client.get(f"/api/tasks/{task_id}").json()
+        if data["status"] in wanted:
+            return data
+        time.sleep(0.05)
+    raise TimeoutError(f"task {task_id} never reached {wanted}: {data.get('status')}")
+
+
+def test_cancel_pdf_task_leaves_no_output_and_restores_concurrency(client):
+    """B4: cancelling a thread-based PDF task must wait for the worker, leave
+    no partial file in the output dir and give the semaphore slot back."""
+    from backend.app.config import get_config
+    out_dir = get_config().output_dir
+    before = {p.name for p in out_dir.iterdir()} if out_dir.exists() else set()
+    tm = client.app.state.tm
+    free_slots = tm.sem._value
+
+    big = make_pdf(TMP / "fifty.pdf", 50, "BIG")
+    meta = upload_file(client, "fifty.pdf", big.read_bytes())
+    r = client.post("/api/pdf/to-images",
+                    json={"file_id": meta["id"], "format": "png", "dpi": 600})
+    assert r.status_code == 200, r.text
+    tid = r.json()["task_id"]
+
+    _wait_status(client, tid, {"running"})
+    assert client.delete(f"/api/tasks/{tid}").status_code == 409   # B2: refused...
+    assert client.post(f"/api/tasks/{tid}/cancel").status_code == 200  # ...still cancellable
+
+    task = _wait_status(client, tid, {"cancelled", "completed", "failed"})
+    assert task["status"] == "cancelled", task
+    after = {p.name for p in out_dir.iterdir()}
+    assert after == before, f"cancelled task left files behind: {after - before}"
+    assert tm.sem._value == free_slots
+    assert client.delete(f"/api/tasks/{tid}").status_code == 200     # removable once finished
+
+
+# ------------------------------------------- thumbnails / EXIF / labels
+def test_pdf_thumbnail_is_really_jpeg(client):
+    """B8: the endpoint says image/jpeg, so the bytes must be JPEG (not PNG)."""
+    meta = upload_file(client, "thumb.pdf", make_pdf(TMP / "thumb.pdf", 2).read_bytes())
+    r = client.get(f"/api/pdf/{meta['id']}/page/1/thumbnail?width=200")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/jpeg"
+    assert r.content[:3] == b"\xff\xd8\xff"
+
+
+def test_images_to_pdf_applies_exif_orientation(client):
+    """B14: a phone JPEG with Orientation=6 (stored landscape, shown portrait)
+    must come out upright: portrait page, upright embedded pixels."""
+    exif = Image.Exif()
+    exif[0x0112] = 6
+    buf = io.BytesIO()
+    Image.new("RGB", (300, 200), (200, 30, 30)).save(buf, format="JPEG", exif=exif.tobytes())
+    meta = upload_file(client, "phone.jpg", buf.getvalue())
+    task = run_pdf_task(client, "/api/pdf/images-to-pdf",
+                        {"items": [{"id": meta["id"], "rotation": 0}],
+                         "page_size": "a4", "orientation": "auto", "margin_mm": 0})
+    assert task["status"] == "completed", task
+    doc = fitz.open(stream=_download(client, task), filetype="pdf")
+    try:
+        page = doc[0]
+        assert page.rect.height > page.rect.width, "upright photo must give a portrait page"
+        info = doc.extract_image(page.get_images(full=True)[0][0])
+        assert (info["width"], info["height"]) == (200, 300)
+    finally:
+        doc.close()
+
+
+def test_split_extract_label_does_not_claim_a_contiguous_range(client):
+    """B15: pages 1 and 3 are 'pages 1, 3', never 'pages 1-3'."""
+    meta = upload_file(client, "lbl.pdf", make_pdf(TMP / "lbl.pdf", 3).read_bytes())
+    task = run_pdf_task(client, "/api/pdf/split",
+                        {"file_id": meta["id"], "mode": "extract", "pages": "1,3"})
+    assert task["status"] == "completed", task
+    assert task["result"]["info"]["parts"][0]["label"] == "pages 1, 3"

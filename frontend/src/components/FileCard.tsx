@@ -6,19 +6,24 @@ interface Props {
   file: UploadedFile;
   onRemove?: () => void;
   draggable?: boolean;
-  index?: number;
   badge?: string;
+  /** Reorder handlers (see useReorder). They live on the <li> itself so the
+   *  parent <ul> only ever contains list items. */
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: () => void;
 }
 
-export default function FileCard({ file, onRemove, draggable, index, badge }: Props) {
+export default function FileCard({ file, onRemove, draggable, badge, onDragStart, onDragOver, onDrop }: Props) {
   return (
     <li
       draggable={draggable}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
-        (e.currentTarget as HTMLElement).dataset.index = String(index);
+        onDragStart?.();
       }}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(e) => (onDragOver ?? ((ev) => ev.preventDefault()))(e)}
+      onDrop={onDrop}
       className="flex items-center gap-3 rounded border border-line bg-panel p-2.5"
     >
       {draggable && (
@@ -42,11 +47,19 @@ export default function FileCard({ file, onRemove, draggable, index, badge }: Pr
           {file.kind.toUpperCase()} - {humanSize(file.size)}
           {file.kind === "pdf" && ` - ${file.pages} pages`}
           {file.kind === "image" && file.width ? ` - ${file.width}x${file.height}` : ""}
-          {badge && <span className="ml-1 rounded-sm bg-acc/10 px-1.5 py-0.5 text-[0.625rem] font-semibold text-accText">{badge}</span>}
+          {badge && (
+            <span className="ml-1 rounded-sm bg-acc/10 px-1.5 py-0.5 text-[0.625rem] font-semibold text-accText">
+              {badge}
+            </span>
+          )}
         </p>
       </div>
       {onRemove && (
-        <button onClick={onRemove} className="rounded-sm p-1.5 text-ink3 hover:bg-bad/10 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Remove ${file.name}`}>
+        <button
+          onClick={onRemove}
+          className="rounded-sm p-1.5 text-ink3 hover:bg-bad/10 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+          aria-label={`Remove ${file.name}`}
+        >
           <X size={15} />
         </button>
       )}

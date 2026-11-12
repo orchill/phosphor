@@ -1,4 +1,4 @@
-# PDF & Media Studio - backend dependencies
+# phosphor - backend dependencies
 # Python 3.10+ required (developed and tested on 3.13)
 
 fastapi>=0.115,<1.0

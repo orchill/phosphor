@@ -25,8 +25,9 @@ yt-dlp — everything processed locally, nothing sent to a cloud.
 
 **Everything else:**
 
-- Task queue with progress, cancellation and re-downloadable history
-- Dark (default) and light themes, `Ctrl+K` command palette, keyboard-friendly
+- Task queue with progress, cancellation and re-downloadable history; a global **task tray** in the header follows running tasks from any page
+- Dark (default) and light themes, accent presets (green / amber / ice) and an optional CRT effect (Settings → Appearance)
+- `Ctrl+K` command palette, keyboard-friendly
 - No accounts, no telemetry, no cloud — files never leave this computer
 
 | PDF Tools | Media Downloader |
@@ -96,12 +97,17 @@ be edited live in **Settings** (host/port need a restart):
 ## Testing
 
 ```bat
-.venv\Scripts\python.exe -m pytest      :: backend (83 tests)
+.venv\Scripts\python.exe -m pytest      :: backend (~106 tests)
 cd frontend && npm run build            :: type-check + production build
-cd frontend && npm run e2e              :: Playwright, real browser (19 tests, offline)
+cd frontend && npm run e2e              :: Playwright, real browser (35 tests, offline)
 ```
 
 E2E details: [frontend/e2e/README.md](frontend/e2e/README.md).
+
+```bat
+cd frontend && npm run shots            :: screenshot harness -> frontend/e2e/.shots/ (not part of e2e)
+cd frontend && npm run format           :: Prettier (format:check to verify)
+```
 
 ## Known limitations
 

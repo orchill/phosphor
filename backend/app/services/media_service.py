@@ -14,13 +14,16 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from urllib.parse import quote
 
 from ..config import Config
-from ..security import ValidationError
+from ..security import ValidationError, ensure_within
 from ..tasks import TaskCancelled, TaskRecord
+from ..utils import (fmt_duration, human_size, kill_process_tree,
+                     popen_group_kwargs, remove_tree)
 
 # Stable public video ("Me at the zoo") used to verify cookie sign-in works.
 TEST_VIDEO_URL = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
@@ -129,8 +132,45 @@ def cookie_args(cfg: Config) -> list[str]:
 
 
 # ------------------------------------------------------------- detection
-def find_ffmpeg(cfg: Config) -> tuple[Path | None, str]:
-    """Locate ffmpeg: configured path first, then PATH. Returns (path, version)."""
+# Tool probes spawn subprocesses (`ffmpeg -version`, `yt-dlp --version`), so
+# results are cached per configured path for a few minutes. Passing
+# refresh=True (Settings -> diagnostics) or changing the path re-probes.
+_TOOL_TTL = 300.0
+_tool_cache: dict[tuple, tuple[float, object]] = {}
+
+
+def clear_tool_cache() -> None:
+    _tool_cache.clear()
+
+
+def _cache_get(key: tuple, refresh: bool):
+    if refresh:
+        return None
+    hit = _tool_cache.get(key)
+    if hit and time.monotonic() - hit[0] < _TOOL_TTL:
+        return hit[1]
+    return None
+
+
+def find_ffmpeg(cfg: Config, refresh: bool = False) -> tuple[Path | None, str]:
+    """Locate ffmpeg: configured path first, then PATH. Returns (path, version).
+
+    Blocking (runs `ffmpeg -version` on a cache miss): call it through
+    `asyncio.to_thread` from async code.
+    """
+    key = ("ffmpeg", str(cfg.get("ffmpeg_path") or ""))
+    hit = _cache_get(key, refresh)
+    if hit is not None:
+        cached_path = hit[0]
+        if cached_path is not None and (cached_path.is_file() or shutil.which(str(cached_path))):
+            return hit  # type: ignore[return-value]
+    found = _find_ffmpeg_uncached(cfg)
+    if found[0] is not None:          # never cache a miss: installing ffmpeg must just work
+        _tool_cache[key] = (time.monotonic(), found)
+    return found
+
+
+def _find_ffmpeg_uncached(cfg: Config) -> tuple[Path | None, str]:
     candidates: list[str] = []
     if cfg.get("ffmpeg_path"):
         candidates.append(cfg.get("ffmpeg_path"))
@@ -164,13 +204,37 @@ def resolve_ytdlp_cmd(cfg: Config) -> list[str]:
     return [sys.executable, "-m", "yt_dlp"]
 
 
-def ytdlp_version(cfg: Config) -> str:
+def ytdlp_source(cfg: Config) -> str:
+    """Where yt-dlp comes from: a usable custom path, or the python module."""
+    custom = (cfg.get("ytdlp_path") or "").strip()
+    if not custom:
+        return "python module"
+    if resolve_ytdlp_cmd(cfg)[0] != sys.executable:
+        return "custom path"
+    return "python module (custom path not found)"
+
+
+def ytdlp_probe(cfg: Config, refresh: bool = False) -> tuple[bool, str]:
+    """(works, version) of the yt-dlp that downloads will actually use.
+
+    Blocking: call through `asyncio.to_thread` from async code.
+    """
+    key = ("ytdlp", str((cfg.get("ytdlp_path") or "").strip()))
+    hit = _cache_get(key, refresh)
+    if hit is not None:
+        return hit  # type: ignore[return-value]
     try:
         out = subprocess.run(resolve_ytdlp_cmd(cfg) + ["--version"],
                              capture_output=True, text=True, timeout=20)
-        return (out.stdout or "").strip() or "unknown"
+        result = (out.returncode == 0, (out.stdout or "").strip() or "unknown")
     except Exception:
-        return "not found"
+        result = (False, "not found")
+    _tool_cache[key] = (time.monotonic(), result)
+    return result
+
+
+def ytdlp_version(cfg: Config) -> str:
+    return ytdlp_probe(cfg)[1]
 
 
 def require_ffmpeg(cfg: Config, purpose: str) -> Path:
@@ -230,13 +294,23 @@ async def _run_ytdlp(args: list[str], timeout: float) -> tuple[int, bytes, bytes
     """Run yt-dlp and return (returncode, stdout, stderr)."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            **popen_group_kwargs())
     except OSError as exc:
         raise RuntimeError(f"Could not start yt-dlp: {exc}")
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        proc.kill()
+    except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
+        # Kill the whole tree and REAP it: a bare kill() leaves a zombie and
+        # "Event loop is closed" warnings at shutdown. Also covers the caller
+        # being cancelled (e.g. the browser tab closing mid-request).
+        kill_process_tree(proc)
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=5)
+        except Exception:
+            pass
+        if isinstance(exc, asyncio.CancelledError):
+            raise
         raise RuntimeError(f"yt-dlp timed out after {timeout:.0f}s")
     return proc.returncode or 0, stdout or b"", stderr or b""
 
@@ -295,6 +369,112 @@ async def fetch_info(cfg: Config, url: str) -> dict:
 
 
 # ------------------------------------------------------------- download
+# ----------------------------------------------------------- progress
+_NA = ("NA", "None", "", "null")
+_FORMATS_RE = re.compile(r"Downloading \d+ format\(s\): (\S+)")
+# Downloading takes the first 92 % of the bar; post-processing the rest.
+_DL_SHARE = 0.92
+
+
+def _num(raw: str | None) -> float | None:
+    """yt-dlp progress field -> float, or None for NA / garbage."""
+    if raw is None or raw.strip() in _NA:
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    return value if value == value and value >= 0 else None   # drops NaN / negatives
+
+
+def format_speed(raw: str | None) -> str | None:
+    """`2345678.91` (bytes/s) -> `2.2 MB/s`."""
+    value = _num(raw)
+    return f"{human_size(value)}/s" if value is not None else None
+
+
+def format_eta(raw: str | None) -> str | None:
+    """`72` (seconds) -> `1:12`."""
+    value = _num(raw)
+    return fmt_duration(value) if value is not None else None
+
+
+class StreamTracker:
+    """Maps yt-dlp's per-stream progress onto one monotonic overall bar.
+
+    For `bv*+ba` yt-dlp downloads the video and the audio stream one after
+    the other and each goes 0 -> 100 %. A byte counter that drops below the
+    previous one means a new stream started. Stream k of n fills the range
+    [k/n, (k+1)/n] of the download share, and the result never moves back.
+    """
+
+    def __init__(self, expected: int = 1, labels: tuple[str, ...] = ()):
+        self.expected = max(1, expected)
+        self.labels = labels
+        self.index = 0
+        self.last_done = 0.0
+        self.progress = 0.0
+
+    def set_expected(self, n: int) -> None:
+        self.expected = max(self.expected, n)
+
+    @property
+    def count(self) -> int:
+        return max(self.expected, self.index + 1)
+
+    def update(self, done: float | None, total: float | None) -> tuple[float | None, float | None]:
+        """Returns (overall progress or None if unknown, stream percent)."""
+        if done is None:
+            return None, None
+        if done + 1 < self.last_done:        # byte counter reset -> next stream
+            self.index += 1
+        self.last_done = done
+        if not total:
+            return None, None
+        frac = max(0.0, min(1.0, done / total))
+        overall = (self.index + frac) / self.count * _DL_SHARE
+        self.progress = max(self.progress, overall)
+        return self.progress, frac * 100.0
+
+    def label(self) -> str:
+        if self.count < 2:
+            return ""
+        name = self.labels[self.index] if self.index < len(self.labels) else ""
+        return f"stream {self.index + 1}/{self.count}" + (f" ({name})" if name else "")
+
+
+def _stream_plan(params: dict) -> tuple[int, tuple[str, ...]]:
+    """How many streams a download is expected to fetch, and their labels."""
+    if params.get("mode") == "audio":
+        return 1, ("audio",)
+    fmt_ids = params.get("format_ids") or {}
+    if fmt_ids and not str(fmt_ids.get("audio") or "").strip():
+        return 1, ("video",)
+    return 2, ("video", "audio")
+
+
+def download_stage(pct: float | None, done: float | None, speed: str | None,
+                   eta: str | None, stream_label: str = "") -> str:
+    """Terminal-style stage line: `[download] 45.2%  2.2 MB/s  eta 0:12  stream 1/2`.
+
+    The UI prefixes the prompt glyph; fields are separated by two spaces so the
+    line reads like yt-dlp's own console output.
+    """
+    speed_txt = format_speed(speed)
+    eta_txt = format_eta(eta)
+    parts = ["[download]"]
+    parts.append(f"{pct:.1f}%" if pct is not None else f"{(done or 0) / 1e6:.1f} MB")
+    if speed_txt:
+        parts.append(speed_txt)
+    if eta_txt:
+        parts.append(f"eta {eta_txt}")
+    if pct is None:
+        parts.append("(size unknown)")
+    if stream_label:
+        parts.append(stream_label)
+    return "  ".join(parts)
+
+
 def _build_format_args(params: dict, info: dict | None) -> list[str]:
     """Build yt-dlp format/codec arguments from validated UI parameters."""
     mode = params.get("mode")  # video | audio
@@ -356,7 +536,46 @@ def download_task_wrapper(cfg: Config, params: dict):
 
 
 async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
-    """Async runner executed by TaskManager for media downloads."""
+    """Async runner executed by TaskManager for media downloads.
+
+    Every download works in its own temp directory (yt-dlp `-P temp:`), so
+    concurrent downloads never see - or delete - each other's `.part` and
+    intermediate files. The router passes `rec.temp_dir` (removed by the task
+    manager); callers that did not (tests) get a private one that is removed
+    here.
+    """
+    own_temp = rec.temp_dir is None
+    temp_dir = rec.temp_dir
+    if temp_dir is None:
+        cfg.tmp_dir.mkdir(parents=True, exist_ok=True)
+        temp_dir = Path(tempfile.mkdtemp(prefix="media-", dir=cfg.tmp_dir))
+    else:
+        temp_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        return await _download_impl(rec, cfg, params, temp_dir)
+    finally:
+        if own_temp:
+            await remove_tree(temp_dir)
+
+
+def _read_final_path(marker: Path, out_dir: Path) -> Path | None:
+    """The file yt-dlp reported via `--print-to-file after_move:filepath`."""
+    try:
+        lines = [ln.strip() for ln in marker.read_text(encoding="utf-8").splitlines()
+                 if ln.strip()]
+    except OSError:
+        return None
+    if not lines:
+        return None
+    try:
+        path = ensure_within(Path(lines[-1]), out_dir, "Downloaded file")
+    except ValidationError:
+        return None
+    return path if path.is_file() else None
+
+
+async def _download_impl(rec: TaskRecord, cfg: Config, params: dict,
+                         temp_dir: Path) -> dict:
     from . import pdf_service  # noqa: F401  (import guard)
 
     url = params["url"]                      # pre-validated by the router
@@ -368,8 +587,11 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
     mode = params.get("mode")
     needs_ffmpeg = mode == "audio" or bool(params.get("merge", True))
     if needs_ffmpeg:
-        require_ffmpeg(cfg, "Audio conversion" if mode == "audio" else "Video merging")
+        await asyncio.to_thread(
+            require_ffmpeg, cfg,
+            "Audio conversion" if mode == "audio" else "Video merging")
 
+    final_marker = temp_dir / "final.txt"
     base_args = resolve_ytdlp_cmd(cfg) + [
         "--newline", "--no-playlist", "--no-warnings", "--no-overwrites",
         "--trim-filenames", "150",
@@ -377,10 +599,16 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
         "--concurrent-fragments", "4",
         "--progress-template", "download:__P__%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s",
         "--progress-template", "postprocess:__POST__%(progress.postprocessor)s|%(progress.status)s",
-        "-P", str(out_dir),
+        # --print-to-file may imply quiet mode in some yt-dlp versions; make
+        # sure the progress templates above are still emitted.
+        "--progress",
+        "-P", f"home:{out_dir}",
+        "-P", f"temp:{temp_dir}",
         "-o", "%(title).140B [%(id)s].%(ext)s",
+        # exact final path (after any merge/convert/move) -> no guessing
+        "--print-to-file", "after_move:filepath", str(final_marker).replace("%", "%%"),
     ]
-    ffmpeg_path, _ = find_ffmpeg(cfg)
+    ffmpeg_path, _ = await asyncio.to_thread(find_ffmpeg, cfg)
     if ffmpeg_path is not None:
         base_args += ["--ffmpeg-location", str(ffmpeg_path)]
     cookies = cookie_args(cfg)
@@ -401,11 +629,12 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
     while True:
         args = base_args + (cookies if use_cookies else []) + [url]
         started = time.time()
+        final_marker.unlink(missing_ok=True)
         rec.add_log("Command: " + " ".join(args[:6]) + " ... (URL omitted from log)")
         try:
             proc = await asyncio.create_subprocess_exec(
                 *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-                cwd=str(out_dir))
+                cwd=str(temp_dir), **popen_group_kwargs())
         except OSError as exc:
             raise RuntimeError(f"Could not start yt-dlp: {exc}")
         rec.process = proc
@@ -423,6 +652,8 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
                 stderr_tail = (stderr_tail + "\n" + line)[-4000:]
                 rec.add_log(line)
 
+        tracker = StreamTracker(*_stream_plan(params))
+
         async def pump_stdout():
             assert proc.stdout is not None
             while True:
@@ -432,30 +663,15 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
                 line = raw.decode("utf-8", "replace").strip()
                 m = _DL_RE.match(line)
                 if m:
-                    try:
-                        done = float(m.group(1)) if m.group(1) not in ("NA", "None", "") else None
-                        total_s, est_s, speed, eta = m.group(2), m.group(3), m.group(4), m.group(5)
-                    except ValueError:
-                        continue
-                    total = None
-                    for cand in (total_s, est_s):
-                        try:
-                            if cand not in ("NA", "None", ""):
-                                total = float(cand)
-                                break
-                        except ValueError:
-                            continue
-                    speed = speed if speed not in ("NA", "None") else None
-                    eta = eta if eta not in ("NA", "None") else None
-                    if done is not None and total:
-                        frac = max(0.0, min(1.0, done / total)) * 0.92
-                        rec.progress = frac
-                        pct = frac / 0.92 * 100
-                        rec.stage = f"Downloading {pct:.0f}% at {speed or '?'}" + (f", ETA {eta}s" if eta else "")
-                    elif done is not None:
-                        rec.progress = None
-                        mb = done / 1e6
-                        rec.stage = f"Downloading {mb:.1f} MB at {speed or '?'} (size unknown)"
+                    done = _num(m.group(1))
+                    total = _num(m.group(2)) or _num(m.group(3))
+                    progress, pct = tracker.update(done, total)
+                    if progress is not None:
+                        rec.progress = max(rec.progress or 0.0, progress)
+                    elif done is not None and not total:
+                        rec.progress = None      # size unknown: indeterminate bar
+                    rec.stage = download_stage(pct, done, m.group(4), m.group(5),
+                                               tracker.label())
                     continue
                 m = _POST_RE.match(line)
                 if m:
@@ -463,6 +679,10 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
                     rec.progress = max(rec.progress or 0, 0.93)
                     rec.stage = f"Processing ({name}) {status}".strip()
                     continue
+                m = _FORMATS_RE.search(line)
+                if m:
+                    # "Downloading 1 format(s): 137+140" -> two streams
+                    tracker.set_expected(m.group(1).count("+") + 1)
                 if line and not line.startswith("[download]"):
                     rec.add_log(line)
 
@@ -473,10 +693,7 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
         except asyncio.CancelledError:
             # user cancellation -> hard kill, then re-raise. Reap the process
             # afterwards: on Windows the .part file handle lingers until exit.
-            try:
-                proc.kill()
-            except Exception:
-                pass
+            kill_process_tree(proc)
             try:
                 await proc.wait()
             except Exception:
@@ -493,20 +710,11 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
                 except (asyncio.CancelledError, Exception):
                     pass
             rec.process = None
-            # cleanup partial files for cancelled/failed downloads
+            # Partial files live in this task's private temp dir only. Wipe
+            # them now (the handle can linger a moment on Windows) so a
+            # failed attempt never leaks into a retry.
             if rec.cancel_event.is_set() or proc.returncode != 0:
-                for pf in out_dir.glob("*.part"):
-                    try:
-                        if pf.stat().st_mtime < started:
-                            continue
-                        for attempt in range(3):
-                            try:
-                                pf.unlink()
-                                break
-                            except PermissionError:
-                                await asyncio.sleep(0.05 * (attempt + 1))
-                    except OSError:
-                        pass
+                await remove_tree(temp_dir, keep_root=True)
 
         if rec.cancel_event.is_set():
             raise TaskCancelled("Cancelled by user")
@@ -526,11 +734,20 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
             msg += _BOT_TIP
         raise RuntimeError(msg)
 
-    # locate produced file(s): newest matching file written since start
-    for p in out_dir.iterdir():
-        if p.is_file() and p.stat().st_mtime >= started - 1 and not p.name.endswith(".part"):
-            produced.append(p)
-    produced.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    # The exact file yt-dlp wrote, as reported by --print-to-file.
+    final = _read_final_path(final_marker, out_dir)
+    if final is not None:
+        produced = [final]
+    else:
+        # Older yt-dlp without after_move printing: fall back to the newest
+        # file written since this attempt started whose name carries our id.
+        rec.add_log("yt-dlp did not report the output path; scanning the output folder")
+        for p in out_dir.iterdir():
+            if (p.is_file() and p.stat().st_mtime >= started - 1
+                    and not p.name.endswith((".part", ".ytdl", ".temp"))
+                    and (not vid or f"[{vid}]" in p.name)):
+                produced.append(p)
+        produced.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     if not produced:
         raise RuntimeError("Download finished but no output file was found")
     outputs = [{

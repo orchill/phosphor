@@ -10,7 +10,8 @@
 //   --version                 -> prints a fake version
 //   --dump-single-json ...    -> prints fixed metadata JSON
 //   download mode             -> emits __P__ progress lines, writes
-//                                e2e-video.mp4(.part) into the -P directory
+//                                e2e-video.mp4.part into the temp dir and moves
+//                                e2e-video.mp4 into the home dir
 using System;
 using System.IO;
 using System.Threading;
@@ -44,13 +45,29 @@ class Stub {
             return 0;
         }
 
-        string outDir = Directory.GetCurrentDirectory();
+        // Same CLI surface as media_service.download_task: `-P home:<dir>`
+        // (final files), `-P temp:<dir>` (partial files) and
+        // `--print-to-file after_move:filepath <file>` (final path report).
+        string homeDir = Directory.GetCurrentDirectory();
+        string tempDir = null;
+        string markerFile = null;
         for (int i = 0; i < args.Length - 1; i++) {
-            if (args[i] == "-P") outDir = args[i + 1];
+            if (args[i] == "-P") {
+                string v = args[i + 1];
+                if (v.StartsWith("home:")) homeDir = v.Substring(5);
+                else if (v.StartsWith("temp:")) tempDir = v.Substring(5);
+                else homeDir = v;
+            }
+            if (args[i] == "--print-to-file" && i + 2 < args.Length
+                && args[i + 1] == "after_move:filepath") {
+                markerFile = args[i + 2].Replace("%%", "%");
+            }
         }
-        Directory.CreateDirectory(outDir);
-        string part = Path.Combine(outDir, "e2e-video.mp4.part");
-        string final = Path.Combine(outDir, "e2e-video.mp4");
+        if (tempDir == null) tempDir = homeDir;
+        Directory.CreateDirectory(homeDir);
+        Directory.CreateDirectory(tempDir);
+        string part = Path.Combine(tempDir, "e2e-video.mp4.part");
+        string final = Path.Combine(homeDir, "e2e-video.mp4");
 
         byte[] payload = new byte[40000];
         for (int i = 0; i < payload.Length; i++) {
@@ -71,6 +88,7 @@ class Stub {
         }
         if (File.Exists(final)) File.Delete(final);
         File.Move(part, final);
+        if (markerFile != null) File.AppendAllText(markerFile, final + "\n");
         Console.Out.WriteLine("__POST__Merge|finished");
         return 0;
     }

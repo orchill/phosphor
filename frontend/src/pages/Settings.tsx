@@ -2,8 +2,21 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, FolderOutput, RefreshCw, Save, ShieldAlert, Trash2, XCircle } from "lucide-react";
 import { clearWorkspace, getSettings, openOutputFolder, saveSettings, systemInfo } from "../api";
 import { useToast } from "../ctx";
+import {
+  Accent,
+  Crt,
+  Density,
+  readAccent,
+  readCrt,
+  readDensity,
+  saveAccent,
+  saveCrt,
+  saveDensity,
+} from "../appearance";
 import { Settings, SystemInfo } from "../types";
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { Field, PageHeader, Tabs } from "../components/primitives";
+import { useHashQuery } from "../hooks";
 
 function DepRow({ name, found, detail, hint }: { name: string; found: boolean; detail: string; hint?: string }) {
   return (
@@ -27,9 +40,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function SettingsPage() {
   const [cfg, setCfg] = useState<Settings | null>(null);
-  const [density, setDensity] = useState(
-    () => localStorage.getItem("pms-density") ?? "comfortable",
-  );
+  const section = useHashQuery().get("section");
+  const [accent, setAccent] = useState<Accent>(readAccent);
+  const [crt, setCrt] = useState<Crt>(readCrt);
+  const [density, setDensity] = useState<Density>(readDensity);
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
@@ -42,7 +56,15 @@ export default function SettingsPage() {
       toast.push("error", e.message);
     }
   };
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    loadAll();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // deep link: "#/settings?section=diagnostics" scrolls the section into view
+  useEffect(() => {
+    if (!section || !cfg) return;
+    document.getElementById(section)?.scrollIntoView({ block: "start" });
+  }, [section, cfg, info]);
 
   const set = (k: keyof Settings, v: any) => setCfg((c) => (c ? { ...c, [k]: v } : c));
   const setNum = (k: keyof Settings, v: string) => {
@@ -67,11 +89,13 @@ export default function SettingsPage() {
         history_limit: cfg.history_limit,
         open_browser: cfg.open_browser,
       });
-      toast.push("success",
+      toast.push(
+        "success",
         "Settings saved." +
-        (restart_required.length
-          ? ` Restart required for: ${restart_required.join(", ")} - restart the app to apply.`
-          : ""));
+          (restart_required.length
+            ? ` Restart required for: ${restart_required.join(", ")} - restart the app to apply.`
+            : ""),
+      );
       setInfo(await systemInfo());
     } catch (e: any) {
       toast.push("error", e.message);
@@ -84,28 +108,51 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Settings</h2>
-        <p className="mt-1 text-sm text-ink2">
-          Preferences are stored in <code className="font-mono text-xs">config.json</code>.
-          Network changes need an application restart.
-        </p>
-      </div>
+      <PageHeader
+        route="settings"
+        description={
+          <>
+            Preferences are stored in <code className="font-mono text-xs">config.json</code>. Network changes need an
+            application restart.
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           <Section title="general">
             <div>
-              <label className={LABEL} htmlFor="outdir">Output directory (processed files are saved here)</label>
-              <input id="outdir" value={cfg.output_dir} onChange={(e) => set("output_dir", e.target.value)} className={`${INPUT} mt-1 text-xs`} />
+              <label className={LABEL} htmlFor="outdir">
+                Output directory (processed files are saved here)
+              </label>
+              <input
+                id="outdir"
+                value={cfg.output_dir}
+                onChange={(e) => set("output_dir", e.target.value)}
+                className={`${INPUT} mt-1 text-xs`}
+              />
             </div>
             <div>
-              <label className={LABEL} htmlFor="hist">Task history entries kept on disk (5-1000)</label>
-              <input id="hist" type="number" min={5} max={1000} value={cfg.history_limit}
-                onChange={(e) => setNum("history_limit", e.target.value)} className={`${INPUT} mt-1 w-36`} />
+              <label className={LABEL} htmlFor="hist">
+                Task history entries kept on disk (5-1000)
+              </label>
+              <input
+                id="hist"
+                type="number"
+                min={5}
+                max={1000}
+                value={cfg.history_limit}
+                onChange={(e) => setNum("history_limit", e.target.value)}
+                className={`${INPUT} mt-1 w-36`}
+              />
             </div>
             <label className="flex items-center gap-2 text-sm text-ink">
-              <input type="checkbox" checked={cfg.open_browser} onChange={(e) => set("open_browser", e.target.checked)} className="accent-acc" />
+              <input
+                type="checkbox"
+                checked={cfg.open_browser}
+                onChange={(e) => set("open_browser", e.target.checked)}
+                className="accent-acc"
+              />
               Open the web interface automatically on startup
             </label>
           </Section>
@@ -114,17 +161,18 @@ export default function SettingsPage() {
             <div>
               <p className={LABEL}>Interface density</p>
               <div className="mt-1.5 flex gap-2" role="radiogroup" aria-label="Interface density">
-                {([
-                  ["comfortable", "Comfortable", "larger type"],
-                  ["compact", "Compact", "dense terminal look"],
-                ] as const).map(([id, label, desc]) => (
+                {(
+                  [
+                    ["comfortable", "Comfortable", "larger type"],
+                    ["compact", "Compact", "dense terminal look"],
+                  ] as const
+                ).map(([id, label, desc]) => (
                   <button
                     key={id}
                     role="radio"
-                    aria-checked={(localStorage.getItem("pms-density") ?? "comfortable") === id}
+                    aria-checked={density === id}
                     onClick={() => {
-                      localStorage.setItem("pms-density", id);
-                      window.dispatchEvent(new Event("pms-density"));
+                      saveDensity(id);
                       setDensity(id);
                     }}
                     className={`flex-1 rounded-sm border px-3 py-2 text-left font-mono text-[12px] transition-colors ${
@@ -140,35 +188,91 @@ export default function SettingsPage() {
                 Applies immediately. Stored per browser, like the theme.
               </p>
             </div>
+            <Field label="accent" hint="Phosphor colour: P1 green, P3 amber, P4 ice. Applies immediately.">
+              <Tabs<Accent>
+                label="Accent colour"
+                semantics="radio"
+                value={accent}
+                onChange={(a) => {
+                  saveAccent(a);
+                  setAccent(a);
+                }}
+                options={(
+                  [
+                    ["green", "p1 green"],
+                    ["amber", "p3 amber"],
+                    ["ice", "p4 ice"],
+                  ] as const
+                ).map(([id, label]) => ({
+                  id,
+                  label,
+                  icon: <span data-accent={id} className="inline-block h-2.5 w-2.5 rounded-[2px] bg-acc" aria-hidden />,
+                }))}
+              />
+            </Field>
+            <Field
+              label="crt effect"
+              hint="Faint scanlines and vignette. Switched off when your system asks for reduced motion."
+            >
+              <Tabs<Crt>
+                label="CRT effect"
+                semantics="radio"
+                value={crt}
+                onChange={(c) => {
+                  saveCrt(c);
+                  setCrt(c);
+                }}
+                options={[
+                  { id: "off", label: "off" },
+                  { id: "subtle", label: "subtle" },
+                ]}
+              />
+            </Field>
             <div>
               <p className={LABEL}>Onboarding</p>
               <button
                 onClick={() => window.dispatchEvent(new Event("pms-show-intro"))}
                 className={`${BTN_SECONDARY} mt-1.5`}
               >
-                Show intro again
+                show intro again
               </button>
             </div>
           </Section>
 
           <Section title="network">
             <p className="-mt-2 text-xs text-ink3">
-              Requires an application restart. Keep the loopback address unless you
-              understand the risk of exposing the app to your network.
+              Requires an application restart. Keep the loopback address unless you understand the risk of exposing the
+              app to your network.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={LABEL} htmlFor="host">Host (restart required)</label>
-                <select id="host" value={cfg.host} onChange={(e) => set("host", e.target.value)} className={`${INPUT} mt-1`}>
+                <label className={LABEL} htmlFor="host">
+                  Host (restart required)
+                </label>
+                <select
+                  id="host"
+                  value={cfg.host}
+                  onChange={(e) => set("host", e.target.value)}
+                  className={`${INPUT} mt-1`}
+                >
                   <option value="127.0.0.1">127.0.0.1 (localhost only - safe)</option>
                   <option value="localhost">localhost</option>
                   <option value="0.0.0.0">0.0.0.0 (all interfaces - LAN exposed)</option>
                 </select>
               </div>
               <div>
-                <label className={LABEL} htmlFor="port">Port (restart required)</label>
-                <input id="port" type="number" min={1} max={65535} value={cfg.port}
-                  onChange={(e) => setNum("port", e.target.value)} className={`${INPUT} mt-1`} />
+                <label className={LABEL} htmlFor="port">
+                  Port (restart required)
+                </label>
+                <input
+                  id="port"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={cfg.port}
+                  onChange={(e) => setNum("port", e.target.value)}
+                  className={`${INPUT} mt-1`}
+                />
               </div>
             </div>
           </Section>
@@ -176,24 +280,57 @@ export default function SettingsPage() {
           <Section title="downloads">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={LABEL} htmlFor="upl">Max upload (MB)</label>
-                <input id="upl" type="number" min={1} value={cfg.max_upload_mb}
-                  onChange={(e) => setNum("max_upload_mb", e.target.value)} className={`${INPUT} mt-1`} />
+                <label className={LABEL} htmlFor="upl">
+                  Max upload (MB)
+                </label>
+                <input
+                  id="upl"
+                  type="number"
+                  min={1}
+                  value={cfg.max_upload_mb}
+                  onChange={(e) => setNum("max_upload_mb", e.target.value)}
+                  className={`${INPUT} mt-1`}
+                />
               </div>
               <div>
-                <label className={LABEL} htmlFor="dlgb">Max download (GB, 0 = no cap)</label>
-                <input id="dlgb" type="number" min={0} value={cfg.max_download_gb}
-                  onChange={(e) => setNum("max_download_gb", e.target.value)} className={`${INPUT} mt-1`} />
+                <label className={LABEL} htmlFor="dlgb">
+                  Max download (GB, 0 = no cap)
+                </label>
+                <input
+                  id="dlgb"
+                  type="number"
+                  min={0}
+                  value={cfg.max_download_gb}
+                  onChange={(e) => setNum("max_download_gb", e.target.value)}
+                  className={`${INPUT} mt-1`}
+                />
               </div>
               <div>
-                <label className={LABEL} htmlFor="dur">Max duration (h, 0 = no cap)</label>
-                <input id="dur" type="number" min={0} value={cfg.max_duration_hours}
-                  onChange={(e) => setNum("max_duration_hours", e.target.value)} className={`${INPUT} mt-1`} />
+                <label className={LABEL} htmlFor="dur">
+                  Max duration (h, 0 = no cap)
+                </label>
+                <input
+                  id="dur"
+                  type="number"
+                  min={0}
+                  value={cfg.max_duration_hours}
+                  onChange={(e) => setNum("max_duration_hours", e.target.value)}
+                  className={`${INPUT} mt-1`}
+                />
               </div>
               <div>
-                <label className={LABEL} htmlFor="conc">Parallel tasks (1-8)</label>
-                <input id="conc" type="number" min={1} max={8} value={cfg.max_concurrent_tasks}
-                  onChange={(e) => setNum("max_concurrent_tasks", e.target.value)} className={`${INPUT} mt-1`} />
+                <label className={LABEL} htmlFor="conc">
+                  Parallel tasks (1-8)
+                </label>
+                <input
+                  id="conc"
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={cfg.max_concurrent_tasks}
+                  onChange={(e) => setNum("max_concurrent_tasks", e.target.value)}
+                  className={`${INPUT} mt-1`}
+                />
               </div>
             </div>
           </Section>
@@ -202,28 +339,53 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <Section title="tools">
             <div>
-              <label className={LABEL} htmlFor="ffmpeg">FFmpeg path (empty = auto-detect)</label>
-              <input id="ffmpeg" value={cfg.ffmpeg_path} onChange={(e) => set("ffmpeg_path", e.target.value)}
-                placeholder="C:\ffmpeg\bin\ffmpeg.exe or /usr/bin/ffmpeg" className={`${INPUT} mt-1 text-xs`} />
+              <label className={LABEL} htmlFor="ffmpeg">
+                FFmpeg path (empty = auto-detect)
+              </label>
+              <input
+                id="ffmpeg"
+                value={cfg.ffmpeg_path}
+                onChange={(e) => set("ffmpeg_path", e.target.value)}
+                placeholder="C:\ffmpeg\bin\ffmpeg.exe or /usr/bin/ffmpeg"
+                className={`${INPUT} mt-1 text-xs`}
+              />
             </div>
             <div>
-              <label className={LABEL} htmlFor="ytdlp">yt-dlp path (empty = built-in Python module)</label>
-              <input id="ytdlp" value={cfg.ytdlp_path} onChange={(e) => set("ytdlp_path", e.target.value)}
-                placeholder="C:\tools\yt-dlp.exe" className={`${INPUT} mt-1 text-xs`} />
+              <label className={LABEL} htmlFor="ytdlp">
+                yt-dlp path (empty = built-in Python module)
+              </label>
+              <input
+                id="ytdlp"
+                value={cfg.ytdlp_path}
+                onChange={(e) => set("ytdlp_path", e.target.value)}
+                placeholder="C:\tools\yt-dlp.exe"
+                className={`${INPUT} mt-1 text-xs`}
+              />
             </div>
           </Section>
 
-          <div className={`${CARD} p-4`}>
+          <div id="diagnostics" className={`${CARD} scroll-mt-4 p-4`}>
             <div className="mb-2 flex items-center gap-2">
               <h3 className={SECTION_TITLE}>diagnostics</h3>
-              <button onClick={loadAll} className={`${BTN_SECONDARY} ml-auto py-1 text-xs`}><RefreshCw size={12} /> Re-check</button>
+              <button onClick={loadAll} className={`${BTN_SECONDARY} ml-auto py-1 text-xs`}>
+                <RefreshCw size={12} /> re-check
+              </button>
             </div>
             {info && (
               <div className="divide-y divide-line">
-                <DepRow name="FFmpeg" found={info.deps.ffmpeg.found}
-                  detail={info.deps.ffmpeg.found ? `${info.deps.ffmpeg.version} (${info.deps.ffmpeg.path})` : "not found"}
-                  hint="Install: winget install Gyan.FFmpeg (Windows) or apt install ffmpeg (Linux), then restart the app - or set the path above." />
-                <DepRow name="yt-dlp" found={info.deps.ytdlp.found} detail={`${info.deps.ytdlp.version} (${info.deps.ytdlp.source})`} />
+                <DepRow
+                  name="FFmpeg"
+                  found={info.deps.ffmpeg.found}
+                  detail={
+                    info.deps.ffmpeg.found ? `${info.deps.ffmpeg.version} (${info.deps.ffmpeg.path})` : "not found"
+                  }
+                  hint="Install: winget install Gyan.FFmpeg (Windows) or apt install ffmpeg (Linux), then restart the app - or set the path above."
+                />
+                <DepRow
+                  name="yt-dlp"
+                  found={info.deps.ytdlp.found}
+                  detail={`${info.deps.ytdlp.version} (${info.deps.ytdlp.source})`}
+                />
                 <DepRow name="PyMuPDF" found detail={info.deps.pymupdf} />
                 <DepRow name="pypdf" found detail={info.deps.pypdf} />
                 <DepRow name="Pillow" found detail={info.deps.pillow} />
@@ -240,14 +402,17 @@ export default function SettingsPage() {
               <ShieldAlert size={15} /> Privacy &amp; security notes
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-relaxed text-ink2">
-              <li>Default binding is 127.0.0.1 - other devices cannot reach the app. Switching
-                the host above exposes it to your network; cross-site requests are blocked by
-                the built-in CSRF/Origin protection either way.</li>
+              <li>
+                Default binding is 127.0.0.1 - other devices cannot reach the app. Switching the host above exposes it
+                to your network; cross-site requests are blocked by the built-in CSRF/Origin protection either way.
+              </li>
               <li>URLs pointing at private/loopback addresses are rejected to prevent SSRF.</li>
               <li>Downloads are limited in size and duration (Downloads section).</li>
               <li>Cached uploads are wiped on every restart; outputs stay in the output folder.</li>
-              <li>YouTube cookies (Cookies / Sign-in tab in the downloader) are stored only in
-                <code className="mx-1 font-mono">data/cookies.txt</code>, never logged and never shown.</li>
+              <li>
+                YouTube cookies (Cookies / Sign-in tab in the downloader) are stored only in
+                <code className="mx-1 font-mono">data/cookies.txt</code>, never logged and never shown.
+              </li>
               <li>No telemetry, no cloud services - files never leave this machine.</li>
             </ul>
           </div>
@@ -255,19 +420,35 @@ export default function SettingsPage() {
       </div>
 
       <div className="sticky bottom-0 -mx-1 flex flex-wrap items-center gap-2 border-t border-line bg-base/95 px-1 py-3 backdrop-blur">
-        <button onClick={save} disabled={saving} className={BTN_PRIMARY}><Save size={15} /> Save settings</button>
-        <button onClick={async () => { try { await openOutputFolder(); } catch (e: any) { toast.push("error", e.message); } }} className={BTN_SECONDARY}>
-          <FolderOutput size={15} /> Open output folder
+        <button onClick={save} disabled={saving} className={BTN_PRIMARY}>
+          <Save size={15} /> save settings
         </button>
         <button
           onClick={async () => {
-            if (!confirm("Clear all cached uploads and thumbnails? Files in the output folder are NOT touched.")) return;
-            try { const r = await clearWorkspace(); toast.push("success", `Cleared ${r.removed} items.`); }
-            catch (e: any) { toast.push("error", e.message); }
+            try {
+              await openOutputFolder();
+            } catch (e: any) {
+              toast.push("error", e.message);
+            }
           }}
           className={BTN_SECONDARY}
         >
-          <Trash2 size={15} /> Clear workspace cache
+          <FolderOutput size={15} /> open output folder
+        </button>
+        <button
+          onClick={async () => {
+            if (!confirm("Clear all cached uploads and thumbnails? Files in the output folder are NOT touched."))
+              return;
+            try {
+              const r = await clearWorkspace();
+              toast.push("success", `Cleared ${r.removed} items.`);
+            } catch (e: any) {
+              toast.push("error", e.message);
+            }
+          }}
+          className={BTN_SECONDARY}
+        >
+          <Trash2 size={15} /> clear workspace cache
         </button>
       </div>
     </div>
