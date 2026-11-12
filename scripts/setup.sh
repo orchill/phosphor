@@ -4,7 +4,7 @@ set -e
 cd "$(dirname "$0")/.."
 
 echo "=============================================="
-echo " PDF & Media Studio - setup"
+echo " phosphor - setup"
 echo "=============================================="
 command -v python3 >/dev/null || { echo "[error] python3 not found"; exit 1; }
 

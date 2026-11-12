@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title PDF ^& Media Studio
+title phosphor
 cd /d "%~dp0.."
 
 rem ---- locate python (project venv preferred) ----

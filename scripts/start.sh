@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start PDF & Media Studio (creates venv on first run)
+# Start phosphor (creates venv on first run)
 set -e
 cd "$(dirname "$0")/.."
 

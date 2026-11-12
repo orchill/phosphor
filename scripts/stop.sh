@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop PDF & Media Studio (kills the process listening on the given port)
+# Stop phosphor (kills the process listening on the given port)
 PORT="${1:-8756}"
 PIDS="$(lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
 if [ -z "$PIDS" ]; then

@@ -1,4 +1,4 @@
-"""Pytest fixtures for PDF & Media Studio backend tests."""
+"""Pytest fixtures for phosphor backend tests."""
 from __future__ import annotations
 
 import json

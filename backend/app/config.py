@@ -2,7 +2,9 @@
 
 Settings live in ``config.json`` at the project root (auto-created with
 defaults on first run) and can be overridden with the ``PDFMEDIA_CONFIG``
-environment variable pointing at an alternative config file.
+environment variable pointing at an alternative config file. (The variable
+keeps its historical name from before the project was called phosphor, so
+existing launchers and scripts keep working.)
 
 Relative ``output_dir`` / ``data_dir`` values are resolved against the
 project root. Absolute paths are allowed.
