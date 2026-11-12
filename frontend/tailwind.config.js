@@ -45,6 +45,9 @@ export default {
         warn: token("warn"),        // warning
         bad: token("bad"),          // danger
       },
+      boxShadow: {
+        card: "var(--shadow-card)",
+      },
       keyframes: {
         progress: {
           "0%": { transform: "translateX(-120%)" },

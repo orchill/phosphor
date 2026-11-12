@@ -5,24 +5,30 @@
 @tailwind utilities;
 
 /* ============================================================= design tokens
-   Light theme = "paper terminal" (default). Dark theme = phosphor on carbon.
-   Values are R G B triplets consumed by tailwind.config.js with alpha support. */
+   Dark (phosphor on carbon) is the default theme - theme-init.js and
+   appearance.ts apply `.dark` unless the user picked light. Light is the
+   "paper terminal": warm off-white, ink-black type, the darker AA-safe green
+   for text. Values are R G B triplets consumed by tailwind.config.js with
+   alpha support. Every text/background pair below was checked for WCAG AA
+   (>= 4.5:1) on base, panel and elev; accent presets are in the next block. */
 :root {
-  --c-base: 244 245 242;
-  --c-panel: 255 255 255;
-  --c-elev: 238 240 236;
-  --c-line: 224 227 221;
-  --c-ink: 24 31 39;
-  --c-ink2: 90 99 110;
-  --c-ink3: 134 142 152;
-  --c-acc: 22 163 74;
-  --c-accHi: 21 128 61;
+  --c-base: 250 249 245;
+  --c-panel: 255 255 252;
+  --c-elev: 243 241 234;
+  --c-line: 229 226 218;
+  --c-ink: 28 30 26;
+  --c-ink2: 84 88 80;
+  --c-ink3: 102 106 96;
+  --c-acc: 21 128 61;       /* green-700: white text on it is 5.0:1 */
+  --c-accHi: 22 101 52;
   --c-accText: 21 110 55;   /* darker green: AA-safe for small text on light */
   --c-onAcc: 255 255 255;
-  --c-info: 14 116 144;   /* cyan-700: AA-safe for small text on light */
-  --c-ok: 22 163 74;
-  --c-warn: 180 83 9;
-  --c-bad: 220 38 38;
+  --c-info: 14 116 144;     /* cyan-700 */
+  --c-ok: 20 118 56;
+  --c-warn: 161 72 8;
+  --c-bad: 185 28 28;
+  /* paper depth: a 1px highlight inside the card edge, no drop shadow */
+  --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.9);
 }
 
 .dark {
@@ -32,7 +38,7 @@
   --c-line: 33 37 37;
   --c-ink: 228 232 229;
   --c-ink2: 143 152 147;
-  --c-ink3: 95 104 100;
+  --c-ink3: 128 138 133;
   --c-acc: 74 222 128;
   --c-accHi: 134 239 172;
   --c-accText: 74 222 128;  /* dark theme: same as accent */
@@ -41,6 +47,7 @@
   --c-ok: 74 222 128;
   --c-warn: 251 191 36;
   --c-bad: 248 113 113;
+  --shadow-card: none;
 }
 
 /* ------------------------------------------------------------ accent presets

@@ -19,7 +19,7 @@
  *    ("open the cookies / sign-in tab").
  */
 export const CARD =
-  "rounded border border-line bg-panel";
+  "rounded border border-line bg-panel shadow-card";
 
 export const BTN_BASE =
   "inline-flex items-center justify-center gap-2 rounded-sm px-3.5 py-2 " +
