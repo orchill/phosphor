@@ -1,6 +1,7 @@
 """System endpoints: health, dependency diagnostics, settings, output folder."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import subprocess
@@ -23,8 +24,10 @@ async def health():
 
 
 @router.get("/system/info")
-async def info():
-    return system_info(get_config())
+async def info(refresh: bool = False):
+    # Spawns `ffmpeg -version` / `yt-dlp --version` on a cache miss: keep it
+    # off the event loop so the rest of the UI stays responsive.
+    return await asyncio.to_thread(system_info, get_config(), refresh)
 
 
 @router.get("/settings")

@@ -1,6 +1,7 @@
 """Media endpoints: metadata lookup, download tasks, cookie sign-in."""
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import subprocess
@@ -174,7 +175,8 @@ async def test_cookies():
 async def media_info(url: str):
     cfg = get_config()
     try:
-        url = validate_media_url(url)
+        # getaddrinfo can block for seconds: keep it off the event loop
+        url = await asyncio.to_thread(validate_media_url, url)
     except ValidationError as exc:
         raise HTTPException(400, str(exc))
     try:
@@ -213,7 +215,7 @@ class MediaDownloadIn(BaseModel):
 async def media_download(request: Request, body: MediaDownloadIn):
     cfg = get_config()
     try:
-        url = validate_media_url(body.url)
+        url = await asyncio.to_thread(validate_media_url, body.url)
     except ValidationError as exc:
         raise HTTPException(400, str(exc))
     if body.mode not in ("video", "audio"):

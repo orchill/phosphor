@@ -294,6 +294,33 @@ def test_concurrent_downloads_do_not_interfere(media_server):
     assert not list(out_dir.glob("*.ytdl")) and not list(out_dir.glob("*.temp"))
 
 
+def test_ytdlp_probe_decides_found_by_exit_code_and_is_cached(monkeypatch):
+    """B5/B10: probes are cached, and a failing yt-dlp is reported as not found."""
+    from types import SimpleNamespace
+    cfg = _test_cfg("probe")
+    media_service.clear_tool_cache()
+    calls: list = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        return SimpleNamespace(returncode=1, stdout="", stderr="boom")
+
+    monkeypatch.setattr(media_service.subprocess, "run", fake_run)
+    assert media_service.ytdlp_probe(cfg) == (False, "unknown")
+    media_service.ytdlp_probe(cfg)
+    assert len(calls) == 1, "second probe must come from the cache"
+    media_service.ytdlp_probe(cfg, refresh=True)
+    assert len(calls) == 2, "refresh=True must re-probe"
+    media_service.clear_tool_cache()
+
+
+def test_ytdlp_source_reports_missing_custom_path():
+    cfg = _test_cfg("source")
+    assert media_service.ytdlp_source(cfg) == "python module"
+    cfg.update({"ytdlp_path": str(TMP / "definitely-not-here" / "yt-dlp")})
+    assert media_service.ytdlp_source(cfg) == "python module (custom path not found)"
+
+
 # ------------------------------------------------------ TaskManager unit
 def test_session_challenged_detection():
     assert media_service._session_challenged(

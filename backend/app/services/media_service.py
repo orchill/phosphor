@@ -131,8 +131,45 @@ def cookie_args(cfg: Config) -> list[str]:
 
 
 # ------------------------------------------------------------- detection
-def find_ffmpeg(cfg: Config) -> tuple[Path | None, str]:
-    """Locate ffmpeg: configured path first, then PATH. Returns (path, version)."""
+# Tool probes spawn subprocesses (`ffmpeg -version`, `yt-dlp --version`), so
+# results are cached per configured path for a few minutes. Passing
+# refresh=True (Settings -> diagnostics) or changing the path re-probes.
+_TOOL_TTL = 300.0
+_tool_cache: dict[tuple, tuple[float, object]] = {}
+
+
+def clear_tool_cache() -> None:
+    _tool_cache.clear()
+
+
+def _cache_get(key: tuple, refresh: bool):
+    if refresh:
+        return None
+    hit = _tool_cache.get(key)
+    if hit and time.monotonic() - hit[0] < _TOOL_TTL:
+        return hit[1]
+    return None
+
+
+def find_ffmpeg(cfg: Config, refresh: bool = False) -> tuple[Path | None, str]:
+    """Locate ffmpeg: configured path first, then PATH. Returns (path, version).
+
+    Blocking (runs `ffmpeg -version` on a cache miss): call it through
+    `asyncio.to_thread` from async code.
+    """
+    key = ("ffmpeg", str(cfg.get("ffmpeg_path") or ""))
+    hit = _cache_get(key, refresh)
+    if hit is not None:
+        cached_path = hit[0]
+        if cached_path is not None and (cached_path.is_file() or shutil.which(str(cached_path))):
+            return hit  # type: ignore[return-value]
+    found = _find_ffmpeg_uncached(cfg)
+    if found[0] is not None:          # never cache a miss: installing ffmpeg must just work
+        _tool_cache[key] = (time.monotonic(), found)
+    return found
+
+
+def _find_ffmpeg_uncached(cfg: Config) -> tuple[Path | None, str]:
     candidates: list[str] = []
     if cfg.get("ffmpeg_path"):
         candidates.append(cfg.get("ffmpeg_path"))
@@ -166,13 +203,37 @@ def resolve_ytdlp_cmd(cfg: Config) -> list[str]:
     return [sys.executable, "-m", "yt_dlp"]
 
 
-def ytdlp_version(cfg: Config) -> str:
+def ytdlp_source(cfg: Config) -> str:
+    """Where yt-dlp comes from: a usable custom path, or the python module."""
+    custom = (cfg.get("ytdlp_path") or "").strip()
+    if not custom:
+        return "python module"
+    if resolve_ytdlp_cmd(cfg)[0] != sys.executable:
+        return "custom path"
+    return "python module (custom path not found)"
+
+
+def ytdlp_probe(cfg: Config, refresh: bool = False) -> tuple[bool, str]:
+    """(works, version) of the yt-dlp that downloads will actually use.
+
+    Blocking: call through `asyncio.to_thread` from async code.
+    """
+    key = ("ytdlp", str((cfg.get("ytdlp_path") or "").strip()))
+    hit = _cache_get(key, refresh)
+    if hit is not None:
+        return hit  # type: ignore[return-value]
     try:
         out = subprocess.run(resolve_ytdlp_cmd(cfg) + ["--version"],
                              capture_output=True, text=True, timeout=20)
-        return (out.stdout or "").strip() or "unknown"
+        result = (out.returncode == 0, (out.stdout or "").strip() or "unknown")
     except Exception:
-        return "not found"
+        result = (False, "not found")
+    _tool_cache[key] = (time.monotonic(), result)
+    return result
+
+
+def ytdlp_version(cfg: Config) -> str:
+    return ytdlp_probe(cfg)[1]
 
 
 def require_ffmpeg(cfg: Config, purpose: str) -> Path:
@@ -410,7 +471,9 @@ async def _download_impl(rec: TaskRecord, cfg: Config, params: dict,
     mode = params.get("mode")
     needs_ffmpeg = mode == "audio" or bool(params.get("merge", True))
     if needs_ffmpeg:
-        require_ffmpeg(cfg, "Audio conversion" if mode == "audio" else "Video merging")
+        await asyncio.to_thread(
+            require_ffmpeg, cfg,
+            "Audio conversion" if mode == "audio" else "Video merging")
 
     final_marker = temp_dir / "final.txt"
     base_args = resolve_ytdlp_cmd(cfg) + [
@@ -429,7 +492,7 @@ async def _download_impl(rec: TaskRecord, cfg: Config, params: dict,
         # exact final path (after any merge/convert/move) -> no guessing
         "--print-to-file", "after_move:filepath", str(final_marker).replace("%", "%%"),
     ]
-    ffmpeg_path, _ = find_ffmpeg(cfg)
+    ffmpeg_path, _ = await asyncio.to_thread(find_ffmpeg, cfg)
     if ffmpeg_path is not None:
         base_args += ["--ffmpeg-location", str(ffmpeg_path)]
     cookies = cookie_args(cfg)

@@ -4,7 +4,6 @@ from __future__ import annotations
 import importlib.metadata as ilmd
 import platform
 import shutil
-import subprocess
 import sys
 
 from .. import APP_NAME, __version__
@@ -18,20 +17,16 @@ def _pkg_version(name: str) -> str:
         return "not found"
 
 
-def system_info(cfg: Config) -> dict:
-    from .media_service import find_ffmpeg, ytdlp_version
+def system_info(cfg: Config, refresh: bool = False) -> dict:
+    """Environment diagnostics. Spawns tool probes on a cache miss, so call it
+    through `asyncio.to_thread` from async code."""
+    from .media_service import find_ffmpeg, ytdlp_probe, ytdlp_source
 
-    ffmpeg_path, ffmpeg_ver = find_ffmpeg(cfg)
+    ffmpeg_path, ffmpeg_ver = find_ffmpeg(cfg, refresh)
     ffprobe = shutil.which("ffprobe") or ""
-    ytdlp_custom = bool((cfg.get("ytdlp_path") or "").strip())
-    try:
-        out = subprocess.run(
-            [sys.executable, "-m", "yt_dlp", "--version"],
-            capture_output=True, text=True, timeout=20)
-        ytdlp_ok = out.returncode == 0
-        ytdlp_ver = (out.stdout or "").strip() or "unknown"
-    except Exception:
-        ytdlp_ok, ytdlp_ver = False, "not found"
+    # Probe the yt-dlp that downloads really use (custom path included) and
+    # decide "found" from its exit code, not from the setting being non-empty.
+    ytdlp_ok, ytdlp_ver = ytdlp_probe(cfg, refresh)
 
     free_gb = None
     try:
@@ -52,9 +47,9 @@ def system_info(cfg: Config) -> dict:
                        "path": str(ffmpeg_path) if ffmpeg_path else "",
                        "version": ffmpeg_ver},
             "ffprobe": {"found": bool(ffprobe), "path": ffprobe},
-            "ytdlp": {"found": ytdlp_ok or ytdlp_custom,
+            "ytdlp": {"found": ytdlp_ok,
                       "version": ytdlp_ver,
-                      "source": "custom path" if ytdlp_custom else "python module"},
+                      "source": ytdlp_source(cfg)},
             "pymupdf": _pkg_version("PyMuPDF"),
             "pypdf": _pkg_version("pypdf"),
             "pillow": _pkg_version("pillow"),
