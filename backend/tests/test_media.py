@@ -331,10 +331,12 @@ def test_progress_formatting_never_shows_raw_floats():
     assert media_service.format_eta("12.4") == "0:12"
     assert media_service.format_eta("None") is None
     stage = media_service.download_stage(45.2, 100.0, "2345678.91", "12")
-    assert stage == "Downloading 45% at 2.2 MB/s, ETA 0:12"
+    assert stage == "[download]  45.2%  2.2 MB/s  eta 0:12"
     assert "2345678" not in stage
     unknown = media_service.download_stage(None, 5_300_000.0, "NA", "NA")
-    assert unknown == "Downloading 5.3 MB (size unknown)"
+    assert unknown == "[download]  5.3 MB  (size unknown)"
+    two = media_service.download_stage(45.2, 100.0, "2345678.91", "12", "stream 1/2 (video)")
+    assert two == "[download]  45.2%  2.2 MB/s  eta 0:12  stream 1/2 (video)"
 
 
 def test_stream_tracker_is_monotonic_across_video_and_audio_streams():

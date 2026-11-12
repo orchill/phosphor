@@ -455,22 +455,24 @@ def _stream_plan(params: dict) -> tuple[int, tuple[str, ...]]:
 
 def download_stage(pct: float | None, done: float | None, speed: str | None,
                    eta: str | None, stream_label: str = "") -> str:
-    """Human readable stage line, e.g. `Downloading 45% at 2.2 MB/s, ETA 0:12`."""
+    """Terminal-style stage line: `[download] 45.2%  2.2 MB/s  eta 0:12  stream 1/2`.
+
+    The UI prefixes the prompt glyph; fields are separated by two spaces so the
+    line reads like yt-dlp's own console output.
+    """
     speed_txt = format_speed(speed)
     eta_txt = format_eta(eta)
-    if pct is not None:
-        text = f"Downloading {pct:.0f}%"
-    else:
-        text = f"Downloading {(done or 0) / 1e6:.1f} MB"
+    parts = ["[download]"]
+    parts.append(f"{pct:.1f}%" if pct is not None else f"{(done or 0) / 1e6:.1f} MB")
     if speed_txt:
-        text += f" at {speed_txt}"
+        parts.append(speed_txt)
     if eta_txt:
-        text += f", ETA {eta_txt}"
+        parts.append(f"eta {eta_txt}")
     if pct is None:
-        text += " (size unknown)"
+        parts.append("(size unknown)")
     if stream_label:
-        text += f" - {stream_label}"
-    return text
+        parts.append(stream_label)
+    return "  ".join(parts)
 
 
 def _build_format_args(params: dict, info: dict | None) -> list[str]:

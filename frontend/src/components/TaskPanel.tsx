@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, ChevronRight, FolderOutput, Loader2, RotateCw, X, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Download, FolderOutput, Loader2, RotateCw, X, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cancelTask, downloadUrl, getTaskLog, openOutputFolder } from "../api";
 import { emitEvent } from "../events";
@@ -19,6 +19,12 @@ const KIND_LABELS: Record<string, string> = {
   media_audio: "Audio download",
 };
 
+/** File extension for the badge ("report.PDF" -> "pdf"; no extension -> "file"). */
+function extOf(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i > 0 && i < name.length - 1 ? name.slice(i + 1, i + 6).toLowerCase() : "file";
+}
+
 export function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`${BADGE} ${STATUS_TONES[status] ?? STATUS_TONES.queued}`}>
@@ -28,16 +34,15 @@ export function StatusBadge({ status }: { status: string }) {
   );
 }
 
+/** 2px bar with a soft accent glow in dark mode (see .bar-glow in index.css).
+ *  The shimmer is only used while progress is genuinely unknown. */
 function ProgressBar({ value, indeterminate, staged }: {
   value: number | null; indeterminate: boolean; staged: boolean;
 }) {
-  const fill = indeterminate
-    ? "w-1/3 animate-progress"
-    : "";
   if (indeterminate) {
     return (
-      <div className="h-1 w-full overflow-hidden rounded-none bg-elev">
-        <div className={`h-full ${fill} rounded-none bg-acc`} />
+      <div className="h-0.5 w-full overflow-hidden bg-elev" role="progressbar" aria-label="Progress unknown">
+        <div className="bar-glow h-full w-1/3 animate-progress bg-acc" />
       </div>
     );
   }
@@ -50,10 +55,10 @@ function ProgressBar({ value, indeterminate, staged }: {
       <div>
         <div className="flex gap-1" role="progressbar"
           aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
-          <div className="h-1 flex-[92] overflow-hidden rounded-none bg-elev">
-            <div className="h-full bg-acc transition-[width] duration-300" style={{ width: `${dl * 100}%` }} />
+          <div className="h-0.5 flex-[92] overflow-hidden bg-elev">
+            <div className="bar-glow h-full bg-acc transition-[width] duration-300" style={{ width: `${dl * 100}%` }} />
           </div>
-          <div className="h-1 flex-[8] overflow-hidden rounded-none bg-elev">
+          <div className="h-0.5 flex-[8] overflow-hidden bg-elev">
             <div className="h-full bg-info transition-[width] duration-300" style={{ width: `${proc * 100}%` }} />
           </div>
         </div>
@@ -65,9 +70,9 @@ function ProgressBar({ value, indeterminate, staged }: {
     );
   }
   return (
-    <div className="h-1 w-full overflow-hidden rounded-none bg-elev">
+    <div className="h-0.5 w-full overflow-hidden bg-elev">
       <div
-        className="h-full rounded-none bg-acc transition-[width] duration-300"
+        className="bar-glow h-full bg-acc transition-[width] duration-300"
         style={{ width: `${Math.round((value ?? 0) * 100)}%` }}
         role="progressbar"
         aria-valuenow={Math.round((value ?? 0) * 100)}
@@ -206,8 +211,9 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           />
           {/* terminal-style stage line: real backend progress (speed / ETA
               where yt-dlp reports them) */}
-          <p className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[0.6875rem] text-info">
-            <span className="text-ink3" aria-hidden>▸ </span>{task.stage}
+          <p className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[0.6875rem] text-info" title={task.stage}>
+            <span className="text-accText" aria-hidden>❯ </span>
+            <span className="whitespace-pre">{task.stage}</span>
           </p>
         </div>
       )}
@@ -226,26 +232,32 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           <ul className="mt-1.5 space-y-1.5">
             {(task.result?.outputs || []).map((o) => (
               <li key={o.path} className="flex flex-wrap items-center gap-2 rounded-sm bg-elev/60 px-3 py-2">
+                <span className="rounded-sm border border-line bg-base px-1.5 py-0.5 font-mono text-[0.625rem] font-semibold uppercase text-accText">
+                  {extOf(o.name)}
+                </span>
                 <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink" title={o.name}>{o.name}</span>
                 <span className="font-mono text-[0.6875rem] text-ink3">{humanSize(o.size)}</span>
                 {o.exists === false ? (
                   <span className="font-mono text-[0.6875rem] text-ink3">file missing</span>
                 ) : (
-                  <a href={downloadUrl(o.path)} className={BTN_SECONDARY} download>
-                    download
-                  </a>
+                  <>
+                    <a href={downloadUrl(o.path)} className={`${BTN_SECONDARY} px-2.5 py-1 text-xs`} download>
+                      <Download size={13} aria-hidden /> download
+                    </a>
+                    <button
+                      onClick={async () => {
+                        try { await openOutputFolder(); } catch (e: any) { toast.push("error", e.message); }
+                      }}
+                      className={`${BTN_GHOST} px-2.5 py-1 text-xs`}
+                      title="Open the output folder"
+                    >
+                      <FolderOutput size={13} aria-hidden /> show in folder
+                    </button>
+                  </>
                 )}
               </li>
             ))}
           </ul>
-          <button
-            onClick={async () => {
-              try { await openOutputFolder(); } catch (e: any) { toast.push("error", e.message); }
-            }}
-            className={`${BTN_GHOST} mt-2 text-xs`}
-          >
-            <FolderOutput size={14} /> open output folder
-          </button>
         </div>
       )}
 
