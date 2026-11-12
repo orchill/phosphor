@@ -212,8 +212,9 @@ export default function TaskPanel({
 
   return (
     <div className={`${CARD} p-4`} data-testid="task-panel">
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
+      {/* wraps on narrow screens so the title and meta keep a usable width */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-[12rem] flex-1">
           <p className="truncate font-mono text-sm font-semibold text-ink">{task.title}</p>
           <p className="font-mono text-[0.6875rem] text-ink3">
             {kindLabel} · #{task.id.slice(0, 8)}
@@ -230,7 +231,7 @@ export default function TaskPanel({
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           {running ? (
             <Loader2 size={16} className="animate-spin text-info" aria-hidden />
           ) : task.status === "completed" ? (
