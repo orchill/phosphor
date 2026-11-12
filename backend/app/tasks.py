@@ -19,6 +19,9 @@ from .utils import atomic_write_text, kill_process_tree, new_id, now_iso, remove
 
 TERMINAL = {"completed", "failed", "cancelled"}
 LOG_CAP = 400
+# Finished records kept in memory (with their log). Older ones are still
+# served from the persisted history, just without the live log.
+MEMORY_KEEP = 50
 
 
 class TaskCancelled(Exception):
@@ -98,7 +101,8 @@ class TaskManager:
     def __init__(self, history_path: Path, history_limit: int, max_concurrent: int):
         self.history_path = history_path
         self.history_limit = max(5, int(history_limit))
-        self.sem = asyncio.Semaphore(max(1, int(max_concurrent)))
+        self.max_concurrent = max(1, int(max_concurrent))
+        self.sem = asyncio.Semaphore(self.max_concurrent)
         self.tasks: dict[str, TaskRecord] = {}
         self.history: list[dict] = []
         self._load_history()
@@ -125,6 +129,33 @@ class TaskManager:
                 json.dumps(self.history[:self.history_limit], indent=1, ensure_ascii=False))
         except OSError:
             pass  # history persistence is best-effort; runtime keeps working
+        self._trim_memory()
+
+    def reconfigure(self, history_limit: int | None = None,
+                    max_concurrent: int | None = None) -> None:
+        """Apply changed settings without a restart.
+
+        A new concurrency limit replaces the semaphore: tasks already running
+        or waiting keep the old one (`async with` holds the object it entered
+        with), so the change affects tasks submitted from now on.
+        """
+        if history_limit is not None:
+            self.history_limit = max(5, int(history_limit))
+            del self.history[self.history_limit:]
+        if max_concurrent is not None:
+            n = max(1, int(max_concurrent))
+            if n != self.max_concurrent:
+                self.max_concurrent = n
+                self.sem = asyncio.Semaphore(n)
+
+    def _trim_memory(self) -> None:
+        """Drop the oldest finished records beyond MEMORY_KEEP (B11)."""
+        finished = [r for r in self.tasks.values() if r.status in TERMINAL]
+        if len(finished) <= MEMORY_KEEP:
+            return
+        finished.sort(key=lambda r: r.finished_at or "")
+        for rec in finished[:-MEMORY_KEEP]:
+            self.tasks.pop(rec.id, None)
 
     # -------------------------------------------------------------- submit
     def submit(

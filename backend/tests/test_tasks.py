@@ -275,3 +275,55 @@ def test_publish_outputs_rolls_back_on_failure(monkeypatch):
             {"outputs": [{"path": str(staging / "a.bin")},
                          {"path": str(staging / "b.bin")}]}, staging, out_dir)
     assert list(out_dir.iterdir()) == [], "partial publish must be rolled back"
+
+
+# ------------------------------------------------------------- B9 / B11
+def test_reconfigure_applies_new_limits_to_new_tasks():
+    """B9: max_concurrent_tasks / history_limit used to be read once at boot."""
+    tmp = Path(tempfile.mkdtemp(prefix="pms_tm_"))
+
+    async def scenario():
+        tm = _manager(tmp, concurrent=1)
+        running = []
+
+        async def slow(rec):
+            running.append(rec.id)
+            await asyncio.sleep(30)
+
+        tm.reconfigure(history_limit=20, max_concurrent=3)
+        assert tm.history_limit == 20 and tm.max_concurrent == 3
+        ids = [tm.submit("t", f"t{i}", slow) for i in range(3)]
+        await asyncio.sleep(0.1)
+        assert len(running) == 3, "all three must run concurrently after reconfigure"
+        for tid in ids:
+            tm.cancel(tid)
+        for tid in ids:
+            await _wait_terminal(tm, tid)
+
+    asyncio.run(scenario())
+
+
+def test_finished_records_are_trimmed_from_memory_but_stay_in_history(monkeypatch):
+    """B11: tasks (each with a 400-line log) must not accumulate forever."""
+    import backend.app.tasks as tasks_mod
+    monkeypatch.setattr(tasks_mod, "MEMORY_KEEP", 3)
+    tmp = Path(tempfile.mkdtemp(prefix="pms_tm_"))
+
+    async def scenario():
+        tm = _manager(tmp, concurrent=2)
+
+        async def quick(rec):
+            rec.add_log("line")
+            return {}
+
+        ids = []
+        for i in range(6):
+            tid = tm.submit("t", f"t{i}", quick)
+            await _wait_terminal(tm, tid)
+            ids.append(tid)
+        in_memory = [t for t in ids if tm.get(t) is not None]
+        assert in_memory == ids[-3:]
+        listed = {t["id"] for t in tm.list_tasks(limit=50)}
+        assert set(ids) <= listed, "trimmed tasks are still served from history"
+
+    asyncio.run(scenario())

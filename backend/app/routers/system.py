@@ -40,12 +40,17 @@ class SettingsPatch(BaseModel):
 
 
 @router.put("/settings")
-async def put_settings(body: SettingsPatch):
+async def put_settings(request: Request, body: SettingsPatch):
     cfg = get_config()
     try:
         restart = cfg.update(body.patch)
     except ConfigError as exc:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
+    # history_limit and max_concurrent_tasks apply live (no restart needed).
+    tm = getattr(request.app.state, "tm", None)
+    if tm is not None:
+        tm.reconfigure(int(cfg.get("history_limit")),
+                       int(cfg.get("max_concurrent_tasks")))
     return {"config": cfg.public_dict(), "restart_required": restart}
 
 
