@@ -18,6 +18,10 @@ const HEIGHTS: [number, string][] = [
   [720, "720p"], [480, "480p"], [360, "360p"],
 ];
 
+// Errors that usually mean "sign in with your own cookies". Word-bounded so
+// "package", "storage" or "message" never trigger the banner.
+const COOKIE_HINT = /\b(sign[- ]in|bot|age-restricted|confirm your age|cookies)\b/i;
+
 function formatSize(f: MediaFormat | null | undefined): number | null {
   return f?.filesize ?? f?.filesize_approx ?? null;
 }
@@ -57,7 +61,7 @@ const fetchInfo = async () => {
       toast.push("success", `Found: ${data.title}`);
     } catch (e: any) {
       toast.push("error", e.message);
-      if (/sign-in|bot|age|cookies/i.test(String(e.message || ""))) setNeedCookies(true);
+      if (COOKIE_HINT.test(String(e.message || ""))) setNeedCookies(true);
     } finally {
       setFetching(false);
     }
