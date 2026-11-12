@@ -32,6 +32,25 @@ async function latestTaskStatus(request: import("@playwright/test").APIRequestCo
 }
 
 test.describe("media downloader (stub yt-dlp, no network)", () => {
+  test("pasting a URL fetches automatically; typing does not", async ({ page }) => {
+    await page.goto("/#/media");
+    const input = page.locator("#mediaurl");
+    await input.fill(STUB_URL); // typing / fill must NOT trigger a fetch
+    await page.waitForTimeout(800);
+    await expect(page.getByRole("heading", { name: "E2E Stub Video" })).toHaveCount(0);
+
+    await input.fill("");
+    await input.focus();
+    await page.evaluate((u) => {
+      const el = document.getElementById("mediaurl")!;
+      const dt = new DataTransfer();
+      dt.setData("text", u);
+      el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    }, STUB_URL);
+    await expect(page.getByRole("heading", { name: "E2E Stub Video" })).toBeVisible({ timeout: 45_000 });
+    await expect(page.locator(".aspect-video")).toBeVisible(); // thumbnail frame with duration badge
+  });
+
   test("fetch info renders stub metadata, formats and mode tabs", async ({ page }) => {
     await fetchInfo(page);
     await expect(page.getByText("Stub Channel")).toBeVisible();

@@ -21,6 +21,9 @@ const HEIGHTS: [number, string][] = [
 
 // Errors that usually mean "sign in with your own cookies". Word-bounded so
 // "package", "storage" or "message" never trigger the banner.
+/** Cheap shape check before auto-fetching a pasted value. */
+const LOOKS_LIKE_URL = /^https?:\/\/\S+\.\S+/i;
+
 const COOKIE_HINT = /\b(sign[- ]in|bot|age-restricted|confirm your age|cookies)\b/i;
 
 function formatSize(f: MediaFormat | null | undefined): number | null {
@@ -50,14 +53,30 @@ const [audioFmt, setAudioFmt] = useState("mp3");
       return s;
     });
   useEffect(() => { refreshCookies().catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-const fetchInfo = async () => {
-    if (!url.trim()) { toast.push("error", "Paste a video URL first."); return; }
+// Stable ref so a debounced paste always calls the latest closure.
+  const fetchRef = useRef<(u?: string) => void>(() => {});
+  const pasteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (pasteTimer.current) clearTimeout(pasteTimer.current); }, []);
+
+  /** Pasted or Enter-submitted URLs fetch automatically; plain typing never does. */
+  const schedulePasteFetch = (text: string) => {
+    const t = text.trim();
+    if (!LOOKS_LIKE_URL.test(t)) return;
+    setUrl(t);
+    if (pasteTimer.current) clearTimeout(pasteTimer.current);
+    pasteTimer.current = setTimeout(() => fetchRef.current(t), 300);
+  };
+
+  const fetchInfo = async (override?: string) => {
+    const target = (override ?? url).trim();
+    if (!target) { toast.push("error", "Paste a video URL first."); return; }
+    if (fetching) return;
     setFetching(true);
     setInfo(null);
     setTaskId(null);
     setNeedCookies(false);
     try {
-      const data = await mediaInfo(url.trim());
+      const data = await mediaInfo(target);
       setInfo(data);
       toast.push("success", `Found: ${data.title}`);
     } catch (e: any) {
@@ -67,6 +86,8 @@ const fetchInfo = async () => {
       setFetching(false);
     }
   };
+
+  fetchRef.current = (u) => { void fetchInfo(u); };
 
   const lastDownload = useRef<import("../types").MediaDownloadPayload | null>(
     null,
@@ -170,32 +191,35 @@ fixes this - it takes about a minute.
       {tab === "downloader" && (
         <>
       <div className={`${CARD} p-4`}>
-        <label className={LABEL} htmlFor="mediaurl">Video or audio URL</label>
-        <div className="mt-1 flex gap-2">
-          <div className="relative flex-1">
+        <label className={LABEL} htmlFor="mediaurl">video or audio url</label>
+        <div className="mt-1 flex items-stretch">
+          <div className="relative min-w-0 flex-1">
             <Link2 size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink3" />
             <input
-id="mediaurl" value={url}
+              id="mediaurl" value={url}
               onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !fetching && fetchInfo()}
-              placeholder="https://www.youtube.com/watch?v=..." className={`${INPUT} pl-9`}
+              onPaste={(e) => schedulePasteFetch(e.clipboardData.getData("text"))}
+              onKeyDown={(e) => { if (e.key === "Enter") fetchInfo(); }}
+              placeholder="https://www.youtube.com/watch?v=..."
+              className={`${INPUT} rounded-r-none pl-9`}
               spellCheck={false}
               autoComplete="off"
             />
           </div>
           <button
-            onClick={() => navigator.clipboard?.readText().then((t) => { if (t.trim()) setUrl(t.trim()); }).catch(() => {})}
-            className={BTN_SECONDARY}
+            onClick={() => navigator.clipboard?.readText().then(schedulePasteFetch).catch(() => {})}
+            className={`${BTN_SECONDARY} rounded-none border-l-0`}
             aria-label="Paste URL from clipboard"
             title="Paste from clipboard"
           >
             <ClipboardPaste size={15} aria-hidden />
           </button>
-          <button onClick={fetchInfo} disabled={fetching} className={BTN_SECONDARY}>
+          <button onClick={() => fetchInfo()} disabled={fetching} className={`${BTN_PRIMARY} rounded-l-none`}>
             {fetching ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
             fetch info
-</button>
+          </button>
         </div>
+        <p className="mt-1.5 text-[0.6875rem] text-ink3">Paste a link or press Enter - details load automatically.</p>
       </div>
 
       {fetching && (
@@ -205,24 +229,28 @@ id="mediaurl" value={url}
       )}
 
       {info && (
-        <>
+        <div className="grid gap-4 lg:grid-cols-[19rem_minmax(0,1fr)] lg:items-start">
           <div className={`${CARD} overflow-hidden`}>
-            <div className="flex flex-col gap-4 p-4 sm:flex-row">
+            <div className="relative aspect-video w-full bg-elev">
               <img
-src={info.thumbnail}
-                alt="" className="h-36 w-full max-w-xs rounded-sm bg-elev object-cover " onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+                src={info.thumbnail}
+                alt=""
+                className="h-full w-full object-cover"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
               />
-              <div className="min-w-0 flex-1">
-                <h3 className="text-base font-semibold leading-snug text-ink">{info.title}</h3>
-                <p className="mt-1 text-sm text-ink2">
-                  {info.uploader && <>{info.uploader} - </>}
-                  {info.is_live ? "LIVE" : fmtDuration(info.duration)}
-                  {info.extractor && <> - {info.extractor}</>}
-                </p>
-                <p className="mt-1 text-xs text-ink3">
-                  {info.video_formats.length} video / {info.audio_formats.length} audio formats available
-</p>
-              </div>
+              <span className="absolute bottom-1.5 right-1.5 rounded-sm bg-base/85 px-1.5 py-0.5 font-mono text-[0.6875rem] font-medium text-ink">
+                {info.is_live ? "live" : fmtDuration(info.duration)}
+              </span>
+            </div>
+            <div className="min-w-0 space-y-1 p-4">
+              <h3 className="text-base font-semibold leading-snug text-ink">{info.title}</h3>
+              <p className="text-sm text-ink2">
+                {info.uploader && <>{info.uploader}</>}
+                {info.extractor && <>{info.uploader ? " - " : ""}{info.extractor}</>}
+              </p>
+              <p className="text-xs text-ink3">
+                {info.video_formats.length} video / {info.audio_formats.length} audio formats available
+              </p>
             </div>
           </div>
 
@@ -267,36 +295,36 @@ src={info.thumbnail}
                     </div>
                     <div className="sm:col-span-2">
                       <p className={LABEL}>available formats</p>
-                      <div className="mt-1.5 max-h-56 overflow-auto rounded-sm border border-line bg-base">
+                      <div className="mt-1.5 max-h-56 overflow-auto rounded border border-line bg-panel">
                         <table className="w-full border-collapse font-mono text-[0.6875rem]">
                           <thead>
-                            <tr className="sticky top-0 bg-elev text-left text-ink3">
-                              <th className="px-2 py-1 font-medium">id</th>
-                              <th className="px-2 py-1 font-medium">ext</th>
-                              <th className="px-2 py-1 font-medium">res</th>
-                              <th className="px-2 py-1 font-medium">fps</th>
-                              <th className="px-2 py-1 text-right font-medium">size</th>
-                              <th className="px-2 py-1 font-medium">audio</th>
+                            <tr className="sticky top-0 z-10 bg-panel text-left text-[0.625rem] uppercase tracking-widest text-ink3 shadow-[0_1px_0_rgb(var(--c-line))]">
+                              <th className="px-3 py-1.5 font-medium">id</th>
+                              <th className="px-2 py-1.5 font-medium">ext</th>
+                              <th className="px-2 py-1.5 font-medium">res</th>
+                              <th className="px-2 py-1.5 font-medium">fps</th>
+                              <th className="px-2 py-1.5 text-right font-medium">size</th>
+                              <th className="px-3 py-1.5 font-medium">audio</th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-line">
                             {info.video_formats.map((f) => {
                               const selected = videoFmt === f.id;
                               return (
                                 <tr
                                   key={f.id}
-                                  onClick={() => setVideoFmt(f.id)}
+                                  onClick={() => setVideoFmt(selected ? "" : f.id)}
                                   aria-selected={selected}
-                                  className={`cursor-pointer border-t border-line transition-colors ${
-                                    selected ? "bg-acc/10 text-accText" : "text-ink2 hover:bg-elev"
+                                  className={`cursor-pointer transition-colors ${
+                                    selected ? "bg-acc/10 text-accText" : "text-ink2 hover:bg-elev/60"
                                   }`}
                                 >
-                                  <td className={`px-2 py-1 ${selected ? "font-semibold" : ""}`}>{f.id}</td>
-                                  <td className="px-2 py-1">{f.ext}</td>
-                                  <td className="px-2 py-1">{f.height ? `${f.height}p` : "-"}</td>
-                                  <td className="px-2 py-1">{f.fps ? Math.round(f.fps) : "-"}</td>
-                                  <td className="px-2 py-1 text-right">{formatSize(f) ? humanSize(formatSize(f)) : "-"}</td>
-                                  <td className="px-2 py-1">{f.type === "video-only" ? "no" : "yes"}</td>
+                                  <td className={`px-3 py-1.5 ${selected ? "font-semibold" : ""}`}>{f.id}</td>
+                                  <td className="px-2 py-1.5">{f.ext}</td>
+                                  <td className="px-2 py-1.5">{f.height ? `${f.height}p` : "-"}</td>
+                                  <td className="px-2 py-1.5">{f.fps ? Math.round(f.fps) : "-"}</td>
+                                  <td className="px-2 py-1.5 text-right">{formatSize(f) ? humanSize(formatSize(f)) : "-"}</td>
+                                  <td className="px-3 py-1.5">{f.type === "video-only" ? "no" : "yes"}</td>
                                 </tr>
                               );
                             })}
@@ -304,7 +332,7 @@ src={info.thumbnail}
                         </table>
                       </div>
                       <p className="mt-1 text-[0.625rem] text-ink3">
-                        Click a row to lock that exact format (syncs the selector above).
+                        Click a row to lock that exact format (syncs the selector above); click it again to release.
                       </p>
                     </div>
                     <label className="flex items-center gap-2 text-sm text-ink sm:col-span-2">
@@ -353,12 +381,12 @@ src={info.thumbnail}
               ) : (
                 <span className="text-xs text-ink3">Size estimate unavailable for this selection</span>
               )}
-              <span className="ml-auto flex items-center gap-1 text-[0.6875rem] text-ink3">
-                <AlertTriangle size={11} /> Respect copyright - download only permitted content
-</span>
             </div>
+            <p className="border-t border-line pt-3 text-[0.6875rem] text-ink3">
+              Respect copyright - download only content you have the right to save.
+            </p>
           </div>
-        </>
+        </div>
       )}
         </>
       )}
