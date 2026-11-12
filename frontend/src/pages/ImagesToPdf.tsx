@@ -98,14 +98,14 @@ export default function ImagesToPdf() {
             {images.map((img, i) => {
               const rot = rotations[img.id] || 0;
               return (
-                <div
+                <li
                   key={img.id}
-                  {...{ onDragOver: reorder.onDragOver }}
+                  draggable
+                  onDragOver={reorder.onDragOver}
                   onDrop={reorder.onDrop(i)}
                   onDragStart={reorder.onDragStart(i)}
-                  draggable
+                  className="overflow-hidden rounded-sm border border-line bg-panel shadow-sm"
                 >
-                  <li className="overflow-hidden rounded-sm border border-line bg-panel shadow-sm  ">
                     <div className="flex h-28 items-center justify-center bg-elev">
                       <img
                         src={thumbUrl(img.id, 240)}
@@ -124,8 +124,7 @@ export default function ImagesToPdf() {
                         <button onClick={() => { setImages((c) => c.filter((x) => x.id !== img.id)); deleteFile(img.id).catch(() => {}); }} className="rounded p-1 text-ink3 hover:text-bad" aria-label={`Remove ${img.name}`}>x</button>
                       </span>
                     </div>
-                  </li>
-                </div>
+                </li>
               );
             })}
           </ul>

@@ -8,17 +8,26 @@ interface Props {
   draggable?: boolean;
   index?: number;
   badge?: string;
+  /** Reorder handlers (see useReorder). They live on the <li> itself so the
+   *  parent <ul> only ever contains list items. */
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: () => void;
 }
 
-export default function FileCard({ file, onRemove, draggable, index, badge }: Props) {
+export default function FileCard({
+  file, onRemove, draggable, index, badge, onDragStart, onDragOver, onDrop,
+}: Props) {
   return (
     <li
       draggable={draggable}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
         (e.currentTarget as HTMLElement).dataset.index = String(index);
+        onDragStart?.();
       }}
-      onDragOver={(e) => e.preventDefault()}
+      onDragOver={(e) => (onDragOver ?? ((ev) => ev.preventDefault()))(e)}
+      onDrop={onDrop}
       className="flex items-center gap-3 rounded border border-line bg-panel p-2.5"
     >
       {draggable && (

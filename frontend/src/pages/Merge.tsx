@@ -81,11 +81,13 @@ export default function Merge() {
           <FileDrop onFiles={addFiles} accept=".pdf,application/pdf" label="Add more PDFs" disabled={busy} />
           <ul className="space-y-2">
             {files.map((f, i) => (
-              <div key={f.id} {...{ onDragOver: reorder.onDragOver }} onDrop={reorder.onDrop(i)}>
-                <div onDragStart={reorder.onDragStart(i)}>
-                  <FileCard file={f} draggable index={i} badge={`#${i + 1}`} onRemove={() => remove(f)} />
-                </div>
-              </div>
+              <FileCard
+                key={f.id} file={f} draggable index={i} badge={`#${i + 1}`}
+                onRemove={() => remove(f)}
+                onDragStart={reorder.onDragStart(i)}
+                onDragOver={reorder.onDragOver}
+                onDrop={reorder.onDrop(i)}
+              />
             ))}
           </ul>
           <div className="flex items-center gap-3">
