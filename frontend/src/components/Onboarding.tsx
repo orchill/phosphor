@@ -10,8 +10,8 @@ interface Props {
 
 const STEPS: { cmd: string; text: string }[] = [
   { cmd: "01 · local", text: "Everything runs on this machine. No accounts, no cloud, no telemetry - your files never leave this computer." },
-  { cmd: "02 · pdf tools", text: "Drop PDFs or images into any tool on the PDF Tools page. Every operation writes new files - originals stay untouched." },
-  { cmd: "03 · media", text: "Paste a video or audio URL in the Media Downloader. If YouTube asks for sign-in, use the Cookies / Sign-in tab with your own session." },
+  { cmd: "02 · pdf tools", text: "Drop PDFs or images into any tool on the pdf tools page. Every operation writes new files - originals stay untouched." },
+  { cmd: "03 · media", text: "Paste a video or audio URL in the media downloader. If YouTube asks for sign-in, use the cookies / sign-in tab with your own session." },
   { cmd: "04 · go faster", text: "Ctrl+K opens the command palette. The moon/sun button switches theme, and the event log on Home tracks everything you do." },
 ];
 
@@ -42,7 +42,7 @@ export default function Onboarding({ open, onClose }: Props) {
         className={`w-full max-w-md ${CARD} p-5 shadow-lg`}
       >
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-ink">
+          <h2 className="font-mono text-[13px] font-semibold tracking-tight text-ink">
             $ phosphor --intro
           </h2>
           <button
@@ -54,7 +54,7 @@ export default function Onboarding({ open, onClose }: Props) {
           </button>
         </div>
 
-        <p className="mt-4 font-mono text-[12px] uppercase tracking-widest text-acc">{s.cmd}</p>
+        <p className="mt-4 font-mono text-[12px] uppercase tracking-widest text-accText">{s.cmd}</p>
         <p className="mt-2 text-sm leading-relaxed text-ink2">{s.text}</p>
 
         <div className="mt-5 flex items-center gap-2">

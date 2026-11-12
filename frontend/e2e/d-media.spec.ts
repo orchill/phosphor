@@ -51,7 +51,7 @@ test.describe("media downloader (stub yt-dlp, no network)", () => {
     // the output row offers the file for download with its size
     await expect(page.getByText("e2e-video.mp4")).toBeVisible();
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Download" }).click();
+    await page.getByRole("link", { name: "download" }).click();
     const download = await downloadPromise;
     const bytes = fs.readFileSync(await download.path());
     expect(bytes.length).toBe(40_000);

@@ -95,7 +95,7 @@ export default function Compress() {
           </SourcePanel>
 
           <div className="flex items-center gap-3">
-            <button onClick={run} disabled={busy} className={BTN_PRIMARY}><Zap size={16} /> Compress</button>
+            <button onClick={run} disabled={busy} className={BTN_PRIMARY}><Zap size={16} /> compress</button>
           </div>
         </>
       )}

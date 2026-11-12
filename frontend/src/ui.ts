@@ -1,10 +1,22 @@
 /** Shared Tailwind class constants — the component layer of the design system.
  *
  *  Phosphor Terminal 2.0: squared-off corners (cards 4px, controls 2px),
- *  1px borders on tokenized surfaces, compact uppercase technical labels,
- *  one monospace typeface (JetBrains Mono) for everything; `font-sans` is opt-in. Colors
- *  come exclusively from the semantic tokens in index.css, so light and dark
- *  themes need no per-component dark: variants.
+ *  1px borders on tokenized surfaces, one monospace typeface (JetBrains Mono)
+ *  for everything; `font-sans` is opt-in. Colors come exclusively from the
+ *  semantic tokens in index.css, so light and dark themes need no
+ *  per-component dark: variants.
+ *
+ *  CASING AND VOICE (V2) - follow these when adding or changing UI text:
+ *  - Navigation, labels, buttons, badges, tabs and paths: lowercase
+ *    ("merge pdfs", "download", "fetch info", "~/pdf-tools").
+ *  - Page titles: lowercase, prefixed with a prompt glyph by <PageHeader>
+ *    ("❯ merge pdfs"). Never type the glyph by hand.
+ *  - Section/field micro-labels: keep the UPPERCASE micro-label style
+ *    (LABEL, SECTION_LABEL, SECTION_TITLE apply it via CSS). This is the one
+ *    intentional exception, so write their source text in lowercase.
+ *  - Prose (descriptions, toasts, errors, helper text): sentence case.
+ *  - When prose mentions a UI element, use its lowercase name
+ *    ("open the cookies / sign-in tab").
  */
 export const CARD =
   "rounded border border-line bg-panel";

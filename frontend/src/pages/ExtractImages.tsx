@@ -59,7 +59,7 @@ export default function ExtractImages() {
         <>
           <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close">
             <div className="flex flex-wrap items-center gap-3">
-              <button onClick={run} disabled={busy} className={BTN_PRIMARY}><FilePlus2 size={16} /> Extract images</button>
+              <button onClick={run} disabled={busy} className={BTN_PRIMARY}><FilePlus2 size={16} /> extract images</button>
             </div>
           </SourcePanel>
         </>

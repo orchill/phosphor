@@ -103,7 +103,7 @@ export default function PdfToImages() {
 
           <div className="flex items-center gap-3">
             <button onClick={run} disabled={busy || (!useAll && !selection.size)} className={BTN_PRIMARY}>
-              <FileOutput size={16} /> Export {useAll ? pdf.pages : selection.size} page(s)
+              <FileOutput size={16} /> export {useAll ? pdf.pages : selection.size} page(s)
             </button>
           </div>
 

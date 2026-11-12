@@ -10,31 +10,31 @@ const CATEGORIES: { title: string; blurb: string; tools: { id: string; icon: Rea
     title: "organize",
     blurb: "Put documents in order - combine, cut and rearrange.",
     tools: [
-      { id: "merge", icon: Combine, title: "Merge PDFs", desc: "Combine multiple PDFs in any order." },
-      { id: "split", icon: Scissors, title: "Split / Extract", desc: "Extract page ranges or split every N pages." },
-      { id: "organize", icon: FileStack, title: "Organize Pages", desc: "Visually reorder, rotate and delete pages." },
+      { id: "merge", icon: Combine, title: "merge pdfs", desc: "Combine multiple PDFs in any order." },
+      { id: "split", icon: Scissors, title: "split / extract", desc: "Extract page ranges or split every N pages." },
+      { id: "organize", icon: FileStack, title: "organize pages", desc: "Visually reorder, rotate and delete pages." },
     ],
   },
   {
     title: "convert",
     blurb: "Move between documents and images.",
     tools: [
-      { id: "images", icon: Images, title: "Images to PDF", desc: "Turn photos into one PDF with page sizes, margins and rotation." },
-      { id: "toimages", icon: FileOutput, title: "PDF to Images", desc: "Render pages to PNG or JPG at any DPI." },
+      { id: "images", icon: Images, title: "images to pdf", desc: "Turn photos into one PDF with page sizes, margins and rotation." },
+      { id: "toimages", icon: FileOutput, title: "pdf to images", desc: "Render pages to PNG or JPG at any DPI." },
     ],
   },
   {
     title: "optimize",
     blurb: "Make documents smaller.",
     tools: [
-      { id: "compress", icon: Zap, title: "Compress PDF", desc: "Shrink file size while balancing quality." },
+      { id: "compress", icon: Zap, title: "compress pdf", desc: "Shrink file size while balancing quality." },
     ],
   },
   {
     title: "extract",
     blurb: "Get the assets back out.",
     tools: [
-      { id: "extract", icon: FilePlus2, title: "Extract Images", desc: "Export the embedded images from a PDF." },
+      { id: "extract", icon: FilePlus2, title: "extract images", desc: "Export the embedded images from a PDF." },
     ],
   },
 ];

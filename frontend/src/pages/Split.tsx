@@ -105,9 +105,9 @@ export default function Split() {
 
           {mode === "extract" && (
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>Select all</button>
-              <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>Clear</button>
-              <button onClick={applySelectionToRangeText} className={BTN_SECONDARY}>Selection to text</button>
+              <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>select all</button>
+              <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>clear</button>
+              <button onClick={applySelectionToRangeText} className={BTN_SECONDARY}>selection to text</button>
               <span className="text-sm text-ink2">{selection.size} page(s) selected</span>
             </div>
           )}

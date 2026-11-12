@@ -38,7 +38,7 @@ test.describe("navigation & routing", () => {
       await expect(page.getByRole("heading", { name: cat, exact: true })).toBeVisible();
     }
     for (const tool of ["Merge PDFs", "Split / Extract", "Organize Pages", "Images to PDF", "PDF to Images", "Compress PDF", "Extract Images"]) {
-      await expect(page.getByRole("button", { name: new RegExp(`^${tool}`) })).toBeVisible();
+      await expect(page.getByRole("button", { name: new RegExp(`^${tool}`, "i") })).toBeVisible();
     }
   });
 

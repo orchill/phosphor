@@ -175,7 +175,7 @@ export default function ImagesToPdf() {
           </div>
 
           <button onClick={convert} disabled={busy} className={BTN_PRIMARY}>
-            <FileImage size={16} /> Convert {images.length} image{images.length > 1 ? "s" : ""} to PDF
+            <FileImage size={16} /> convert {images.length} image{images.length > 1 ? "s" : ""} to PDF
           </button>
         </>
       )}

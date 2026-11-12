@@ -131,7 +131,7 @@ const active = status && status.source !== "none";
           {active && (
             <button onClick={clear} disabled={clearing} className={`${BTN_DANGER} py-1.5 text-xs`}>
               {clearing ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-              Clear cookies
+              clear cookies
 </button>
           )}
         </div>

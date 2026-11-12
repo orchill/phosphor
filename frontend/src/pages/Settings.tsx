@@ -147,7 +147,7 @@ export default function SettingsPage() {
                 onClick={() => window.dispatchEvent(new Event("pms-show-intro"))}
                 className={`${BTN_SECONDARY} mt-1.5`}
               >
-                Show intro again
+                show intro again
               </button>
             </div>
           </Section>
@@ -217,7 +217,7 @@ export default function SettingsPage() {
           <div className={`${CARD} p-4`}>
             <div className="mb-2 flex items-center gap-2">
               <h3 className={SECTION_TITLE}>diagnostics</h3>
-              <button onClick={loadAll} className={`${BTN_SECONDARY} ml-auto py-1 text-xs`}><RefreshCw size={12} /> Re-check</button>
+              <button onClick={loadAll} className={`${BTN_SECONDARY} ml-auto py-1 text-xs`}><RefreshCw size={12} /> re-check</button>
             </div>
             {info && (
               <div className="divide-y divide-line">
@@ -256,9 +256,9 @@ export default function SettingsPage() {
       </div>
 
       <div className="sticky bottom-0 -mx-1 flex flex-wrap items-center gap-2 border-t border-line bg-base/95 px-1 py-3 backdrop-blur">
-        <button onClick={save} disabled={saving} className={BTN_PRIMARY}><Save size={15} /> Save settings</button>
+        <button onClick={save} disabled={saving} className={BTN_PRIMARY}><Save size={15} /> save settings</button>
         <button onClick={async () => { try { await openOutputFolder(); } catch (e: any) { toast.push("error", e.message); } }} className={BTN_SECONDARY}>
-          <FolderOutput size={15} /> Open output folder
+          <FolderOutput size={15} /> open output folder
         </button>
         <button
           onClick={async () => {
@@ -268,7 +268,7 @@ export default function SettingsPage() {
           }}
           className={BTN_SECONDARY}
         >
-          <Trash2 size={15} /> Clear workspace cache
+          <Trash2 size={15} /> clear workspace cache
         </button>
       </div>
     </div>

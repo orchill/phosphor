@@ -93,7 +93,7 @@ export default function Merge() {
           </ul>
           <div className="flex items-center gap-3">
             <button onClick={merge} disabled={busy || files.length < 2} className={BTN_PRIMARY}>
-              <Combine size={16} /> Merge {files.length} PDFs
+              <Combine size={16} /> merge {files.length} pdfs
             </button>
             <button
               onClick={() => { files.forEach((f) => deleteFile(f.id).catch(() => {})); setFiles([]); }}

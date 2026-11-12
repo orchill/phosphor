@@ -125,7 +125,7 @@ const fetchInfo = async () => {
 of other sites). Only download content you have the right to save - DRM and access
 controls are never bypassed. Hitting a bot check? Use the
 <button onClick={() => setTab("cookies")} className="mx-1 font-medium text-accText underline decoration-dotted hover:text-accHi">
-            Cookies / Sign-in
+            cookies / sign-in
 </button>
           tab.
         </>}
@@ -141,7 +141,7 @@ fixes this - it takes about a minute.
             </span>
           </div>
           <button onClick={() => setTab("cookies")} className={`${BTN_SECONDARY} shrink-0 sm:ml-auto`}>
-            <KeyRound size={15} /> Open Cookies / Sign-in
+            <KeyRound size={15} /> open cookies / sign-in
 </button>
         </div>
       )}
@@ -193,7 +193,7 @@ id="mediaurl" value={url}
           </button>
           <button onClick={fetchInfo} disabled={fetching} className={BTN_SECONDARY}>
             {fetching ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-            Fetch info
+            fetch info
 </button>
         </div>
       </div>
@@ -346,7 +346,7 @@ src={info.thumbnail}
             <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4 ">
               <button onClick={start} disabled={starting} className={BTN_PRIMARY}>
                 {starting ? <Loader2 size={15} className="animate-spin" /> : <Download size={16} />}
-                Download {mode === "video" ? (videoFmt ? `format ${videoFmt}` : (height ? `${height}p` : "best")) : audioFmt.toUpperCase()}
+                download {mode === "video" ? (videoFmt ? `format ${videoFmt}` : (height ? `${height}p` : "best")) : audioFmt}
               </button>
               {estSize ? (
                 <span className="text-xs text-ink2">Estimated size: {humanSize(estSize)}</span>

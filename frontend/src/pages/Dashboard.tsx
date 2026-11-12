@@ -11,14 +11,14 @@ import EventLogPanel from "../components/EventLogPanel";
 import { CARD, DOT, SECTION_LABEL } from "../ui";
 
 const TOOLS = [
-  { id: "merge", icon: Combine, title: "Merge PDFs", desc: "Combine multiple PDFs in any order." },
-  { id: "images", icon: Images, title: "Images to PDF", desc: "Turn photos into one PDF with page sizes, margins and rotation." },
-  { id: "organize", icon: FileStack, title: "Organize Pages", desc: "Visually reorder, rotate and delete pages." },
-  { id: "split", icon: Scissors, title: "Split / Extract", desc: "Extract page ranges or split every N pages." },
-  { id: "compress", icon: Zap, title: "Compress PDF", desc: "Shrink file size while balancing quality." },
-  { id: "extract", icon: FilePlus2, title: "Extract Images", desc: "Export the embedded images from a PDF." },
-  { id: "toimages", icon: FileOutput, title: "PDF to Images", desc: "Render pages to PNG or JPG at any DPI." },
-  { id: "media", icon: Video, title: "Media Downloader", desc: "Download video/audio via yt-dlp + FFmpeg." },
+  { id: "merge", icon: Combine, title: "merge pdfs", desc: "Combine multiple PDFs in any order." },
+  { id: "images", icon: Images, title: "images to pdf", desc: "Turn photos into one PDF with page sizes, margins and rotation." },
+  { id: "organize", icon: FileStack, title: "organize pages", desc: "Visually reorder, rotate and delete pages." },
+  { id: "split", icon: Scissors, title: "split / extract", desc: "Extract page ranges or split every N pages." },
+  { id: "compress", icon: Zap, title: "compress pdf", desc: "Shrink file size while balancing quality." },
+  { id: "extract", icon: FilePlus2, title: "extract images", desc: "Export the embedded images from a PDF." },
+  { id: "toimages", icon: FileOutput, title: "pdf to images", desc: "Render pages to PNG or JPG at any DPI." },
+  { id: "media", icon: Video, title: "media downloader", desc: "Download video/audio via yt-dlp + FFmpeg." },
 ] as const;
 
 function EngineRow({ name, detail, ok }: { name: string; detail: string; ok: boolean }) {

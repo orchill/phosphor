@@ -182,7 +182,7 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           <StatusBadge status={task.status} />
           {running && (
             <button onClick={doCancel} disabled={cancelling} className={BTN_DANGER} aria-label="Cancel task">
-              <X size={14} /> Cancel
+              <X size={14} /> cancel
             </button>
           )}
           {onDismiss && !running && (
@@ -232,7 +232,7 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
                   <span className="font-mono text-[0.6875rem] text-ink3">file missing</span>
                 ) : (
                   <a href={downloadUrl(o.path)} className={BTN_SECONDARY} download>
-                    Download
+                    download
                   </a>
                 )}
               </li>
@@ -244,7 +244,7 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
             }}
             className={`${BTN_GHOST} mt-2 text-xs`}
           >
-            <FolderOutput size={14} /> Open output folder
+            <FolderOutput size={14} /> open output folder
           </button>
         </div>
       )}
@@ -255,7 +255,7 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           <p className="mt-1 whitespace-pre-wrap break-words font-mono text-[0.6875rem] text-bad/90">{task.error}</p>
           {onRetry && (
             <button onClick={onRetry} className={`${BTN_SECONDARY} mt-2`}>
-              <RotateCw size={13} aria-hidden /> Retry
+              <RotateCw size={13} aria-hidden /> retry
             </button>
           )}
         </div>
