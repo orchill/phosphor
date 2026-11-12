@@ -14,6 +14,9 @@ test.describe("organize page grid", () => {
   test("a rotated thumbnail stays inside its tile", async ({ page }) => {
     const tile = page.locator("ul[role=list] > li").first();
     await page.getByRole("button", { name: "Rotate page 1 right" }).click();
+    // Measure the settled state, not a frame of the 200ms rotate transition.
+    await tile.locator("img").evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)));
     const t = (await tile.boundingBox())!;
     const i = (await tile.locator("img").boundingBox())!;
     const slack = 1; // sub-pixel rounding
