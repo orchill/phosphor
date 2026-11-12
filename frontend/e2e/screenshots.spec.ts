@@ -118,27 +118,31 @@ fixtureTest.describe("states", () => {
       await shot(page, "media-info", vp, theme, "comfortable");
 
       // each state: answer the download POST with a fixed id, then mock that task
-      const states: [string, string, Record<string, unknown>][] = [
-        ["task-running", "shot-running", {}],
-        ["task-completed", "shot-done", {
+      // [label, task id, text only that state's panel shows, task patch]
+      const states: [string, string, string, Record<string, unknown>][] = [
+        ["task-running", "shot-running", "45.2%", {}],
+        ["task-completed", "shot-done", "e2e-video.mp4", {
           status: "completed", progress: 1, stage: "Done", message: "Saved e2e-video.mp4",
           finished_at: new Date().toISOString(),
           result: { outputs: [{ name: "e2e-video.mp4", path: "/x/e2e-video.mp4", size: 5_300_000, url: "", exists: true }] },
         }],
-        ["task-failed", "shot-failed", {
+        ["task-failed", "shot-failed", "not a bot", {
           status: "failed", progress: null, stage: "Failed",
           error: "ERROR: [youtube] e2e: Sign in to confirm you're not a bot",
           finished_at: new Date().toISOString(),
         }],
       ];
-      for (const [label, id, patch] of states) {
+      for (const [label, id, marker, patch] of states) {
         await page.unroute("**/api/media/download").catch(() => {});
         await page.route("**/api/media/download", (r) =>
           r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ task_id: id }) }));
         await mockTask(page, id, patch);
         await page.getByRole("button", { name: /^download/i }).click();
-        await expect(page.getByTestId("task-panel")).toBeVisible();
-        await page.getByTestId("task-panel").scrollIntoViewIfNeeded();
+        // The previous state's panel is still mounted right after the click;
+        // wait for the one that shows this state before scrolling to it.
+        const panel = page.getByTestId("task-panel").filter({ hasText: marker });
+        await expect(panel).toBeVisible();
+        await panel.scrollIntoViewIfNeeded();
         await shot(page, label, vp, theme, "comfortable");
       }
     });
