@@ -2,6 +2,9 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // the screenshot harness is not a regression test: `npm run shots` runs it
+  // through playwright.shots.config.ts
+  testIgnore: /screenshots\.spec\.ts/,
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
   workers: 1,               // the backend is stateful; run serially

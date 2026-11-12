@@ -2,7 +2,7 @@
  *  it only captures PNGs to e2e/.shots/ (gitignored) so every screen can be
  *  reviewed before and after a visual change.
  *
- *      npm run shots                 # full matrix
+ *      npm run shots                 # full matrix (uses playwright.shots.config.ts)
  *      SHOTS_QUICK=1 npm run shots   # 1280x860, dark, comfortable only
  *
  *  Files are named  <screen>__<W>x<H>__<theme>__<density>.png

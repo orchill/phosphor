@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "e2e": "playwright test",
     "preview": "vite preview",
-    "shots": "playwright test e2e/screenshots.spec.ts",
+    "shots": "playwright test -c playwright.shots.config.ts",
     "format": "npx --yes prettier@3 --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "npx --yes prettier@3 --check \"src/**/*.{ts,tsx,css}\""
   },
