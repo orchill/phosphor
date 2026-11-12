@@ -300,8 +300,17 @@ async def _run_ytdlp(args: list[str], timeout: float) -> tuple[int, bytes, bytes
         raise RuntimeError(f"Could not start yt-dlp: {exc}")
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        proc.kill()
+    except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
+        # Kill the whole tree and REAP it: a bare kill() leaves a zombie and
+        # "Event loop is closed" warnings at shutdown. Also covers the caller
+        # being cancelled (e.g. the browser tab closing mid-request).
+        kill_process_tree(proc)
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=5)
+        except Exception:
+            pass
+        if isinstance(exc, asyncio.CancelledError):
+            raise
         raise RuntimeError(f"yt-dlp timed out after {timeout:.0f}s")
     return proc.returncode or 0, stdout or b"", stderr or b""
 

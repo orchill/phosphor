@@ -368,6 +368,28 @@ def test_stream_tracker_adapts_when_more_streams_than_expected():
         {"mode": "video", "format_ids": {"video": "22", "audio": ""}})[0] == 1
 
 
+def test_run_ytdlp_timeout_kills_and_reaps_the_process(monkeypatch):
+    """B12: the timeout path used to call kill() without wait(): zombie process."""
+    import sys
+    spawned = []
+    real = asyncio.create_subprocess_exec
+
+    async def spy(*args, **kw):
+        proc = await real(*args, **kw)
+        spawned.append(proc)
+        return proc
+
+    monkeypatch.setattr(media_service.asyncio, "create_subprocess_exec", spy)
+
+    async def go():
+        await media_service._run_ytdlp(
+            [sys.executable, "-c", "import time; time.sleep(60)"], timeout=0.3)
+
+    with pytest.raises(RuntimeError, match="timed out"):
+        asyncio.run(go())
+    assert spawned and spawned[0].returncode is not None, "process was not reaped"
+
+
 # ------------------------------------------------------ TaskManager unit
 def test_session_challenged_detection():
     assert media_service._session_challenged(
