@@ -245,3 +245,44 @@ def test_extract_images_none_found_fails_clearly(client):
     task = run_pdf_task(client, "/api/pdf/extract-images", {"file_id": meta["id"]})
     assert task["status"] == "failed"
     assert "No embedded raster images" in task["error"]
+
+
+# ------------------------------------------------- cancellation (B2 / B4)
+def _wait_status(client, task_id: str, wanted: set[str], timeout: float = 30.0) -> dict:
+    import time
+    deadline = time.time() + timeout
+    data: dict = {}
+    while time.time() < deadline:
+        data = client.get(f"/api/tasks/{task_id}").json()
+        if data["status"] in wanted:
+            return data
+        time.sleep(0.05)
+    raise TimeoutError(f"task {task_id} never reached {wanted}: {data.get('status')}")
+
+
+def test_cancel_pdf_task_leaves_no_output_and_restores_concurrency(client):
+    """B4: cancelling a thread-based PDF task must wait for the worker, leave
+    no partial file in the output dir and give the semaphore slot back."""
+    from backend.app.config import get_config
+    out_dir = get_config().output_dir
+    before = {p.name for p in out_dir.iterdir()} if out_dir.exists() else set()
+    tm = client.app.state.tm
+    free_slots = tm.sem._value
+
+    big = make_pdf(TMP / "fifty.pdf", 50, "BIG")
+    meta = upload_file(client, "fifty.pdf", big.read_bytes())
+    r = client.post("/api/pdf/to-images",
+                    json={"file_id": meta["id"], "format": "png", "dpi": 600})
+    assert r.status_code == 200, r.text
+    tid = r.json()["task_id"]
+
+    _wait_status(client, tid, {"running"})
+    assert client.delete(f"/api/tasks/{tid}").status_code == 409   # B2: refused...
+    assert client.post(f"/api/tasks/{tid}/cancel").status_code == 200  # ...still cancellable
+
+    task = _wait_status(client, tid, {"cancelled", "completed", "failed"})
+    assert task["status"] == "cancelled", task
+    after = {p.name for p in out_dir.iterdir()}
+    assert after == before, f"cancelled task left files behind: {after - before}"
+    assert tm.sem._value == free_slots
+    assert client.delete(f"/api/tasks/{tid}").status_code == 200     # removable once finished

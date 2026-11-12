@@ -17,14 +17,13 @@ import threading
 import zipfile
 from pathlib import Path
 from typing import Callable
-from urllib.parse import quote
 
 import fitz  # PyMuPDF
 from PIL import Image, ImageOps
 
 from ..security import ValidationError
 from ..tasks import TaskCancelled, TaskRecord
-from ..utils import sanitize_stem, unique_path
+from ..utils import file_entry, sanitize_stem, unique_path
 
 ReportFn = Callable[[str, float | None], None]
 
@@ -79,8 +78,7 @@ def make_output(cfg_dir: Path, stem: str, suffix: str) -> Path:
 
 
 def output_entry(path: Path) -> dict:
-    return {"name": path.name, "path": str(path), "size": path.stat().st_size,
-            "url": f"/api/download?path={quote(path.as_posix())}"}
+    return file_entry(path)
 
 
 # =============================================================== merge

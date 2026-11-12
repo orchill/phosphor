@@ -76,3 +76,202 @@ def test_kill_process_tree_tolerates_none_and_finished_process():
         await proc.wait()
         kill_process_tree(proc)        # already exited: must be a no-op
     asyncio.run(scenario())
+
+
+# ----------------------------------------------------------------- helpers
+async def _wait_terminal(tm: TaskManager, task_id: str, timeout: float = 10.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        rec = tm.get(task_id)
+        if rec is not None and rec.status in ("completed", "failed", "cancelled"):
+            return rec
+        await asyncio.sleep(0.02)
+    raise TimeoutError(f"task {task_id} did not finish")
+
+
+def _manager(tmp: Path, concurrent: int = 2) -> TaskManager:
+    return TaskManager(tmp / "history.json", history_limit=50, max_concurrent=concurrent)
+
+
+# ------------------------------------------------------------------- B2
+def test_remove_refuses_running_task_and_keeps_it_cancellable():
+    """B2: remove() used to pop the record *before* the status check, so a
+    refused delete silently orphaned a running task."""
+    tmp = Path(tempfile.mkdtemp(prefix="pms_tm_"))
+
+    async def scenario():
+        tm = _manager(tmp)
+
+        async def slow(rec):
+            await asyncio.sleep(30)
+            return {}
+
+        tid = tm.submit("t", "slow", slow)
+        for _ in range(100):                      # let it start
+            if tm.get(tid).status == "running":
+                break
+            await asyncio.sleep(0.01)
+        assert tm.remove(tid) is False
+        assert tm.get(tid) is not None, "running task must stay registered"
+        assert tm.cancel(tid) is True             # still cancellable
+        rec = await _wait_terminal(tm, tid)
+        assert rec.status == "cancelled"
+        assert tm.remove(tid) is True
+        assert tm.get(tid) is None
+
+    asyncio.run(scenario())
+
+
+# ------------------------------------------------------------------- B4
+def test_cancel_thread_task_waits_for_worker_and_keeps_semaphore():
+    """B4: cancel() used to cancel the asyncio wrapper of a to_thread worker.
+    The wrapper then released the semaphore and rmtree'd temp_dir while the
+    thread was still writing. Thread tasks must cancel cooperatively."""
+    tmp = Path(tempfile.mkdtemp(prefix="pms_tm_"))
+    work_dir = tmp / "work"
+    work_dir.mkdir()
+    state = {"thread_alive": False, "sem_during_run": None}
+
+    def worker(rec):
+        state["thread_alive"] = True
+        try:
+            while True:
+                if rec.cancel_event.is_set():
+                    raise TaskCancelled("Cancelled by user")
+                (rec.temp_dir / "partial.bin").write_bytes(b"x")
+                time.sleep(0.02)
+        finally:
+            time.sleep(0.15)                      # slow unwind
+            state["thread_alive"] = False
+
+    async def scenario():
+        tm = _manager(tmp, concurrent=1)
+        initial = tm.sem._value
+        temp = tmp / "task-temp"
+        temp.mkdir()
+
+        async def runner(rec):
+            return await asyncio.to_thread(worker, rec)
+
+        tid = tm.submit("pdf_x", "cooperative", runner, temp_dir=temp, cooperative=True)
+        for _ in range(200):
+            if state["thread_alive"]:
+                break
+            await asyncio.sleep(0.01)
+        assert state["thread_alive"]
+        state["sem_during_run"] = tm.sem._value
+        assert tm.cancel(tid) is True
+        rec = await _wait_terminal(tm, tid)
+        # terminal status is only reported once the worker has really exited
+        assert state["thread_alive"] is False
+        assert rec.status == "cancelled"
+        assert state["sem_during_run"] == initial - 1
+        assert tm.sem._value == initial, "semaphore must be restored exactly once"
+        assert not temp.exists(), "temp dir is removed only after the worker is done"
+
+    asyncio.run(scenario())
+
+
+def test_cancel_after_worker_finished_discards_outputs():
+    """A cancel that lands after the last cooperative check must not leave a
+    result behind: the output the worker produced is deleted."""
+    tmp = Path(tempfile.mkdtemp(prefix="pms_tm_"))
+    out = tmp / "result.pdf"
+
+    def worker(rec):
+        rec.cancel_event.wait(5)                  # cancel arrives mid-flight...
+        out.write_bytes(b"%PDF-fake")             # ...but we finish anyway
+        return {"outputs": [{"name": out.name, "path": str(out)}]}
+
+    async def scenario():
+        tm = _manager(tmp)
+
+        async def runner(rec):
+            return await asyncio.to_thread(worker, rec)
+
+        tid = tm.submit("pdf_x", "late cancel", runner, cooperative=True)
+        await asyncio.sleep(0.1)
+        tm.cancel(tid)
+        rec = await _wait_terminal(tm, tid)
+        assert rec.status == "cancelled"
+        assert not out.exists()
+
+    asyncio.run(scenario())
+
+
+def test_cancel_queued_cooperative_task_never_starts():
+    tmp = Path(tempfile.mkdtemp(prefix="pms_tm_"))
+    started = []
+
+    async def scenario():
+        tm = _manager(tmp, concurrent=1)
+
+        async def blocker(rec):
+            await asyncio.sleep(30)
+
+        async def second(rec):
+            started.append(True)
+            return {}
+
+        first = tm.submit("t", "blocker", blocker)
+        queued = tm.submit("pdf_x", "queued", second, cooperative=True)
+        await asyncio.sleep(0.05)
+        assert tm.get(queued).status == "queued"
+        assert tm.cancel(queued) is True
+        rec = await _wait_terminal(tm, queued)
+        assert rec.status == "cancelled" and not started
+        tm.cancel(first)
+        await _wait_terminal(tm, first)
+
+    asyncio.run(scenario())
+
+
+# --------------------------------------------------------- publish_outputs
+def test_publish_outputs_moves_files_and_never_overwrites():
+    from backend.app.utils import publish_outputs
+
+    root = Path(tempfile.mkdtemp(prefix="pms_pub_"))
+    staging, out_dir = root / "staging", root / "out"
+    staging.mkdir()
+    out_dir.mkdir()
+    (out_dir / "merged.pdf").write_bytes(b"existing")          # name already taken
+    (staging / "merged.pdf").write_bytes(b"new")
+
+    result = publish_outputs(
+        {"outputs": [{"name": "merged.pdf", "path": str(staging / "merged.pdf")}],
+         "info": {"pages": 1}}, staging, out_dir)
+
+    entry = result["outputs"][0]
+    assert entry["name"] == "merged (1).pdf"
+    assert Path(entry["path"]).read_bytes() == b"new"
+    assert (out_dir / "merged.pdf").read_bytes() == b"existing"   # untouched
+    assert not (staging / "merged.pdf").exists()
+    assert entry["size"] == 3 and entry["url"].startswith("/api/download?path=")
+    assert result["info"] == {"pages": 1}
+
+
+def test_publish_outputs_rolls_back_on_failure(monkeypatch):
+    from backend.app import utils
+
+    root = Path(tempfile.mkdtemp(prefix="pms_pub_"))
+    staging, out_dir = root / "staging", root / "out"
+    staging.mkdir()
+    out_dir.mkdir()
+    for n in ("a.bin", "b.bin"):
+        (staging / n).write_bytes(b"x")
+
+    real_move = utils._move_file
+    calls = {"n": 0}
+
+    def flaky(src, dst):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise OSError("disk full")
+        real_move(src, dst)
+
+    monkeypatch.setattr(utils, "_move_file", flaky)
+    with pytest.raises(OSError):
+        utils.publish_outputs(
+            {"outputs": [{"path": str(staging / "a.bin")},
+                         {"path": str(staging / "b.bin")}]}, staging, out_dir)
+    assert list(out_dir.iterdir()) == [], "partial publish must be rolled back"

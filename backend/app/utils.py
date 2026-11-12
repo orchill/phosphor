@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 
 def new_id() -> str:
@@ -41,6 +43,67 @@ def unique_path(path: Path) -> Path:
         if not cand.exists():
             return cand
     raise RuntimeError("Could not allocate a free filename in the output directory")
+
+
+def file_entry(path: Path) -> dict:
+    """The `outputs[]` record the UI uses to offer a download."""
+    return {"name": path.name, "path": str(path), "size": path.stat().st_size,
+            "url": f"/api/download?path={quote(path.as_posix())}"}
+
+
+def _move_file(src: Path, dst: Path) -> None:
+    """Move a file, replacing `dst`; falls back to copy for cross-device moves
+    (the task temp dir and the output dir can be on different drives)."""
+    try:
+        os.replace(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+        src.unlink()
+
+
+def publish_outputs(result: dict | None, staging: Path, out_dir: Path) -> dict:
+    """Move a finished task's staged output files into `out_dir`.
+
+    Runners write into a private staging dir, so an aborted task never leaves
+    partial files in the user's output folder. Each file gets a free name
+    (`name (1).ext` if taken), is reserved atomically, and the `outputs`
+    entries are rewritten to point at the final location. On failure
+    everything already moved is removed again.
+    """
+    result = dict(result or {})
+    outputs = list(result.get("outputs") or [])
+    out_dir.mkdir(parents=True, exist_ok=True)
+    moved: list[Path] = []
+    final: list[dict] = []
+    try:
+        for out in outputs:
+            src = Path(out.get("path", ""))
+            if not src.is_file():
+                final.append(out)       # let the task wrapper report it
+                continue
+            dest = None
+            for _ in range(50):
+                cand = unique_path(out_dir / src.name)
+                try:
+                    cand.touch(exist_ok=False)      # reserve the name
+                except FileExistsError:
+                    continue
+                dest = cand
+                break
+            if dest is None:
+                raise RuntimeError("Could not allocate a free filename in the output directory")
+            moved.append(dest)
+            _move_file(src, dest)
+            final.append({**out, **file_entry(dest)})
+    except Exception:
+        for p in moved:
+            try:
+                p.unlink()
+            except OSError:
+                pass
+        raise
+    result["outputs"] = final
+    return result
 
 
 def atomic_write_text(path: Path, text: str) -> None:

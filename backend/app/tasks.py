@@ -31,10 +31,11 @@ class TaskRecord:
         "id", "kind", "title", "status", "progress", "stage", "message",
         "error", "result", "log", "meta", "created_at", "started_at",
         "finished_at", "async_task", "cancel_event", "process", "temp_dir",
+        "cooperative",
     )
 
     def __init__(self, kind: str, title: str, meta: dict | None = None,
-                 temp_dir: Path | None = None):
+                 temp_dir: Path | None = None, cooperative: bool = False):
         self.id = new_id()
         self.kind = kind
         self.title = title
@@ -54,6 +55,12 @@ class TaskRecord:
         self.cancel_event = threading.Event()
         self.process: Any = None          # running subprocess handle (media)
         self.temp_dir: Path | None = temp_dir
+        # True for runners that execute in a worker thread (asyncio.to_thread).
+        # A thread cannot be interrupted, so cancelling its asyncio wrapper
+        # would release the semaphore and delete temp_dir while it still runs.
+        # Such tasks are cancelled cooperatively only: cancel_event is set and
+        # the worker raises TaskCancelled at its next check.
+        self.cooperative = cooperative
 
     # ------------------------------------------------------------- helpers
     def add_log(self, line: str) -> None:
@@ -128,8 +135,10 @@ class TaskManager:
         runner: Callable[[TaskRecord], Awaitable[dict]],
         meta: dict | None = None,
         temp_dir: Path | None = None,
+        cooperative: bool = False,
     ) -> str:
-        rec = TaskRecord(kind, title, meta=meta, temp_dir=temp_dir)
+        rec = TaskRecord(kind, title, meta=meta, temp_dir=temp_dir,
+                         cooperative=cooperative)
         self.tasks[rec.id] = rec
         rec.async_task = asyncio.get_running_loop().create_task(self._wrap(rec, runner))
         return rec.id
@@ -147,6 +156,15 @@ class TaskManager:
                 rec.report("Starting")
                 result = await runner(rec) or {}
                 outputs = result.get("outputs", []) or []
+                if rec.cooperative and rec.cancel_event.is_set():
+                    # Cancel landed after the worker's last check: honour it
+                    # and do not leave a result the user asked to abort.
+                    for out in outputs:
+                        try:
+                            Path(out.get("path", "")).unlink(missing_ok=True)
+                        except OSError:
+                            pass
+                    raise TaskCancelled("Cancelled by user")
                 for out in outputs:
                     p = Path(out.get("path", ""))
                     if not p.is_file() or p.stat().st_size <= 0:
@@ -184,19 +202,28 @@ class TaskManager:
             return False
         rec.cancel_event.set()
         rec.message = "Cancellation requested"
-        if rec.status == "queued":
+        was_queued = rec.status == "queued"
+        if was_queued:
             rec.status = "cancelled"
             rec.stage = "Cancelled"
         kill_process_tree(rec.process)
-        if rec.async_task is not None:
+        # A running thread worker unwinds by itself once it sees cancel_event;
+        # only queued tasks (no thread yet) and subprocess/async runners are
+        # hard-cancelled.
+        if rec.async_task is not None and (was_queued or not rec.cooperative):
             rec.async_task.cancel()
         return True
 
     def remove(self, task_id: str) -> bool:
-        """Remove a finished task from memory + history."""
-        rec = self.tasks.pop(task_id, None)
+        """Remove a finished task from memory + history.
+
+        A task that is still queued/running is refused *and left registered*,
+        so it can still be cancelled and is still seen by shutdown().
+        """
+        rec = self.tasks.get(task_id)
         if rec is not None and rec.status not in TERMINAL:
             return False  # refuse to forget running tasks; cancel first
+        self.tasks.pop(task_id, None)
         before = len(self.history)
         self.history = [h for h in self.history if h.get("id") != task_id]
         if len(self.history) != before:
@@ -224,17 +251,31 @@ class TaskManager:
     def get(self, task_id: str) -> TaskRecord | None:
         return self.tasks.get(task_id)
 
-    async def shutdown(self) -> None:
+    async def shutdown(self, grace: float = 20.0) -> None:
         """Terminate running subprocesses, cancel tasks and WAIT for workers
         to unwind - the app must not log 'shutdown complete' while threads or
-        subprocesses are still active."""
+        subprocesses are still active.
+
+        Thread workers are asked to stop via cancel_event and given `grace`
+        seconds; only then is their wrapper hard-cancelled.
+        """
         pending = []
+        cooperative = []
         for rec in list(self.tasks.values()):
             if rec.status in ("queued", "running"):
                 rec.cancel_event.set()
                 kill_process_tree(rec.process)
-                if rec.async_task is not None:
+                if rec.async_task is None:
+                    continue
+                pending.append(rec.async_task)
+                if rec.cooperative and rec.status == "running":
+                    cooperative.append(rec.async_task)
+                else:
                     rec.async_task.cancel()
-                    pending.append(rec.async_task)
+        if cooperative:
+            await asyncio.wait(cooperative, timeout=grace)
+            for t in cooperative:
+                if not t.done():
+                    t.cancel()
         if pending:
             await asyncio.gather(*pending, return_exceptions=True)
