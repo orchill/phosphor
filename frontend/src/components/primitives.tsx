@@ -6,9 +6,12 @@ import { CARD, LABEL, PAGE_PATH } from "../ui";
 
 // ------------------------------------------------------------------ Kbd
 /** A keyboard key cap, e.g. <Kbd>Ctrl</Kbd><Kbd>K</Kbd>. */
-export function Kbd({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Kbd({
+  children, className = "", ...rest
+}: { children: ReactNode; className?: string } & React.HTMLAttributes<HTMLElement>) {
   return (
     <kbd
+      {...rest}
       className={`inline-flex min-w-[1.375rem] items-center justify-center rounded-sm border border-line bg-elev px-1.5 py-0.5 font-mono text-[0.625rem] font-medium leading-none text-ink2 ${className}`}
     >
       {children}
@@ -133,10 +136,10 @@ export function Stat({
 // ----------------------------------------------------------- EmptyState
 /** One-line terminal prompt instead of a centered paragraph. */
 export function EmptyState({
-  children, action, className = "",
-}: { children: ReactNode; action?: ReactNode; className?: string }) {
+  children, action, bare = false, className = "",
+}: { children: ReactNode; action?: ReactNode; /** no card chrome, for use inside a card */ bare?: boolean; className?: string }) {
   return (
-    <div className={`${CARD} flex flex-wrap items-center gap-3 px-4 py-3.5 font-mono text-sm text-ink2 ${className}`}>
+    <div className={`flex flex-wrap items-center gap-3 font-mono text-sm text-ink2 ${bare ? "" : `${CARD} px-4 py-3.5`} ${className}`}>
       <p className="min-w-0 flex-1">
         <span className="text-accText" aria-hidden>❯ </span>
         {children}

@@ -8,6 +8,7 @@ import { NavContext, ToastContext, Toast, Route, useNav, PDF_ROUTES, ROUTE_META 
 import { systemInfo } from "./api";
 import { SystemInfo } from "./types";
 import { BTN_GHOST } from "./ui";
+import { middleTruncate } from "./format";
 import { DENSITY_KEY, applyDensity, readTheme, saveTheme } from "./appearance";
 import CommandPalette from "./components/CommandPalette";
 import Onboarding from "./components/Onboarding";
@@ -24,6 +25,18 @@ import PdfToImages from "./pages/PdfToImages";
 import Media from "./pages/Media";
 import History from "./pages/History";
 import SettingsPage from "./pages/Settings";
+
+// ---------------------------------------------------------------- layout
+// Overview pages use the wide column; single-form tools stay narrow so their
+// forms do not stretch; pages with thumbnail grids sit in between.
+const WIDE = "max-w-6xl";
+const FORM = "max-w-3xl";
+const MID = "max-w-4xl";
+const CONTENT_WIDTH: Record<Route, string> = {
+  dashboard: WIDE, pdftools: WIDE, history: WIDE, media: WIDE,
+  merge: FORM, split: FORM, compress: FORM, extract: FORM,
+  images: MID, organize: MID, toimages: MID, settings: MID,
+};
 
 // ------------------------------------------------------------------ routing
 // Hash-based routes survive reloads, support deep links and back/forward.
@@ -164,7 +177,7 @@ function GroupHeader({ label, onClick, expanded, collapsible }: {
   );
 }
 
-function Sidebar() {
+function Sidebar({ info }: { info: SystemInfo | null }) {
   const { route, navigate } = useNav();
   const pdfActive = PDF_ROUTES.includes(route);
   const [pdfOpen, setPdfOpen] = useState(pdfActive);
@@ -173,7 +186,7 @@ function Sidebar() {
   return (
     <nav
       aria-label="Main navigation"
-      className="hidden w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-panel p-2.5 md:flex"
+      className="hidden w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-panel p-2.5 md:flex"
     >
       <NavItem
         id="dashboard" label="home" icon={LayoutDashboard}
@@ -209,6 +222,17 @@ function Sidebar() {
         id="settings" label="settings" icon={SettingsIcon}
         active={route === "settings"} onClick={() => navigate("settings")}
       />
+
+      {/* footer: version + output folder, pinned to the bottom of the sidebar */}
+      <div className="mt-auto space-y-1 border-t border-line px-2 pb-1 pt-3 font-mono text-[0.6875rem] text-ink3">
+        <p>phosphor{info?.app_version ? ` v${info.app_version}` : ""}</p>
+        {info && (
+          <p className="flex items-center gap-1.5" title={info.output_dir}>
+            <FolderOutput size={12} className="shrink-0" aria-hidden />
+            <span className="min-w-0 truncate">{middleTruncate(info.output_dir, 26)}</span>
+          </p>
+        )}
+      </div>
     </nav>
   );
 }
@@ -246,11 +270,9 @@ function MobileNav() {
   );
 }
 
-function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme: () => void; openPalette: () => void }) {
-  const [info, setInfo] = useState<SystemInfo | null>(null);
-  useEffect(() => {
-    systemInfo().then(setInfo).catch(() => {});
-  }, []);
+function Header({ dark, toggleTheme, openPalette, info }: {
+  dark: boolean; toggleTheme: () => void; openPalette: () => void; info: SystemInfo | null;
+}) {
   return (
     <header className="flex items-center gap-3 border-b border-line bg-panel px-4 py-2.5">
       <a
@@ -315,6 +337,10 @@ export default function App() {
     () => !localStorage.getItem("pms-onboarded-v1"),
   );
   const mainRef = useRef<HTMLElement>(null);
+  const [info, setInfo] = useState<SystemInfo | null>(null);
+  useEffect(() => {
+    systemInfo().then(setInfo).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const showIntro = () => {
@@ -382,7 +408,7 @@ export default function App() {
     <NavContext.Provider value={navCtx}>
       <ToastContext.Provider value={toastCtx}>
         <div className="flex h-screen flex-col">
-          <Header dark={dark} toggleTheme={toggle} openPalette={() => setPaletteOpen(true)} />
+          <Header dark={dark} toggleTheme={toggle} openPalette={() => setPaletteOpen(true)} info={info} />
           <CommandPalette
             open={paletteOpen}
             onClose={() => setPaletteOpen(false)}
@@ -398,9 +424,9 @@ export default function App() {
           />
           <MobileNav />
           <div className="flex min-h-0 flex-1">
-            <Sidebar />
+            <Sidebar info={info} />
             <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6 focus:outline-none">
-              <div className="mx-auto max-w-4xl">
+              <div className={`mx-auto ${CONTENT_WIDTH[route]}`}>
                 {page}
               </div>
             </main>

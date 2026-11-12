@@ -23,9 +23,9 @@ function dotTone(sev: EventSeverity): string {
 /** Collapsible session event panel. Entries are real frontend-observed
  *  application events (API operations and task lifecycle) — session-scoped,
  *  never persisted, and free of cookie/path/subprocess data. */
-export default function EventLogPanel() {
+export default function EventLogPanel({ defaultOpen = false }: { defaultOpen?: boolean }) {
   const [events, setEvents] = useState<AppEvent[]>(getEvents);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => subscribeEvents(setEvents), []);

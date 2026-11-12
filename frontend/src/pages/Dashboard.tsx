@@ -9,6 +9,7 @@ import { StatusBadge } from "../components/TaskPanel";
 import ToolCard from "../components/ToolCard";
 import EventLogPanel from "../components/EventLogPanel";
 import { CARD, DOT, SECTION_LABEL } from "../ui";
+import { EmptyState } from "../components/primitives";
 
 const TOOLS = [
   { id: "merge", icon: Combine, title: "merge pdfs", desc: "Combine multiple PDFs in any order." },
@@ -28,18 +29,6 @@ function EngineRow({ name, detail, ok }: { name: string; detail: string; ok: boo
       <span className="text-ink">{name}</span>
       <span className="ml-auto truncate text-ink3" title={detail}>{detail}</span>
     </li>
-  );
-}
-
-function Counter({ label, value, tone }: { label: string; value: number; tone: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 font-mono text-[0.75rem]">
-      <span className="flex items-center gap-2">
-        <span className={`${DOT} ${tone}`} aria-hidden />
-        <span className="text-ink2">{label}</span>
-      </span>
-      <span className="text-[0.9375rem] font-semibold text-ink">{value}</span>
-    </div>
   );
 }
 
@@ -67,9 +56,9 @@ export default function Dashboard() {
   const active = recent.filter((t) => t.status === "running" || t.status === "queued").length;
 
   return (
-    <div className="space-y-6">
-      {/* status strip - genuine application data only */}
-      <section className={`${CARD} p-5`}>
+    <div className="grid grid-cols-12 gap-4">
+      {/* hero - genuine application data only */}
+      <section className={`${CARD} col-span-12 p-5 lg:col-span-7`}>
         <div className="flex flex-wrap items-center gap-2 font-mono text-[0.6875rem] tracking-tight text-ink3">
           <span className={`${DOT} bg-ok`} aria-hidden />
           <span>ready</span>
@@ -101,68 +90,56 @@ export default function Dashboard() {
         </p>
       </section>
 
-      {/* engines + task counters */}
-      <section aria-label="System status">
-        <h3 className={`${SECTION_LABEL} mb-2`}>system</h3>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className={`${CARD} p-4`}>
-            <h4 className={`${SECTION_LABEL} mb-2.5 text-accText`}>pdf engine</h4>
-            <ul className="space-y-1.5">
-              <EngineRow name="PyMuPDF" detail={info?.deps.pymupdf ?? "…"} ok={!!info} />
-              <EngineRow name="pypdf" detail={info?.deps.pypdf ?? "…"} ok={!!info} />
-              <EngineRow name="Pillow" detail={info?.deps.pillow ?? "…"} ok={!!info} />
-            </ul>
-          </div>
-          <div className={`${CARD} p-4`}>
-            <h4 className={`${SECTION_LABEL} mb-2.5 text-accText`}>media engine</h4>
-            <ul className="space-y-1.5">
-              <EngineRow
-                name="FFmpeg"
-                detail={info ? (info.deps.ffmpeg.found ? info.deps.ffmpeg.version.split(" ")[0] : "install required") : "…"}
-                ok={info ? info.deps.ffmpeg.found : false}
-              />
-              <EngineRow
-                name="ffprobe"
-                detail={info ? (info.deps.ffprobe.found ? "detected" : "not found") : "…"}
-                ok={info ? info.deps.ffprobe.found : false}
-              />
-              <EngineRow
-                name="yt-dlp"
-                detail={info ? info.deps.ytdlp.version : "…"}
-                ok={info ? info.deps.ytdlp.found : false}
-              />
-            </ul>
-          </div>
-          <div className={`${CARD} p-4`}>
-            <h4 className={`${SECTION_LABEL} mb-2.5 text-accText`}>
-              tasks <span className="text-ink3">· last {RECENT_LIMIT}</span>
-            </h4>
-            <div className="space-y-2">
-              <Counter label="active" value={active} tone={active ? "bg-info" : "bg-ink3"} />
-              <Counter label="completed" value={count("completed")} tone="bg-ok" />
-              <Counter label="failed" value={count("failed")} tone={count("failed") ? "bg-bad" : "bg-ink3"} />
-              <Counter label="cancelled" value={count("cancelled")} tone="bg-ink3" />
-            </div>
-          </div>
-        </div>
+      {/* engines: one compact line per dependency */}
+      <section aria-label="System status" className={`${CARD} col-span-12 p-4 lg:col-span-5`}>
+        <h3 className={`${SECTION_LABEL} mb-2.5 text-accText`}>engines</h3>
+        <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+          <EngineRow name="PyMuPDF" detail={info?.deps.pymupdf ?? "…"} ok={!!info} />
+          <EngineRow
+            name="FFmpeg"
+            detail={info ? (info.deps.ffmpeg.found ? info.deps.ffmpeg.version.split(" ")[0] : "install required") : "…"}
+            ok={info ? info.deps.ffmpeg.found : false}
+          />
+          <EngineRow name="pypdf" detail={info?.deps.pypdf ?? "…"} ok={!!info} />
+          <EngineRow
+            name="ffprobe"
+            detail={info ? (info.deps.ffprobe.found ? "detected" : "not found") : "…"}
+            ok={info ? info.deps.ffprobe.found : false}
+          />
+          <EngineRow name="Pillow" detail={info?.deps.pillow ?? "…"} ok={!!info} />
+          <EngineRow
+            name="yt-dlp"
+            detail={info ? info.deps.ytdlp.version : "…"}
+            ok={info ? info.deps.ytdlp.found : false}
+          />
+        </ul>
       </section>
 
-      {/* quick actions */}
-      <section>
+      {/* tools: 8 tools in a balanced 4 x 2 grid */}
+      <section className="col-span-12">
         <h3 className={`${SECTION_LABEL} mb-2`}>quick actions</h3>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {TOOLS.map((t) => (
             <ToolCard key={t.id} {...t} />
           ))}
         </div>
       </section>
 
-      {/* recent operations */}
-      <section>
-        <h3 className={`${SECTION_LABEL} mb-2`}>recent operations</h3>
+      {/* recent operations + event log, side by side from 1280px */}
+      <section className="col-span-12 xl:col-span-7">
+        <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <h3 className={SECTION_LABEL}>recent operations</h3>
+          <p className="flex flex-wrap items-center gap-x-3 font-mono text-[0.6875rem] text-ink3" aria-label={`Task counts for the last ${RECENT_LIMIT} tasks`}>
+            <span>last {RECENT_LIMIT}:</span>
+            <span><span className="text-info">{active}</span> active</span>
+            <span><span className="text-accText">{count("completed")}</span> completed</span>
+            <span><span className={count("failed") ? "text-bad" : ""}>{count("failed")}</span> failed</span>
+            <span>{count("cancelled")} cancelled</span>
+          </p>
+        </div>
         <div className={`${CARD} p-4`}>
           {recent.length === 0 ? (
-            <p className="text-sm text-ink3">No operations yet - results and downloads will appear here.</p>
+            <EmptyState bare>no tasks yet - run a tool to get started</EmptyState>
           ) : (
             <ul className="space-y-2">
               {recent.slice(0, 8).map((t) => (
@@ -183,9 +160,12 @@ export default function Dashboard() {
       </section>
 
       {/* session event log - real frontend-observed events only */}
-      <EventLogPanel />
+      <section className="col-span-12 xl:col-span-5">
+        <h3 className={`${SECTION_LABEL} mb-2`}>session</h3>
+        <EventLogPanel defaultOpen />
+      </section>
 
-      <p className="text-xs text-ink3">
+      <p className="col-span-12 text-xs text-ink3">
         Only download media you have permission to save. This app does not bypass DRM or access controls.
       </p>
     </div>
