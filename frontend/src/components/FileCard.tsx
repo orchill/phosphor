@@ -14,9 +14,7 @@ interface Props {
   onDrop?: () => void;
 }
 
-export default function FileCard({
-  file, onRemove, draggable, badge, onDragStart, onDragOver, onDrop,
-}: Props) {
+export default function FileCard({ file, onRemove, draggable, badge, onDragStart, onDragOver, onDrop }: Props) {
   return (
     <li
       draggable={draggable}
@@ -49,11 +47,19 @@ export default function FileCard({
           {file.kind.toUpperCase()} - {humanSize(file.size)}
           {file.kind === "pdf" && ` - ${file.pages} pages`}
           {file.kind === "image" && file.width ? ` - ${file.width}x${file.height}` : ""}
-          {badge && <span className="ml-1 rounded-sm bg-acc/10 px-1.5 py-0.5 text-[0.625rem] font-semibold text-accText">{badge}</span>}
+          {badge && (
+            <span className="ml-1 rounded-sm bg-acc/10 px-1.5 py-0.5 text-[0.625rem] font-semibold text-accText">
+              {badge}
+            </span>
+          )}
         </p>
       </div>
       {onRemove && (
-        <button onClick={onRemove} className="rounded-sm p-1.5 text-ink3 hover:bg-bad/10 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Remove ${file.name}`}>
+        <button
+          onClick={onRemove}
+          className="rounded-sm p-1.5 text-ink3 hover:bg-bad/10 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+          aria-label={`Remove ${file.name}`}
+        >
           <X size={15} />
         </button>
       )}

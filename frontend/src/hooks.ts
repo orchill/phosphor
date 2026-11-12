@@ -48,16 +48,12 @@ export function useReorder<T>(items: T[], setItems: (v: T[]) => void) {
   };
 }
 
-
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Trap Tab focus inside a modal while `active`; restore focus on close.
  *  Initial focus is left to the component (autofocus / explicit). */
-export function useFocusTrap(
-  ref: React.RefObject<HTMLElement | null>,
-  active: boolean,
-): void {
+export function useFocusTrap(ref: React.RefObject<HTMLElement | null>, active: boolean): void {
   useEffect(() => {
     if (!active) return;
     const container = ref.current;
@@ -65,9 +61,9 @@ export function useFocusTrap(
     const prev = document.activeElement as HTMLElement | null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
-      const items = Array.from(
-        container.querySelectorAll<HTMLElement>(FOCUSABLE),
-      ).filter((el) => el.offsetParent !== null);
+      const items = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null,
+      );
       if (items.length === 0) return;
       const first = items[0];
       const last = items[items.length - 1];

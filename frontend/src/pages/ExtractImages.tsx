@@ -17,7 +17,10 @@ export default function ExtractImages() {
 
   const load = async (files: File[]) => {
     const f = files.find((f) => /\.pdf$/i.test(f.name) || f.type === "application/pdf");
-    if (!f) { toast.push("error", "Drop a single PDF."); return; }
+    if (!f) {
+      toast.push("error", "Drop a single PDF.");
+      return;
+    }
     setBusy(true);
     setTaskId(null);
     try {
@@ -47,19 +50,32 @@ export default function ExtractImages() {
     <div className="space-y-4">
       <PageHeader
         route="extract"
-        description={<>
-          Exports the embedded raster images (photos, figures) at their stored resolution, in
-          their original format when possible. Vector graphics are not raster images and are skipped.
-        </>}
+        description={
+          <>
+            Exports the embedded raster images (photos, figures) at their stored resolution, in their original format
+            when possible. Vector graphics are not raster images and are skipped.
+          </>
+        }
       />
 
-      {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF" disabled={busy} />}
+      {!pdf && (
+        <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF" disabled={busy} />
+      )}
 
       {pdf && (
         <>
-          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close">
+          <SourcePanel
+            file={pdf}
+            onClose={() => {
+              setPdf(null);
+              deleteFile(pdf.id).catch(() => {});
+            }}
+            closeLabel="Close"
+          >
             <div className="flex flex-wrap items-center gap-3">
-              <button onClick={run} disabled={busy} className={BTN_PRIMARY}><FilePlus2 size={16} /> extract images</button>
+              <button onClick={run} disabled={busy} className={BTN_PRIMARY}>
+                <FilePlus2 size={16} /> extract images
+              </button>
             </div>
           </SourcePanel>
         </>

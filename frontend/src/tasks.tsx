@@ -6,8 +6,15 @@
  *  hidden. Pages need no changes - every <TaskPanel> registers its task.
  */
 import {
-  createContext, ReactNode, useCallback, useContext, useEffect, useMemo,
-  useRef, useState, useSyncExternalStore,
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
 } from "react";
 import { useToast } from "./ctx";
 import { getStoreVersion, getTaskPoll, subscribeAllTasks, subscribeTask } from "./taskStore";
@@ -45,7 +52,11 @@ export function progressPrefix(running: TaskRecord[]): string {
   return `[${Math.round(avg * 100)}%] `;
 }
 
-export interface TrayTask { id: string; task: TaskRecord | null; gone: boolean }
+export interface TrayTask {
+  id: string;
+  task: TaskRecord | null;
+  gone: boolean;
+}
 
 interface TasksCtx {
   /** Newest first. */
@@ -62,7 +73,7 @@ function maybeAskNotificationPermission() {
   try {
     if (typeof Notification === "undefined" || Notification.permission !== "default") return;
     if (localStorage.getItem(NOTIF_ASKED_KEY)) return;
-    localStorage.setItem(NOTIF_ASKED_KEY, "1");   // ask once, ever
+    localStorage.setItem(NOTIF_ASKED_KEY, "1"); // ask once, ever
     void Notification.requestPermission();
   } catch {
     /* notifications unsupported or blocked */
@@ -72,7 +83,7 @@ function maybeAskNotificationPermission() {
 function desktopNotify(title: string, body: string) {
   try {
     if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    if (document.visibilityState === "visible") return;   // the toast is enough
+    if (document.visibilityState === "visible") return; // the toast is enough
     new Notification(title, { body, tag: "phosphor-task" });
   } catch {
     /* ignore */
@@ -114,9 +125,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     const p = getTaskPoll(id);
     return { id, task: p.task, gone: p.gone };
   });
-  const runningTasks = tasks
-    .map((t) => t.task)
-    .filter((t): t is TaskRecord => !!t && !isTerminal(t.status));
+  const runningTasks = tasks.map((t) => t.task).filter((t): t is TaskRecord => !!t && !isTerminal(t.status));
 
   // announce completions: only tasks seen alive in this session
   const lastStatus = useRef<Map<string, string>>(new Map());

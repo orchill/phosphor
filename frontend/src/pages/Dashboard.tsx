@@ -1,7 +1,4 @@
-import {
-  Combine, FileOutput, FilePlus2, FileStack, Images, Scissors,
-  Video, Zap,
-} from "lucide-react";
+import { Combine, FileOutput, FilePlus2, FileStack, Images, Scissors, Video, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { downloadUrl, listTasks, systemInfo } from "../api";
 import { useToast } from "../ctx";
@@ -15,7 +12,12 @@ import { EmptyState } from "../components/primitives";
 
 const TOOLS = [
   { id: "merge", icon: Combine, title: "merge pdfs", desc: "Combine multiple PDFs in any order." },
-  { id: "images", icon: Images, title: "images to pdf", desc: "Turn photos into one PDF with page sizes, margins and rotation." },
+  {
+    id: "images",
+    icon: Images,
+    title: "images to pdf",
+    desc: "Turn photos into one PDF with page sizes, margins and rotation.",
+  },
   { id: "organize", icon: FileStack, title: "organize pages", desc: "Visually reorder, rotate and delete pages." },
   { id: "split", icon: Scissors, title: "split / extract", desc: "Extract page ranges or split every N pages." },
   { id: "compress", icon: Zap, title: "compress pdf", desc: "Shrink file size while balancing quality." },
@@ -34,7 +36,9 @@ function EngineRow({ name, detail, state }: { name: string; detail: string; stat
       <li className="flex items-center gap-2 font-mono text-[0.75rem]">
         <span className={`${DOT} bg-warn`} aria-hidden />
         <span className="text-warn">{name}</span>
-        <span className="truncate text-ink3" title={detail}>{detail}</span>
+        <span className="truncate text-ink3" title={detail}>
+          {detail}
+        </span>
         <a
           href="#/settings?section=diagnostics"
           className="ml-auto shrink-0 rounded-sm text-warn underline decoration-dotted hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
@@ -48,7 +52,9 @@ function EngineRow({ name, detail, state }: { name: string; detail: string; stat
     <li className="flex items-center gap-2 font-mono text-[0.75rem]">
       <span className={`${DOT} ${state === "ok" ? "bg-ok" : "bg-ink3"}`} aria-hidden />
       <span className="text-ink">{name}</span>
-      <span className="ml-auto truncate text-ink3" title={detail}>{detail}</span>
+      <span className="ml-auto truncate text-ink3" title={detail}>
+        {detail}
+      </span>
     </li>
   );
 }
@@ -67,7 +73,9 @@ function RecentRow({ t }: { t: TaskRecord }) {
   const inner = (
     <>
       <StatusBadge status={t.status} />
-      <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink2 group-hover:text-ink" title={t.title}>{t.title}</span>
+      <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink2 group-hover:text-ink" title={t.title}>
+        {t.title}
+      </span>
       <span className="shrink-0 font-mono text-[0.6875rem] text-ink3">
         {t.finished_at ? new Date(t.finished_at).toLocaleTimeString() : ""}
       </span>
@@ -81,9 +89,13 @@ function RecentRow({ t }: { t: TaskRecord }) {
   return (
     <li>
       {canOpen ? (
-        <a href={downloadUrl(out!.path)} download className={cls} title={`Download ${out!.name}`}>{inner}</a>
+        <a href={downloadUrl(out!.path)} download className={cls} title={`Download ${out!.name}`}>
+          {inner}
+        </a>
       ) : (
-        <a href={`#/history?task=${encodeURIComponent(t.id)}`} className={cls} title="Show in history">{inner}</a>
+        <a href={`#/history?task=${encodeURIComponent(t.id)}`} className={cls} title="Show in history">
+          {inner}
+        </a>
       )}
     </li>
   );
@@ -95,13 +107,19 @@ export default function Dashboard() {
   const toast = useToast();
 
   useEffect(() => {
-    systemInfo().then(setInfo).catch(() => {});
-    listTasks(RECENT_LIMIT).then(setRecent).catch(() => {});
+    systemInfo()
+      .then(setInfo)
+      .catch(() => {});
+    listTasks(RECENT_LIMIT)
+      .then(setRecent)
+      .catch(() => {});
     // keep the console alive while it is on screen: the task list is a
     // cheap local read; engine info stays fetch-once (it spawns probes)
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") {
-        listTasks(RECENT_LIMIT).then(setRecent).catch(() => {});
+        listTasks(RECENT_LIMIT)
+          .then(setRecent)
+          .catch(() => {});
       }
     }, 10_000);
     return () => clearInterval(timer);
@@ -137,7 +155,10 @@ export default function Dashboard() {
             <button
               onClick={async () => {
                 const ok = await copyText(info.output_dir);
-                toast.push(ok ? "success" : "error", ok ? "Output folder path copied." : "Could not access the clipboard.");
+                toast.push(
+                  ok ? "success" : "error",
+                  ok ? "Output folder path copied." : "Could not access the clipboard.",
+                );
               }}
               title={`${info.output_dir} (click to copy)`}
               className="ml-auto hidden max-w-[16rem] truncate rounded-sm hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc sm:block"
@@ -150,9 +171,8 @@ export default function Dashboard() {
           Your private PDF &amp; media toolbox
         </h2>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink2">
-          Everything runs on this machine as a localhost service - merge, convert, organize
-          and compress PDFs, turn images into documents, and download media with yt-dlp and
-          FFmpeg. Original files are always preserved.
+          Everything runs on this machine as a localhost service - merge, convert, organize and compress PDFs, turn
+          images into documents, and download media with yt-dlp and FFmpeg. Original files are always preserved.
         </p>
       </section>
 
@@ -195,11 +215,20 @@ export default function Dashboard() {
       <section className="col-span-12 xl:col-span-7">
         <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <h3 className={SECTION_LABEL}>recent operations</h3>
-          <p className="flex flex-wrap items-center gap-x-3 font-mono text-[0.6875rem] text-ink3" aria-label={`Task counts for the last ${RECENT_LIMIT} tasks`}>
+          <p
+            className="flex flex-wrap items-center gap-x-3 font-mono text-[0.6875rem] text-ink3"
+            aria-label={`Task counts for the last ${RECENT_LIMIT} tasks`}
+          >
             <span>last {RECENT_LIMIT}:</span>
-            <span><span className="text-info">{active}</span> active</span>
-            <span><span className="text-accText">{count("completed")}</span> completed</span>
-            <span><span className={count("failed") ? "text-bad" : ""}>{count("failed")}</span> failed</span>
+            <span>
+              <span className="text-info">{active}</span> active
+            </span>
+            <span>
+              <span className="text-accText">{count("completed")}</span> completed
+            </span>
+            <span>
+              <span className={count("failed") ? "text-bad" : ""}>{count("failed")}</span> failed
+            </span>
             <span>{count("cancelled")} cancelled</span>
           </p>
         </div>
@@ -208,7 +237,9 @@ export default function Dashboard() {
             <EmptyState bare>no tasks yet - run a tool to get started</EmptyState>
           ) : (
             <ul className="space-y-2">
-              {recent.slice(0, 8).map((t) => <RecentRow key={t.id} t={t} />)}
+              {recent.slice(0, 8).map((t) => (
+                <RecentRow key={t.id} t={t} />
+              ))}
             </ul>
           )}
         </div>

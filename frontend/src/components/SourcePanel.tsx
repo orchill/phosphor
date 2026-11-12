@@ -22,19 +22,29 @@ export default function SourcePanel({ file, onClose, closeLabel = "Close file", 
         </button>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[0.75rem]">
-        <span className="min-w-0 max-w-full truncate text-ink" title={file.name}>{file.name}</span>
-        <span className="text-ink3" aria-hidden>·</span>
+        <span className="min-w-0 max-w-full truncate text-ink" title={file.name}>
+          {file.name}
+        </span>
+        <span className="text-ink3" aria-hidden>
+          ·
+        </span>
         <span className="text-ink3">{humanSize(file.size)}</span>
         {file.kind === "pdf" && (
           <>
-            <span className="text-ink3" aria-hidden>·</span>
+            <span className="text-ink3" aria-hidden>
+              ·
+            </span>
             <span className="text-ink3">{file.pages} pages</span>
           </>
         )}
         {file.kind === "image" && file.width != null && (
           <>
-            <span className="text-ink3" aria-hidden>·</span>
-            <span className="text-ink3">{file.width}×{file.height} {file.format}</span>
+            <span className="text-ink3" aria-hidden>
+              ·
+            </span>
+            <span className="text-ink3">
+              {file.width}×{file.height} {file.format}
+            </span>
           </>
         )}
       </div>

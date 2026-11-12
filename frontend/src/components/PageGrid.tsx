@@ -4,8 +4,8 @@ import { pageThumbUrl } from "../api";
 import { CARD } from "../ui";
 
 export interface PageState {
-  page: number;      // 1-based original page number
-  rotation: number;  // accumulated display rotation (deg)
+  page: number; // 1-based original page number
+  rotation: number; // accumulated display rotation (deg)
 }
 
 interface Props {
@@ -28,13 +28,20 @@ export function thumbRequestWidth(cssWidth: number, dpr: number = 1): number {
 }
 
 export default function PageGrid({
-  fileId, pages, setPages, selection, setSelection,
-  allowReorder, allowRotate, allowDelete, allowSelect, width = 210,
+  fileId,
+  pages,
+  setPages,
+  selection,
+  setSelection,
+  allowReorder,
+  allowRotate,
+  allowDelete,
+  allowSelect,
+  width = 210,
 }: Props) {
   const dragFrom = useRef<number | null>(null);
   const [announce, setAnnounce] = useState("");
-  const thumbWidth = thumbRequestWidth(
-    width, typeof window === "undefined" ? 1 : window.devicePixelRatio || 1);
+  const thumbWidth = thumbRequestWidth(width, typeof window === "undefined" ? 1 : window.devicePixelRatio || 1);
 
   const toggleSelect = (page: number) => {
     const next = new Set(selection);
@@ -71,7 +78,9 @@ export default function PageGrid({
   return (
     <>
       {/* screen-reader announcements for reorder/remove actions */}
-      <div aria-live="polite" role="status" className="sr-only">{announce}</div>
+      <div aria-live="polite" role="status" className="sr-only">
+        {announce}
+      </div>
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4" role="list">
         {pages.map((p, idx) => {
           const selected = selection.has(p.page);
@@ -79,7 +88,9 @@ export default function PageGrid({
             <li
               key={p.page}
               draggable={allowReorder}
-              onDragStart={() => { dragFrom.current = idx; }}
+              onDragStart={() => {
+                dragFrom.current = idx;
+              }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => {
                 const from = dragFrom.current;
@@ -128,7 +139,9 @@ export default function PageGrid({
               </button>
 
               <div className="flex items-center justify-between gap-0.5 px-2 py-1.5">
-                <span className={`min-w-0 truncate font-mono text-[0.6875rem] ${selected ? "text-accText" : "text-ink3"}`}>
+                <span
+                  className={`min-w-0 truncate font-mono text-[0.6875rem] ${selected ? "text-accText" : "text-ink3"}`}
+                >
                   {p.rotation ? `p${p.page} (${p.rotation}deg)` : `p${p.page}`}
                 </span>
                 <span className="flex shrink-0 items-center gap-0.5">
@@ -156,16 +169,31 @@ export default function PageGrid({
                   )}
                   {allowRotate && (
                     <>
-                      <button onClick={() => rotate(idx, -90)} className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Rotate page ${p.page} left`} title="Rotate left">
+                      <button
+                        onClick={() => rotate(idx, -90)}
+                        className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+                        aria-label={`Rotate page ${p.page} left`}
+                        title="Rotate left"
+                      >
                         <RotateCcw size={13} aria-hidden />
                       </button>
-                      <button onClick={() => rotate(idx, 90)} className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Rotate page ${p.page} right`} title="Rotate right">
+                      <button
+                        onClick={() => rotate(idx, 90)}
+                        className="rounded-sm p-1 text-ink3 hover:bg-elev hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+                        aria-label={`Rotate page ${p.page} right`}
+                        title="Rotate right"
+                      >
                         <RotateCw size={13} aria-hidden />
                       </button>
                     </>
                   )}
                   {allowDelete && (
-                    <button onClick={() => remove(idx)} className="rounded-sm p-1 text-ink3 hover:bg-bad/10 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc" aria-label={`Remove page ${p.page}`} title="Remove page">
+                    <button
+                      onClick={() => remove(idx)}
+                      className="rounded-sm p-1 text-ink3 hover:bg-bad/10 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+                      aria-label={`Remove page ${p.page}`}
+                      title="Remove page"
+                    >
                       <Trash2 size={13} aria-hidden />
                     </button>
                   )}
@@ -173,7 +201,10 @@ export default function PageGrid({
               </div>
 
               {selected && (
-                <span className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-sm bg-acc font-mono text-[0.6875rem] font-bold text-onAcc" aria-hidden>
+                <span
+                  className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded-sm bg-acc font-mono text-[0.6875rem] font-bold text-onAcc"
+                  aria-hidden
+                >
                   ✓
                 </span>
               )}

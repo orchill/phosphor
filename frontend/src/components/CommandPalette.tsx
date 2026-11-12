@@ -1,9 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFocusTrap } from "../hooks";
 import {
-  Combine, FileOutput, FilePlus2, FileStack, FolderOutput, History as HistoryIcon,
-  Images, LayoutDashboard, Moon, Scissors, Search, Settings as SettingsIcon,
-  Sun, Video, Zap,
+  Combine,
+  FileOutput,
+  FilePlus2,
+  FileStack,
+  FolderOutput,
+  History as HistoryIcon,
+  Images,
+  LayoutDashboard,
+  Moon,
+  Scissors,
+  Search,
+  Settings as SettingsIcon,
+  Sun,
+  Video,
+  Zap,
 } from "lucide-react";
 import { ROUTE_META, Route, useNav } from "../ctx";
 import { openOutputFolder } from "../api";
@@ -39,8 +51,12 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
 
   const commands = useMemo<Command[]>(() => {
     const routeCmd = (r: Route, label: string, icon: React.ElementType): Command => ({
-      id: `route:${r}`, label, section: "navigate", icon,
-      keywords: ROUTE_META[r].crumb, run: () => navigate(r),
+      id: `route:${r}`,
+      label,
+      section: "navigate",
+      icon,
+      keywords: ROUTE_META[r].crumb,
+      run: () => navigate(r),
     });
     return [
       routeCmd("dashboard", "home", LayoutDashboard),
@@ -56,14 +72,24 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
       routeCmd("history", "task history", HistoryIcon),
       routeCmd("settings", "settings", SettingsIcon),
       {
-        id: "action:theme", label: dark ? "switch to light theme" : "switch to dark theme",
-        section: "actions", icon: dark ? Sun : Moon, keywords: "theme dark light appearance",
-        run: () => { toggleTheme(); },
+        id: "action:theme",
+        label: dark ? "switch to light theme" : "switch to dark theme",
+        section: "actions",
+        icon: dark ? Sun : Moon,
+        keywords: "theme dark light appearance",
+        run: () => {
+          toggleTheme();
+        },
       },
       {
-        id: "action:output", label: "open output folder", section: "actions",
-        icon: FolderOutput, keywords: "output folder open files",
-        run: () => { openOutputFolder().catch((e) => toast.push("error", e.message)); },
+        id: "action:output",
+        label: "open output folder",
+        section: "actions",
+        icon: FolderOutput,
+        keywords: "output folder open files",
+        run: () => {
+          openOutputFolder().catch((e) => toast.push("error", e.message));
+        },
       },
     ];
   }, [navigate, toggleTheme, toast, dark]);
@@ -71,9 +97,7 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return commands;
-    return commands.filter(
-      (c) => c.label.toLowerCase().includes(q) || c.keywords.toLowerCase().includes(q),
-    );
+    return commands.filter((c) => c.label.toLowerCase().includes(q) || c.keywords.toLowerCase().includes(q));
   }, [commands, query]);
 
   useEffect(() => {
@@ -102,10 +126,19 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") { e.preventDefault(); onClose(); }
-    else if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(a + 1, results.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
-    else if (e.key === "Enter") { e.preventDefault(); runCommand(results[active]); }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((a) => Math.min(a + 1, results.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      runCommand(results[active]);
+    }
   };
 
   let lastSection = "";
@@ -113,7 +146,9 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-24"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         ref={dialogRef}
@@ -142,10 +177,22 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
             esc
           </kbd>
         </div>
-        <div ref={listRef} id="command-palette-list" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto p-2">
+        <div
+          ref={listRef}
+          id="command-palette-list"
+          role="listbox"
+          aria-label="Commands"
+          className="max-h-80 overflow-y-auto p-2"
+        >
           {results.length === 0 && (
             <p className="px-3 py-5 font-mono text-[0.75rem] text-ink3">
-              <span className="text-accText" aria-hidden>❯ </span>no matching commands<span className="text-accText" aria-hidden>_</span>
+              <span className="text-accText" aria-hidden>
+                ❯{" "}
+              </span>
+              no matching commands
+              <span className="text-accText" aria-hidden>
+                _
+              </span>
             </p>
           )}
           {results.map((cmd, i) => {

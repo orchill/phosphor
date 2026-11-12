@@ -61,10 +61,12 @@ export default function Merge() {
     <div className="space-y-4">
       <PageHeader
         route="merge"
-        description={<>
-          Drop PDFs, drag to set the order, then merge. Outputs are written to your output folder -
-          original files are never modified.
-        </>}
+        description={
+          <>
+            Drop PDFs, drag to set the order, then merge. Outputs are written to your output folder - original files are
+            never modified.
+          </>
+        }
       />
 
       {files.length === 0 && (
@@ -83,7 +85,10 @@ export default function Merge() {
           <ul className="space-y-2">
             {files.map((f, i) => (
               <FileCard
-                key={f.id} file={f} draggable badge={`#${i + 1}`}
+                key={f.id}
+                file={f}
+                draggable
+                badge={`#${i + 1}`}
                 onRemove={() => remove(f)}
                 onDragStart={reorder.onDragStart(i)}
                 onDragOver={reorder.onDragOver}
@@ -96,7 +101,10 @@ export default function Merge() {
               <Combine size={16} /> merge {files.length} pdfs
             </button>
             <button
-              onClick={() => { files.forEach((f) => deleteFile(f.id).catch(() => {})); setFiles([]); }}
+              onClick={() => {
+                files.forEach((f) => deleteFile(f.id).catch(() => {}));
+                setFiles([]);
+              }}
               className="rounded-sm px-2 py-1 font-mono text-[0.75rem] text-ink3 hover:text-bad focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
             >
               clear list

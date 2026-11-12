@@ -27,8 +27,8 @@ interface Entry {
   poll: TaskPoll;
   listeners: Set<() => void>;
   timer: ReturnType<typeof setTimeout> | null;
-  running: boolean;       // a poll loop is active (request in flight or timer pending)
-  inflight: boolean;      // a request is currently awaiting its response
+  running: boolean; // a poll loop is active (request in flight or timer pending)
+  inflight: boolean; // a request is currently awaiting its response
   notFound: number;
   failures: number;
 }
@@ -58,7 +58,10 @@ function settled(e: Entry): boolean {
 
 async function poll(id: string) {
   const e = entry(id);
-  if (e.listeners.size === 0) { e.running = false; return; }   // nobody watching
+  if (e.listeners.size === 0) {
+    e.running = false;
+    return;
+  } // nobody watching
   e.inflight = true;
   try {
     const t = await getTask(id);
@@ -83,7 +86,10 @@ async function poll(id: string) {
     emit(e);
   }
   e.inflight = false;
-  if (settled(e) || e.listeners.size === 0) { e.running = false; return; }
+  if (settled(e) || e.listeners.size === 0) {
+    e.running = false;
+    return;
+  }
   // back off 2s -> 10s while failing so a dead server is not hammered
   const delay = e.failures > 0 ? Math.min(2000 * e.failures, 10_000) : POLL_MS;
   e.timer = setTimeout(() => poll(id), delay);
@@ -113,13 +119,15 @@ export function subscribeTask(id: string, listener: () => void): () => void {
 }
 
 export function getTaskPoll(id: string | null): TaskPoll {
-  return id ? entries.get(id)?.poll ?? EMPTY : EMPTY;
+  return id ? (entries.get(id)?.poll ?? EMPTY) : EMPTY;
 }
 
 /** Notified after every change to any task (for the tray and notifications). */
 export function subscribeAllTasks(listener: () => void): () => void {
   globalListeners.add(listener);
-  return () => { globalListeners.delete(listener); };
+  return () => {
+    globalListeners.delete(listener);
+  };
 }
 export const getStoreVersion = () => version;
 

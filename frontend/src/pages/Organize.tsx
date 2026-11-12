@@ -67,7 +67,9 @@ export default function Organize() {
     setBusy(true);
     try {
       const rotateMap: Record<string, number> = {};
-      pages.forEach((p) => { if (p.rotation) rotateMap[String(p.page)] = p.rotation; });
+      pages.forEach((p) => {
+        if (p.rotation) rotateMap[String(p.page)] = p.rotation;
+      });
       const { task_id } = await opEditPages({
         file_id: pdf.id,
         order: pages.map((p) => p.page),
@@ -87,28 +89,56 @@ export default function Organize() {
     <div className="space-y-4">
       <PageHeader
         route="organize"
-        description={<>
-          Drag pages to reorder, rotate or remove individual pages, or select several at once.
-          Saving produces a new PDF; the source file stays untouched.
-        </>}
+        description={
+          <>
+            Drag pages to reorder, rotate or remove individual pages, or select several at once. Saving produces a new
+            PDF; the source file stays untouched.
+          </>
+        }
       />
 
-      {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF to organize" hint="Pages appear as thumbnails" disabled={busy} />}
+      {!pdf && (
+        <FileDrop
+          onFiles={load}
+          accept=".pdf,application/pdf"
+          multiple={false}
+          label="Drop a PDF to organize"
+          hint="Pages appear as thumbnails"
+          disabled={busy}
+        />
+      )}
 
       {pdf && (
         <>
-          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close document" />
+          <SourcePanel
+            file={pdf}
+            onClose={() => {
+              setPdf(null);
+              deleteFile(pdf.id).catch(() => {});
+            }}
+            closeLabel="Close document"
+          />
           <div className="flex flex-wrap items-center gap-2 rounded-sm border border-line bg-panel p-3">
             <span className="font-mono text-[0.75rem] text-ink2">{pages.length} page(s)</span>
             <span className="ml-auto flex flex-wrap items-center gap-2">
-              <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>select all</button>
-              <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>select none</button>
-              <button onClick={() => rotateSelected(-90)} disabled={!selection.size} className={BTN_SECONDARY}><RotateCcw size={14} /> rotate selected</button>
-              <button onClick={() => rotateSelected(90)} disabled={!selection.size} className={BTN_SECONDARY}><RotateCw size={14} /> rotate selected</button>
+              <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>
+                select all
+              </button>
+              <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>
+                select none
+              </button>
+              <button onClick={() => rotateSelected(-90)} disabled={!selection.size} className={BTN_SECONDARY}>
+                <RotateCcw size={14} /> rotate selected
+              </button>
+              <button onClick={() => rotateSelected(90)} disabled={!selection.size} className={BTN_SECONDARY}>
+                <RotateCw size={14} /> rotate selected
+              </button>
               <button onClick={deleteSelected} disabled={!selection.size} className={BTN_DANGER}>
                 <Trash2 size={14} /> delete selected
-</button>
-              <button onClick={() => rotateAll(90)} className={BTN_SECONDARY}>rotate all +90</button>
+              </button>
+              <button onClick={() => rotateAll(90)} className={BTN_SECONDARY}>
+                rotate all +90
+              </button>
             </span>
           </div>
 
@@ -118,22 +148,29 @@ export default function Organize() {
             </p>
           ) : (
             <PageGrid
-fileId={pdf.id}
+              fileId={pdf.id}
               pages={pages}
               setPages={setPages}
               selection={selection}
               setSelection={setSelection}
               allowReorder
-allowRotate
-allowDelete
-allowSelect
-/>
+              allowRotate
+              allowDelete
+              allowSelect
+            />
           )}
 
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-48">
-              <label className={LABEL} htmlFor="outname">Output filename</label>
-              <input id="outname" value={outName} onChange={(e) => setOutName(e.target.value)} className={`${INPUT} mt-1`} />
+              <label className={LABEL} htmlFor="outname">
+                Output filename
+              </label>
+              <input
+                id="outname"
+                value={outName}
+                onChange={(e) => setOutName(e.target.value)}
+                className={`${INPUT} mt-1`}
+              />
             </div>
             <button onClick={save} disabled={busy || !pages.length} className={BTN_PRIMARY}>
               <Save size={16} /> save as new pdf

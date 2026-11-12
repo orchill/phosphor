@@ -19,11 +19,11 @@
   --c-ink: 28 30 26;
   --c-ink2: 84 88 80;
   --c-ink3: 102 106 96;
-  --c-acc: 21 128 61;       /* green-700: white text on it is 5.0:1 */
+  --c-acc: 21 128 61; /* green-700: white text on it is 5.0:1 */
   --c-accHi: 22 101 52;
-  --c-accText: 21 110 55;   /* darker green: AA-safe for small text on light */
+  --c-accText: 21 110 55; /* darker green: AA-safe for small text on light */
   --c-onAcc: 255 255 255;
-  --c-info: 14 116 144;     /* cyan-700 */
+  --c-info: 14 116 144; /* cyan-700 */
   --c-ok: 20 118 56;
   --c-warn: 161 72 8;
   --c-bad: 185 28 28;
@@ -41,7 +41,7 @@
   --c-ink3: 128 138 133;
   --c-acc: 74 222 128;
   --c-accHi: 134 239 172;
-  --c-accText: 74 222 128;  /* dark theme: same as accent */
+  --c-accText: 74 222 128; /* dark theme: same as accent */
   --c-onAcc: 5 26 14;
   --c-info: 34 211 238;
   --c-ok: 74 222 128;
@@ -97,7 +97,7 @@ body {
 
 /* phosphor selection */
 ::selection {
-  background: rgb(var(--c-acc) / 0.30);
+  background: rgb(var(--c-acc) / 0.3);
 }
 
 /* keyboard focus everywhere, even where components don't add their own ring */
@@ -155,13 +155,7 @@ html[data-crt="subtle"]::after {
   z-index: 9999;
   pointer-events: none;
   background:
-    repeating-linear-gradient(
-      to bottom,
-      rgb(0 0 0 / 0.04) 0,
-      rgb(0 0 0 / 0.04) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
+    repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.04) 0, rgb(0 0 0 / 0.04) 1px, transparent 1px, transparent 2px),
     radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / 0.1) 100%);
 }
 /* black lines vanish on a near-black page, so dark scanlines are phosphor-tinted */

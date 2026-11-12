@@ -24,10 +24,23 @@ export default function FileDrop({ onFiles, accept, multiple = true, label, hint
       tabIndex={0}
       aria-disabled={disabled}
       aria-label={label_}
-      onKeyDown={(e) => { if (!disabled && (e.key === "Enter" || e.key === " ")) inputRef.current?.click(); }}
+      onKeyDown={(e) => {
+        if (!disabled && (e.key === "Enter" || e.key === " ")) inputRef.current?.click();
+      }}
       onClick={() => !disabled && inputRef.current?.click()}
-      onDragEnter={(e) => { e.preventDefault(); depth.current++; setOver(true); }}
-      onDragLeave={(e) => { e.preventDefault(); depth.current--; if (depth.current <= 0) { setOver(false); depth.current = 0; } }}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        depth.current++;
+        setOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        depth.current--;
+        if (depth.current <= 0) {
+          setOver(false);
+          depth.current = 0;
+        }
+      }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();

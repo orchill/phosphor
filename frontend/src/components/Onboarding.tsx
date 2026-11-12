@@ -9,10 +9,22 @@ interface Props {
 }
 
 const STEPS: { cmd: string; text: string }[] = [
-  { cmd: "01 · local", text: "Everything runs on this machine. No accounts, no cloud, no telemetry - your files never leave this computer." },
-  { cmd: "02 · pdf tools", text: "Drop PDFs or images into any tool on the pdf tools page. Every operation writes new files - originals stay untouched." },
-  { cmd: "03 · media", text: "Paste a video or audio URL in the media downloader. If YouTube asks for sign-in, use the cookies / sign-in tab with your own session." },
-  { cmd: "04 · go faster", text: "Ctrl+K opens the command palette. The moon/sun button switches theme, and the event log on Home tracks everything you do." },
+  {
+    cmd: "01 · local",
+    text: "Everything runs on this machine. No accounts, no cloud, no telemetry - your files never leave this computer.",
+  },
+  {
+    cmd: "02 · pdf tools",
+    text: "Drop PDFs or images into any tool on the pdf tools page. Every operation writes new files - originals stay untouched.",
+  },
+  {
+    cmd: "03 · media",
+    text: "Paste a video or audio URL in the media downloader. If YouTube asks for sign-in, use the cookies / sign-in tab with your own session.",
+  },
+  {
+    cmd: "04 · go faster",
+    text: "Ctrl+K opens the command palette. The moon/sun button switches theme, and the event log on Home tracks everything you do.",
+  },
 ];
 
 /** One-time first-launch intro. Terminal-styled, four short steps, skippable. */
@@ -32,7 +44,9 @@ export default function Onboarding({ open, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
     >
       <div
         ref={dialogRef}
@@ -42,9 +56,7 @@ export default function Onboarding({ open, onClose }: Props) {
         className={`w-full max-w-md ${CARD} p-5 shadow-lg`}
       >
         <div className="flex items-center justify-between gap-2">
-          <h2 className="font-mono text-[13px] font-semibold tracking-tight text-ink">
-            $ phosphor --intro
-          </h2>
+          <h2 className="font-mono text-[13px] font-semibold tracking-tight text-ink">$ phosphor --intro</h2>
           <button
             onClick={close}
             aria-label="Skip intro"
@@ -64,12 +76,10 @@ export default function Onboarding({ open, onClose }: Props) {
             ))}
           </div>
           <div className="flex gap-2">
-            <button onClick={close} className={BTN_GHOST}>skip</button>
-            <button
-              onClick={() => (last ? close() : setStep((s) => s + 1))}
-              autoFocus
-              className={BTN_PRIMARY}
-            >
+            <button onClick={close} className={BTN_GHOST}>
+              skip
+            </button>
+            <button onClick={() => (last ? close() : setStep((s) => s + 1))} autoFocus className={BTN_PRIMARY}>
               {last ? "got it" : "next"}
             </button>
           </div>

@@ -1,13 +1,20 @@
 import { useEffect } from "react";
-import {
-  Combine, FileOutput, FilePlus2, FileStack, Images, Scissors, Zap,
-} from "lucide-react";
+import { Combine, FileOutput, FilePlus2, FileStack, Images, Scissors, Zap } from "lucide-react";
 import { Route, useNav } from "../ctx";
 import { CARD, SECTION_LABEL } from "../ui";
 import { Kbd, PageHeader } from "../components/primitives";
 
-interface Tool { id: Route; icon: React.ElementType; title: string; desc: string }
-interface Category { title: string; blurb: string; tools: Tool[] }
+interface Tool {
+  id: Route;
+  icon: React.ElementType;
+  title: string;
+  desc: string;
+}
+interface Category {
+  title: string;
+  blurb: string;
+  tools: Tool[];
+}
 
 const CATEGORIES: Record<string, Category> = {
   organize: {
@@ -23,16 +30,19 @@ const CATEGORIES: Record<string, Category> = {
     title: "convert",
     blurb: "Move between documents and images.",
     tools: [
-      { id: "images", icon: Images, title: "images to pdf", desc: "Turn photos into one PDF with page sizes and margins." },
+      {
+        id: "images",
+        icon: Images,
+        title: "images to pdf",
+        desc: "Turn photos into one PDF with page sizes and margins.",
+      },
       { id: "toimages", icon: FileOutput, title: "pdf to images", desc: "Render pages to PNG or JPG at any DPI." },
     ],
   },
   optimize: {
     title: "optimize",
     blurb: "Make documents smaller.",
-    tools: [
-      { id: "compress", icon: Zap, title: "compress pdf", desc: "Shrink file size while balancing quality." },
-    ],
+    tools: [{ id: "compress", icon: Zap, title: "compress pdf", desc: "Shrink file size while balancing quality." }],
   },
   extract: {
     title: "extract",
@@ -121,7 +131,9 @@ function ToolRow({ tool, hint, onOpen }: { tool: Tool; hint: number; onOpen: () 
         <span className="block font-mono text-sm font-semibold tracking-tight text-ink">{tool.title}</span>
         <span className="block truncate text-xs text-ink2">{tool.desc}</span>
       </span>
-      <Kbd className="shrink-0" aria-hidden>{hint}</Kbd>
+      <Kbd className="shrink-0" aria-hidden>
+        {hint}
+      </Kbd>
     </button>
   );
 }

@@ -18,7 +18,9 @@ export default function TaskTray() {
   useEffect(() => {
     if (!open) return;
     closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
@@ -33,7 +35,11 @@ export default function TaskTray() {
         onClick={() => setOpen(true)}
         data-testid="task-tray-button"
         aria-haspopup="dialog"
-        aria-label={running > 0 ? `${running} running task${running === 1 ? "" : "s"} - open task tray` : `${tasks.length} recent tasks - open task tray`}
+        aria-label={
+          running > 0
+            ? `${running} running task${running === 1 ? "" : "s"} - open task tray`
+            : `${tasks.length} recent tasks - open task tray`
+        }
         className={`inline-flex items-center gap-2 rounded-sm border px-2.5 py-1.5 font-mono text-[0.6875rem] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
           running > 0
             ? "border-info/40 bg-info/10 text-info hover:bg-info/20"
@@ -41,16 +47,24 @@ export default function TaskTray() {
         }`}
       >
         {running > 0 ? (
-          <><span className={`${DOT} bg-info`} aria-hidden />{running} running</>
+          <>
+            <span className={`${DOT} bg-info`} aria-hidden />
+            {running} running
+          </>
         ) : (
-          <><ListChecks size={13} aria-hidden />{tasks.length} task{tasks.length === 1 ? "" : "s"}</>
+          <>
+            <ListChecks size={13} aria-hidden />
+            {tasks.length} task{tasks.length === 1 ? "" : "s"}
+          </>
         )}
       </button>
 
       {open && (
         <div
           className="fixed inset-0 z-40 bg-black/50"
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setOpen(false);
+          }}
         >
           <aside
             ref={drawerRef}
@@ -61,7 +75,10 @@ export default function TaskTray() {
           >
             <header className="flex items-center gap-2 border-b border-line bg-panel px-4 py-3">
               <h2 className="glow font-mono text-sm font-semibold tracking-tight text-ink">
-                <span className="mr-2 text-accText" aria-hidden>❯</span>tasks
+                <span className="mr-2 text-accText" aria-hidden>
+                  ❯
+                </span>
+                tasks
               </h2>
               <span className="font-mono text-[0.6875rem] text-ink3">{running} running</span>
               {finished.length > 0 && (

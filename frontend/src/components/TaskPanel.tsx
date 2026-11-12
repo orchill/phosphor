@@ -1,4 +1,14 @@
-import { CheckCircle2, ChevronDown, ChevronRight, Download, FolderOutput, Loader2, RotateCw, X, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  FolderOutput,
+  Loader2,
+  RotateCw,
+  X,
+  XCircle,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cancelTask, downloadUrl, getTaskLog, openOutputFolder } from "../api";
 import { emitEvent } from "../events";
@@ -37,8 +47,14 @@ export function StatusBadge({ status }: { status: string }) {
 
 /** 2px bar with a soft accent glow in dark mode (see .bar-glow in index.css).
  *  The shimmer is only used while progress is genuinely unknown. */
-function ProgressBar({ value, indeterminate, staged }: {
-  value: number | null; indeterminate: boolean; staged: boolean;
+function ProgressBar({
+  value,
+  indeterminate,
+  staged,
+}: {
+  value: number | null;
+  indeterminate: boolean;
+  staged: boolean;
 }) {
   if (indeterminate) {
     return (
@@ -54,8 +70,13 @@ function ProgressBar({ value, indeterminate, staged }: {
     const proc = Math.max(0, Math.min((value - 0.92) / 0.08, 1));
     return (
       <div>
-        <div className="flex gap-1" role="progressbar"
-          aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
+        <div
+          className="flex gap-1"
+          role="progressbar"
+          aria-valuenow={Math.round(value * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div className="h-0.5 flex-[92] overflow-hidden bg-elev">
             <div className="bar-glow h-full bg-acc transition-[width] duration-300" style={{ width: `${dl * 100}%` }} />
           </div>
@@ -88,7 +109,10 @@ function LogViewer({ taskId }: { taskId: string }) {
   const [lines, setLines] = useState<string[] | null>(null);
   const [open, setOpen] = useState(false);
   const toggle = async () => {
-    if (open) { setOpen(false); return; }
+    if (open) {
+      setOpen(false);
+      return;
+    }
     try {
       const r = await getTaskLog(taskId);
       setLines(r.log.slice(-120));
@@ -114,7 +138,11 @@ function LogViewer({ taskId }: { taskId: string }) {
   );
 }
 
-export default function TaskPanel({ taskId, onDismiss, onRetry }: {
+export default function TaskPanel({
+  taskId,
+  onDismiss,
+  onRetry,
+}: {
   taskId: string | null;
   onDismiss?: () => void;
   onRetry?: () => void;
@@ -128,9 +156,13 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
     if (taskId) track(taskId);
   }, [taskId, track]);
   // dismissing a panel also removes the task from the tray
-  const dismiss = onDismiss && taskId
-    ? () => { untrack(taskId); onDismiss(); }
-    : onDismiss;
+  const dismiss =
+    onDismiss && taskId
+      ? () => {
+          untrack(taskId);
+          onDismiss();
+        }
+      : onDismiss;
   const [cancelling, setCancelling] = useState(false);
   const reportedStatus = useRef<string | null>(null);
 
@@ -140,7 +172,8 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
     if (reportedStatus.current === task.status) return;
     reportedStatus.current = task.status;
     if (task.status === "completed") emitEvent("info", `${task.title} - completed`, true);
-    else if (task.status === "failed") emitEvent("error", `${task.title} - failed: ${task.error || "unknown error"}`, true);
+    else if (task.status === "failed")
+      emitEvent("error", `${task.title} - failed: ${task.error || "unknown error"}`, true);
     else if (task.status === "cancelled") emitEvent("warning", `${task.title} - cancelled`, true);
   }, [task]);
 
@@ -152,7 +185,9 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           This task no longer exists on the server (it was probably restarted). {pollError}
         </p>
         {dismiss && (
-          <button onClick={dismiss} className={BTN_GHOST} aria-label="Dismiss panel"><X size={14} /></button>
+          <button onClick={dismiss} className={BTN_GHOST} aria-label="Dismiss panel">
+            <X size={14} />
+          </button>
         )}
       </div>
     );
@@ -183,7 +218,15 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           <p className="font-mono text-[0.6875rem] text-ink3">
             {kindLabel} · #{task.id.slice(0, 8)}
             {task.finished_at && task.started_at && (
-              <> · finished in {Math.max(0, (new Date(task.finished_at).getTime() - new Date(task.started_at).getTime()) / 1000).toFixed(1)}s</>
+              <>
+                {" "}
+                · finished in{" "}
+                {Math.max(
+                  0,
+                  (new Date(task.finished_at).getTime() - new Date(task.started_at).getTime()) / 1000,
+                ).toFixed(1)}
+                s
+              </>
             )}
           </p>
         </div>
@@ -202,7 +245,9 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
             </button>
           )}
           {dismiss && !running && (
-            <button onClick={dismiss} className={BTN_GHOST} aria-label="Dismiss panel"><X size={14} /></button>
+            <button onClick={dismiss} className={BTN_GHOST} aria-label="Dismiss panel">
+              <X size={14} />
+            </button>
           )}
         </div>
       </div>
@@ -215,15 +260,16 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
 
       {running && (
         <div className="mt-3">
-          <ProgressBar
-            value={task.progress}
-            indeterminate={indeterminate}
-            staged={task.kind.startsWith("media")}
-          />
+          <ProgressBar value={task.progress} indeterminate={indeterminate} staged={task.kind.startsWith("media")} />
           {/* terminal-style stage line: real backend progress (speed / ETA
               where yt-dlp reports them) */}
-          <p className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[0.6875rem] text-info" title={task.stage}>
-            <span className="text-accText" aria-hidden>❯ </span>
+          <p
+            className="mt-1.5 truncate rounded-sm border border-line bg-base px-2.5 py-1.5 font-mono text-[0.6875rem] text-info"
+            title={task.stage}
+          >
+            <span className="text-accText" aria-hidden>
+              ❯{" "}
+            </span>
             <span className="whitespace-pre">{task.stage}</span>
           </p>
         </div>
@@ -237,16 +283,16 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
               {task.result.note}
             </p>
           )}
-          {(task.result?.outputs || []).length > 0 && (
-            <p className={`${SECTION_LABEL} mt-3`}>output</p>
-          )}
+          {(task.result?.outputs || []).length > 0 && <p className={`${SECTION_LABEL} mt-3`}>output</p>}
           <ul className="mt-1.5 space-y-1.5">
             {(task.result?.outputs || []).map((o) => (
               <li key={o.path} className="flex flex-wrap items-center gap-2 rounded-sm bg-elev/60 px-3 py-2">
                 <span className="rounded-sm border border-line bg-base px-1.5 py-0.5 font-mono text-[0.625rem] font-semibold uppercase text-accText">
                   {extOf(o.name)}
                 </span>
-                <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink" title={o.name}>{o.name}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink" title={o.name}>
+                  {o.name}
+                </span>
                 <span className="font-mono text-[0.6875rem] text-ink3">{humanSize(o.size)}</span>
                 {o.exists === false ? (
                   <span className="font-mono text-[0.6875rem] text-ink3">file missing</span>
@@ -257,7 +303,11 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
                     </a>
                     <button
                       onClick={async () => {
-                        try { await openOutputFolder(); } catch (e: any) { toast.push("error", e.message); }
+                        try {
+                          await openOutputFolder();
+                        } catch (e: any) {
+                          toast.push("error", e.message);
+                        }
                       }}
                       className={`${BTN_GHOST} px-2.5 py-1 text-xs`}
                       title="Open the output folder"
@@ -285,7 +335,9 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
       )}
 
       {(task.status === "failed" || (task.status === "completed" && task.kind.startsWith("media"))) && (
-        <div className="mt-3"><LogViewer taskId={task.id} /></div>
+        <div className="mt-3">
+          <LogViewer taskId={task.id} />
+        </div>
       )}
     </div>
   );

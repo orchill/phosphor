@@ -31,7 +31,10 @@ export default function Split() {
 
   const load = async (files: File[]) => {
     const pdfFile = files.find((f) => /\.pdf$/i.test(f.name) || f.type === "application/pdf");
-    if (!pdfFile) { toast.push("error", "Drop a single PDF."); return; }
+    if (!pdfFile) {
+      toast.push("error", "Drop a single PDF.");
+      return;
+    }
     setBusy(true);
     try {
       const [meta] = await uploadFiles([pdfFile]);
@@ -46,11 +49,18 @@ export default function Split() {
 
   const applySelectionToRangeText = () => {
     const sel = [...selection].sort((a, b) => a - b);
-    if (!sel.length) { setRangeText(""); return; }
+    if (!sel.length) {
+      setRangeText("");
+      return;
+    }
     const groups: string[] = [];
-    let start = sel[0], prev = sel[0];
+    let start = sel[0],
+      prev = sel[0];
     for (const p of sel.slice(1)) {
-      if (p === prev + 1) { prev = p; continue; }
+      if (p === prev + 1) {
+        prev = p;
+        continue;
+      }
       groups.push(start === prev ? `${start}` : `${start}-${prev}`);
       start = prev = p;
     }
@@ -85,44 +95,92 @@ export default function Split() {
     <div className="space-y-4">
       <PageHeader
         route="split"
-        description={<>
-          Extract selected pages into a single document, or split a PDF into several files.
-          Multiple outputs are delivered as a ZIP archive.
-        </>}
+        description={
+          <>
+            Extract selected pages into a single document, or split a PDF into several files. Multiple outputs are
+            delivered as a ZIP archive.
+          </>
+        }
       />
 
-      {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF to split" hint="Click pages to select them" disabled={busy} />}
+      {!pdf && (
+        <FileDrop
+          onFiles={load}
+          accept=".pdf,application/pdf"
+          multiple={false}
+          label="Drop a PDF to split"
+          hint="Click pages to select them"
+          disabled={busy}
+        />
+      )}
 
       {pdf && (
         <>
-          <SourcePanel file={pdf} onClose={() => { setPdf(null); deleteFile(pdf.id).catch(() => {}); }} closeLabel="Close document" />
+          <SourcePanel
+            file={pdf}
+            onClose={() => {
+              setPdf(null);
+              deleteFile(pdf.id).catch(() => {});
+            }}
+            closeLabel="Close document"
+          />
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {modes.map((m) => (
-              <OptionCard key={m.id} name="splitmode" checked={mode === m.id}
-                onChange={() => setMode(m.id)} label={m.label} desc={m.desc} />
+              <OptionCard
+                key={m.id}
+                name="splitmode"
+                checked={mode === m.id}
+                onChange={() => setMode(m.id)}
+                label={m.label}
+                desc={m.desc}
+              />
             ))}
           </div>
 
           {mode === "extract" && (
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>select all</button>
-              <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>clear</button>
-              <button onClick={applySelectionToRangeText} className={BTN_SECONDARY}>selection to text</button>
+              <button onClick={() => setSelection(new Set(pages.map((p) => p.page)))} className={BTN_SECONDARY}>
+                select all
+              </button>
+              <button onClick={() => setSelection(new Set())} className={BTN_SECONDARY}>
+                clear
+              </button>
+              <button onClick={applySelectionToRangeText} className={BTN_SECONDARY}>
+                selection to text
+              </button>
               <span className="text-sm text-ink2">{selection.size} page(s) selected</span>
             </div>
           )}
 
           {mode === "ranges" && (
             <div>
-              <label className={LABEL} htmlFor="ranges">Page ranges (each group = one output file)</label>
-              <input id="ranges" value={rangeText} onChange={(e) => setRangeText(e.target.value)} placeholder="1-3, 5, 8-10" className={`${INPUT} mt-1`} />
+              <label className={LABEL} htmlFor="ranges">
+                Page ranges (each group = one output file)
+              </label>
+              <input
+                id="ranges"
+                value={rangeText}
+                onChange={(e) => setRangeText(e.target.value)}
+                placeholder="1-3, 5, 8-10"
+                className={`${INPUT} mt-1`}
+              />
             </div>
           )}
 
           {mode === "every_n" && (
             <div>
-              <label className={LABEL} htmlFor="everyn">Pages per output file</label>
-              <input id="everyn" type="number" min={1} max={pdf.pages} value={everyN} onChange={(e) => setEveryN(Math.max(1, +e.target.value))} className={`${INPUT} mt-1 w-32`} />
+              <label className={LABEL} htmlFor="everyn">
+                Pages per output file
+              </label>
+              <input
+                id="everyn"
+                type="number"
+                min={1}
+                max={pdf.pages}
+                value={everyN}
+                onChange={(e) => setEveryN(Math.max(1, +e.target.value))}
+                className={`${INPUT} mt-1 w-32`}
+              />
               <p className="mt-1 text-xs text-ink2">
                 Will produce {Math.ceil(pdf.pages / Math.max(1, everyN))} file(s).
               </p>

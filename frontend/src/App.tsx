@@ -1,8 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronDown, Combine, FileOutput, FilePlus2,
-  FileStack, FolderOutput, History as HistoryIcon, Images, LayoutDashboard, Moon,
-  Scissors, Search, Settings as SettingsIcon, Sun, Video, X, Zap,
+  ChevronDown,
+  Combine,
+  FileOutput,
+  FilePlus2,
+  FileStack,
+  FolderOutput,
+  History as HistoryIcon,
+  Images,
+  LayoutDashboard,
+  Moon,
+  Scissors,
+  Search,
+  Settings as SettingsIcon,
+  Sun,
+  Video,
+  X,
+  Zap,
 } from "lucide-react";
 import { NavContext, ToastContext, Toast, Route, useNav, useToast, PDF_ROUTES, ROUTE_META } from "./ctx";
 import { systemInfo } from "./api";
@@ -36,24 +50,49 @@ const WIDE = "max-w-6xl";
 const FORM = "max-w-3xl";
 const MID = "max-w-4xl";
 const CONTENT_WIDTH: Record<Route, string> = {
-  dashboard: WIDE, pdftools: WIDE, history: WIDE, media: WIDE,
-  merge: FORM, split: FORM, compress: FORM, extract: FORM,
-  images: MID, organize: MID, toimages: MID, settings: MID,
+  dashboard: WIDE,
+  pdftools: WIDE,
+  history: WIDE,
+  media: WIDE,
+  merge: FORM,
+  split: FORM,
+  compress: FORM,
+  extract: FORM,
+  images: MID,
+  organize: MID,
+  toimages: MID,
+  settings: MID,
 };
 
 // ------------------------------------------------------------------ routing
 // Hash-based routes survive reloads, support deep links and back/forward.
 const ROUTE_FOR_HASH: Record<string, Route> = {
-  "": "dashboard", "pdf": "pdftools", "pdf/merge": "merge", "pdf/images": "images",
-  "pdf/organize": "organize", "pdf/split": "split", "pdf/compress": "compress",
-  "pdf/extract": "extract", "pdf/toimages": "toimages", "media": "media",
-  "history": "history", "settings": "settings",
+  "": "dashboard",
+  pdf: "pdftools",
+  "pdf/merge": "merge",
+  "pdf/images": "images",
+  "pdf/organize": "organize",
+  "pdf/split": "split",
+  "pdf/compress": "compress",
+  "pdf/extract": "extract",
+  "pdf/toimages": "toimages",
+  media: "media",
+  history: "history",
+  settings: "settings",
 };
 const HASH_FOR_ROUTE: Record<Route, string> = {
-  dashboard: "", pdftools: "pdf", merge: "pdf/merge", images: "pdf/images",
-  organize: "pdf/organize", split: "pdf/split", compress: "pdf/compress",
-  extract: "pdf/extract", toimages: "pdf/toimages", media: "media",
-  history: "history", settings: "settings",
+  dashboard: "",
+  pdftools: "pdf",
+  merge: "pdf/merge",
+  images: "pdf/images",
+  organize: "pdf/organize",
+  split: "pdf/split",
+  compress: "pdf/compress",
+  extract: "pdf/extract",
+  toimages: "pdf/toimages",
+  media: "media",
+  history: "history",
+  settings: "settings",
 };
 
 function routeFromHash(): Route {
@@ -132,17 +171,29 @@ const PDF_TOOLS_NAV: { id: Route; label: string; icon: React.ElementType }[] = [
   { id: "toimages", label: "pdf to images", icon: FileOutput },
 ];
 
-function NavItem({ id, label, icon: Icon, active, onClick }: {
-  id: string; label: string; icon?: React.ElementType; active: boolean; onClick: () => void;
+function NavItem({
+  id,
+  label,
+  icon: Icon,
+  active,
+  onClick,
+}: {
+  id: string;
+  label: string;
+  icon?: React.ElementType;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={`flex w-full items-center gap-2.5 rounded-sm border-l-2 px-2.5 py-1.5 font-mono text-sm transition-colors
-        ${active
-          ? "glow border-acc bg-acc/10 text-accText"
-          : "border-transparent text-ink3 hover:bg-elev hover:text-ink"}`}
+        ${
+          active
+            ? "glow border-acc bg-acc/10 text-accText"
+            : "border-transparent text-ink3 hover:bg-elev hover:text-ink"
+        }`}
     >
       {Icon && <Icon size={15} className="shrink-0" aria-hidden />}
       {label}
@@ -150,8 +201,16 @@ function NavItem({ id, label, icon: Icon, active, onClick }: {
   );
 }
 
-function GroupHeader({ label, onClick, expanded, collapsible }: {
-  label: string; onClick?: (toggleOnly?: boolean) => void; expanded?: boolean; collapsible?: boolean;
+function GroupHeader({
+  label,
+  onClick,
+  expanded,
+  collapsible,
+}: {
+  label: string;
+  onClick?: (toggleOnly?: boolean) => void;
+  expanded?: boolean;
+  collapsible?: boolean;
 }) {
   const cls =
     "mb-1 mt-4 flex w-full items-center px-2 font-mono text-[0.625rem] font-medium uppercase tracking-widest text-ink3";
@@ -172,11 +231,7 @@ function GroupHeader({ label, onClick, expanded, collapsible }: {
         aria-label={`${expanded ? "Collapse" : "Expand"} ${label} section`}
         className="ml-auto rounded-sm p-0.5 hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
       >
-        <ChevronDown
-          size={13}
-          className={`transition-transform ${expanded ? "" : "-rotate-90"}`}
-          aria-hidden
-        />
+        <ChevronDown size={13} className={`transition-transform ${expanded ? "" : "-rotate-90"}`} aria-hidden />
       </button>
     </span>
   );
@@ -186,7 +241,9 @@ function Sidebar({ info }: { info: SystemInfo | null }) {
   const { route, navigate } = useNav();
   const pdfActive = PDF_ROUTES.includes(route);
   const [pdfOpen, setPdfOpen] = useState(pdfActive);
-  useEffect(() => { if (pdfActive) setPdfOpen(true); }, [pdfActive]);
+  useEffect(() => {
+    if (pdfActive) setPdfOpen(true);
+  }, [pdfActive]);
 
   return (
     <nav
@@ -194,38 +251,53 @@ function Sidebar({ info }: { info: SystemInfo | null }) {
       className="hidden w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line bg-panel p-2.5 md:flex"
     >
       <NavItem
-        id="dashboard" label="home" icon={LayoutDashboard}
-        active={route === "dashboard"} onClick={() => navigate("dashboard")}
+        id="dashboard"
+        label="home"
+        icon={LayoutDashboard}
+        active={route === "dashboard"}
+        onClick={() => navigate("dashboard")}
       />
 
       <GroupHeader
-        label="pdf tools" collapsible expanded={pdfOpen}
+        label="pdf tools"
+        collapsible
+        expanded={pdfOpen}
         onClick={(toggleOnly?: boolean) => {
           if (toggleOnly) setPdfOpen((o) => !o);
-          else { navigate("pdftools"); setPdfOpen(true); }
+          else {
+            navigate("pdftools");
+            setPdfOpen(true);
+          }
         }}
       />
-      {pdfOpen && PDF_TOOLS_NAV.map((item) => (
-        <NavItem
-          key={item.id} {...item}
-          active={route === item.id} onClick={() => navigate(item.id)}
-        />
-      ))}
+      {pdfOpen &&
+        PDF_TOOLS_NAV.map((item) => (
+          <NavItem key={item.id} {...item} active={route === item.id} onClick={() => navigate(item.id)} />
+        ))}
 
       <GroupHeader label="media" />
       <NavItem
-        id="media" label="media downloader" icon={Video}
-        active={route === "media"} onClick={() => navigate("media")}
+        id="media"
+        label="media downloader"
+        icon={Video}
+        active={route === "media"}
+        onClick={() => navigate("media")}
       />
 
       <GroupHeader label="system" />
       <NavItem
-        id="history" label="task history" icon={HistoryIcon}
-        active={route === "history"} onClick={() => navigate("history")}
+        id="history"
+        label="task history"
+        icon={HistoryIcon}
+        active={route === "history"}
+        onClick={() => navigate("history")}
       />
       <NavItem
-        id="settings" label="settings" icon={SettingsIcon}
-        active={route === "settings"} onClick={() => navigate("settings")}
+        id="settings"
+        label="settings"
+        icon={SettingsIcon}
+        active={route === "settings"}
+        onClick={() => navigate("settings")}
       />
 
       {/* footer: version + output folder, pinned to the bottom of the sidebar */}
@@ -275,8 +347,16 @@ function MobileNav() {
   );
 }
 
-function Header({ dark, toggleTheme, openPalette, info }: {
-  dark: boolean; toggleTheme: () => void; openPalette: () => void; info: SystemInfo | null;
+function Header({
+  dark,
+  toggleTheme,
+  openPalette,
+  info,
+}: {
+  dark: boolean;
+  toggleTheme: () => void;
+  openPalette: () => void;
+  info: SystemInfo | null;
 }) {
   const toast = useToast();
   return (
@@ -288,12 +368,18 @@ function Header({ dark, toggleTheme, openPalette, info }: {
         skip to content
       </a>
       <div className="flex items-center gap-2.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-sm bg-acc font-mono text-[0.9375rem] font-bold leading-none text-onAcc" aria-hidden>
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-sm bg-acc font-mono text-[0.9375rem] font-bold leading-none text-onAcc"
+          aria-hidden
+        >
           ❯
         </div>
         <div>
           <h1 className="glow font-mono text-sm font-semibold leading-tight tracking-tight text-ink">
-            phosphor<span className="animate-cursor-blink text-accText" aria-hidden>▮</span>
+            phosphor
+            <span className="animate-cursor-blink text-accText" aria-hidden>
+              ▮
+            </span>
           </h1>
           <p className="text-[0.6875rem] leading-tight text-ink3">
             local PDF &amp; media console - nothing leaves this computer
@@ -310,7 +396,8 @@ function Header({ dark, toggleTheme, openPalette, info }: {
         <Search size={14} className="shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate">search or run a command…</span>
         <span className="hidden shrink-0 items-center gap-1 lg:inline-flex" aria-hidden>
-          <Kbd>Ctrl</Kbd><Kbd>K</Kbd>
+          <Kbd>Ctrl</Kbd>
+          <Kbd>K</Kbd>
         </span>
       </button>
       <div className="ml-auto flex items-center gap-1.5 sm:ml-0">
@@ -319,7 +406,10 @@ function Header({ dark, toggleTheme, openPalette, info }: {
           <button
             onClick={async () => {
               const ok = await copyText(info.output_dir);
-              toast.push(ok ? "success" : "error", ok ? "Output folder path copied." : "Could not access the clipboard.");
+              toast.push(
+                ok ? "success" : "error",
+                ok ? "Output folder path copied." : "Could not access the clipboard.",
+              );
             }}
             title={`Output folder: ${info.output_dir} (click to copy path)`}
             aria-label={`Copy output folder path: ${info.output_dir}`}
@@ -328,19 +418,10 @@ function Header({ dark, toggleTheme, openPalette, info }: {
             <FolderOutput size={13} aria-hidden /> {middleTruncate(info.output_dir, 28)}
           </button>
         )}
-        <button
-          onClick={openPalette}
-          className={`${BTN_GHOST} sm:hidden`}
-          aria-label="Open command palette"
-        >
+        <button onClick={openPalette} className={`${BTN_GHOST} sm:hidden`} aria-label="Open command palette">
           <Search size={16} aria-hidden />
         </button>
-        <button
-          onClick={toggleTheme}
-          className={BTN_GHOST}
-          aria-label="Toggle dark mode"
-          title="Toggle theme"
-        >
+        <button onClick={toggleTheme} className={BTN_GHOST} aria-label="Toggle dark mode" title="Toggle theme">
           {dark ? <Sun size={16} /> : <Moon size={16} />}
         </button>
       </div>
@@ -355,13 +436,13 @@ export default function App() {
   const [route, setRoute] = useState<Route>(routeFromHash);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [introOpen, setIntroOpen] = useState(
-    () => !localStorage.getItem("pms-onboarded-v1"),
-  );
+  const [introOpen, setIntroOpen] = useState(() => !localStorage.getItem("pms-onboarded-v1"));
   const mainRef = useRef<HTMLElement>(null);
   const [info, setInfo] = useState<SystemInfo | null>(null);
   useEffect(() => {
-    systemInfo().then(setInfo).catch(() => {});
+    systemInfo()
+      .then(setInfo)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -430,32 +511,25 @@ export default function App() {
     <NavContext.Provider value={navCtx}>
       <ToastContext.Provider value={toastCtx}>
         <TasksProvider>
-        <div className="flex h-screen flex-col">
-          <Header dark={dark} toggleTheme={toggle} openPalette={() => setPaletteOpen(true)} info={info} />
-          <CommandPalette
-            open={paletteOpen}
-            onClose={() => setPaletteOpen(false)}
-            toggleTheme={toggle}
-            dark={dark}
-          />
-          <Onboarding
-            open={introOpen}
-            onClose={() => {
-              localStorage.setItem("pms-onboarded-v1", "1");
-              setIntroOpen(false);
-            }}
-          />
-          <MobileNav />
-          <div className="flex min-h-0 flex-1">
-            <Sidebar info={info} />
-            <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6 focus:outline-none">
-              <div className={`mx-auto ${CONTENT_WIDTH[route]}`}>
-                {page}
-              </div>
-            </main>
+          <div className="flex h-screen flex-col">
+            <Header dark={dark} toggleTheme={toggle} openPalette={() => setPaletteOpen(true)} info={info} />
+            <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} toggleTheme={toggle} dark={dark} />
+            <Onboarding
+              open={introOpen}
+              onClose={() => {
+                localStorage.setItem("pms-onboarded-v1", "1");
+                setIntroOpen(false);
+              }}
+            />
+            <MobileNav />
+            <div className="flex min-h-0 flex-1">
+              <Sidebar info={info} />
+              <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6 focus:outline-none">
+                <div className={`mx-auto ${CONTENT_WIDTH[route]}`}>{page}</div>
+              </main>
+            </div>
+            <ToastHost toasts={toasts} dismiss={dismiss} />
           </div>
-          <ToastHost toasts={toasts} dismiss={dismiss} />
-        </div>
         </TasksProvider>
       </ToastContext.Provider>
     </NavContext.Provider>

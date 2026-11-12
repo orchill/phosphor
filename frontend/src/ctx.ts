@@ -1,14 +1,29 @@
 import { createContext, useContext } from "react";
 
 export type Route =
-  | "dashboard" | "pdftools"
-  | "merge" | "images" | "organize" | "split" | "compress"
-  | "extract" | "toimages"
-  | "media" | "history" | "settings";
+  | "dashboard"
+  | "pdftools"
+  | "merge"
+  | "images"
+  | "organize"
+  | "split"
+  | "compress"
+  | "extract"
+  | "toimages"
+  | "media"
+  | "history"
+  | "settings";
 
 /** Routes that live under the PDF Tools area (landing + individual tools). */
 export const PDF_ROUTES: Route[] = [
-  "pdftools", "merge", "images", "organize", "split", "compress", "extract", "toimages",
+  "pdftools",
+  "merge",
+  "images",
+  "organize",
+  "split",
+  "compress",
+  "extract",
+  "toimages",
 ];
 
 /** Breadcrumb/page metadata per route (rendered by the app shell). */
