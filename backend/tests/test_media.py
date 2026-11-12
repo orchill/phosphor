@@ -321,6 +321,53 @@ def test_ytdlp_source_reports_missing_custom_path():
     assert media_service.ytdlp_source(cfg) == "python module (custom path not found)"
 
 
+# ------------------------------------------------------------ progress
+def test_progress_formatting_never_shows_raw_floats():
+    """B6: speed arrives as raw bytes/s, eta as seconds; NA values are tolerated."""
+    assert media_service.format_speed("2345678.91") == "2.2 MB/s"
+    assert media_service.format_speed("NA") is None
+    assert media_service.format_speed("garbage") is None
+    assert media_service.format_eta("72") == "1:12"
+    assert media_service.format_eta("12.4") == "0:12"
+    assert media_service.format_eta("None") is None
+    stage = media_service.download_stage(45.2, 100.0, "2345678.91", "12")
+    assert stage == "Downloading 45% at 2.2 MB/s, ETA 0:12"
+    assert "2345678" not in stage
+    unknown = media_service.download_stage(None, 5_300_000.0, "NA", "NA")
+    assert unknown == "Downloading 5.3 MB (size unknown)"
+
+
+def test_stream_tracker_is_monotonic_across_video_and_audio_streams():
+    """B7: bv*+ba downloads two streams, each 0 -> 100 %; the bar must not reset."""
+    tr = media_service.StreamTracker(*media_service._stream_plan({"mode": "video"}))
+    seen: list[float] = []
+    labels: list[str] = []
+    for total, steps in ((1000.0, (100, 500, 1000)), (200.0, (20, 100, 200))):
+        for done in steps:
+            progress, _pct = tr.update(float(done), total)
+            seen.append(progress)
+            labels.append(tr.label())
+    assert seen == sorted(seen), f"progress went backwards: {seen}"
+    assert labels[:3] == ["stream 1/2 (video)"] * 3
+    assert labels[3:] == ["stream 2/2 (audio)"] * 3
+    assert abs(seen[2] - 0.46) < 1e-9          # end of stream 1 = half of the 92 % share
+    assert abs(seen[-1] - 0.92) < 1e-9
+
+
+def test_stream_tracker_adapts_when_more_streams_than_expected():
+    tr = media_service.StreamTracker(1)
+    tr.update(500.0, 1000.0)
+    tr.update(1000.0, 1000.0)
+    before = tr.progress
+    progress, _ = tr.update(10.0, 400.0)       # counter reset -> second stream
+    assert tr.count == 2 and progress >= before
+    tr.set_expected(3)
+    assert tr.count == 3
+    assert media_service._stream_plan({"mode": "audio"}) == (1, ("audio",))
+    assert media_service._stream_plan(
+        {"mode": "video", "format_ids": {"video": "22", "audio": ""}})[0] == 1
+
+
 # ------------------------------------------------------ TaskManager unit
 def test_session_challenged_detection():
     assert media_service._session_challenged(

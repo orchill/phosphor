@@ -22,7 +22,8 @@ from urllib.parse import quote
 from ..config import Config
 from ..security import ValidationError, ensure_within
 from ..tasks import TaskCancelled, TaskRecord
-from ..utils import kill_process_tree, popen_group_kwargs, remove_tree
+from ..utils import (fmt_duration, human_size, kill_process_tree,
+                     popen_group_kwargs, remove_tree)
 
 # Stable public video ("Me at the zoo") used to verify cookie sign-in works.
 TEST_VIDEO_URL = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
@@ -359,6 +360,110 @@ async def fetch_info(cfg: Config, url: str) -> dict:
 
 
 # ------------------------------------------------------------- download
+# ----------------------------------------------------------- progress
+_NA = ("NA", "None", "", "null")
+_FORMATS_RE = re.compile(r"Downloading \d+ format\(s\): (\S+)")
+# Downloading takes the first 92 % of the bar; post-processing the rest.
+_DL_SHARE = 0.92
+
+
+def _num(raw: str | None) -> float | None:
+    """yt-dlp progress field -> float, or None for NA / garbage."""
+    if raw is None or raw.strip() in _NA:
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    return value if value == value and value >= 0 else None   # drops NaN / negatives
+
+
+def format_speed(raw: str | None) -> str | None:
+    """`2345678.91` (bytes/s) -> `2.2 MB/s`."""
+    value = _num(raw)
+    return f"{human_size(value)}/s" if value is not None else None
+
+
+def format_eta(raw: str | None) -> str | None:
+    """`72` (seconds) -> `1:12`."""
+    value = _num(raw)
+    return fmt_duration(value) if value is not None else None
+
+
+class StreamTracker:
+    """Maps yt-dlp's per-stream progress onto one monotonic overall bar.
+
+    For `bv*+ba` yt-dlp downloads the video and the audio stream one after
+    the other and each goes 0 -> 100 %. A byte counter that drops below the
+    previous one means a new stream started. Stream k of n fills the range
+    [k/n, (k+1)/n] of the download share, and the result never moves back.
+    """
+
+    def __init__(self, expected: int = 1, labels: tuple[str, ...] = ()):
+        self.expected = max(1, expected)
+        self.labels = labels
+        self.index = 0
+        self.last_done = 0.0
+        self.progress = 0.0
+
+    def set_expected(self, n: int) -> None:
+        self.expected = max(self.expected, n)
+
+    @property
+    def count(self) -> int:
+        return max(self.expected, self.index + 1)
+
+    def update(self, done: float | None, total: float | None) -> tuple[float | None, float | None]:
+        """Returns (overall progress or None if unknown, stream percent)."""
+        if done is None:
+            return None, None
+        if done + 1 < self.last_done:        # byte counter reset -> next stream
+            self.index += 1
+        self.last_done = done
+        if not total:
+            return None, None
+        frac = max(0.0, min(1.0, done / total))
+        overall = (self.index + frac) / self.count * _DL_SHARE
+        self.progress = max(self.progress, overall)
+        return self.progress, frac * 100.0
+
+    def label(self) -> str:
+        if self.count < 2:
+            return ""
+        name = self.labels[self.index] if self.index < len(self.labels) else ""
+        return f"stream {self.index + 1}/{self.count}" + (f" ({name})" if name else "")
+
+
+def _stream_plan(params: dict) -> tuple[int, tuple[str, ...]]:
+    """How many streams a download is expected to fetch, and their labels."""
+    if params.get("mode") == "audio":
+        return 1, ("audio",)
+    fmt_ids = params.get("format_ids") or {}
+    if fmt_ids and not str(fmt_ids.get("audio") or "").strip():
+        return 1, ("video",)
+    return 2, ("video", "audio")
+
+
+def download_stage(pct: float | None, done: float | None, speed: str | None,
+                   eta: str | None, stream_label: str = "") -> str:
+    """Human readable stage line, e.g. `Downloading 45% at 2.2 MB/s, ETA 0:12`."""
+    speed_txt = format_speed(speed)
+    eta_txt = format_eta(eta)
+    if pct is not None:
+        text = f"Downloading {pct:.0f}%"
+    else:
+        text = f"Downloading {(done or 0) / 1e6:.1f} MB"
+    if speed_txt:
+        text += f" at {speed_txt}"
+    if eta_txt:
+        text += f", ETA {eta_txt}"
+    if pct is None:
+        text += " (size unknown)"
+    if stream_label:
+        text += f" - {stream_label}"
+    return text
+
+
 def _build_format_args(params: dict, info: dict | None) -> list[str]:
     """Build yt-dlp format/codec arguments from validated UI parameters."""
     mode = params.get("mode")  # video | audio
@@ -536,6 +641,8 @@ async def _download_impl(rec: TaskRecord, cfg: Config, params: dict,
                 stderr_tail = (stderr_tail + "\n" + line)[-4000:]
                 rec.add_log(line)
 
+        tracker = StreamTracker(*_stream_plan(params))
+
         async def pump_stdout():
             assert proc.stdout is not None
             while True:
@@ -545,30 +652,15 @@ async def _download_impl(rec: TaskRecord, cfg: Config, params: dict,
                 line = raw.decode("utf-8", "replace").strip()
                 m = _DL_RE.match(line)
                 if m:
-                    try:
-                        done = float(m.group(1)) if m.group(1) not in ("NA", "None", "") else None
-                        total_s, est_s, speed, eta = m.group(2), m.group(3), m.group(4), m.group(5)
-                    except ValueError:
-                        continue
-                    total = None
-                    for cand in (total_s, est_s):
-                        try:
-                            if cand not in ("NA", "None", ""):
-                                total = float(cand)
-                                break
-                        except ValueError:
-                            continue
-                    speed = speed if speed not in ("NA", "None") else None
-                    eta = eta if eta not in ("NA", "None") else None
-                    if done is not None and total:
-                        frac = max(0.0, min(1.0, done / total)) * 0.92
-                        rec.progress = frac
-                        pct = frac / 0.92 * 100
-                        rec.stage = f"Downloading {pct:.0f}% at {speed or '?'}" + (f", ETA {eta}s" if eta else "")
-                    elif done is not None:
-                        rec.progress = None
-                        mb = done / 1e6
-                        rec.stage = f"Downloading {mb:.1f} MB at {speed or '?'} (size unknown)"
+                    done = _num(m.group(1))
+                    total = _num(m.group(2)) or _num(m.group(3))
+                    progress, pct = tracker.update(done, total)
+                    if progress is not None:
+                        rec.progress = max(rec.progress or 0.0, progress)
+                    elif done is not None and not total:
+                        rec.progress = None      # size unknown: indeterminate bar
+                    rec.stage = download_stage(pct, done, m.group(4), m.group(5),
+                                               tracker.label())
                     continue
                 m = _POST_RE.match(line)
                 if m:
@@ -576,6 +668,10 @@ async def _download_impl(rec: TaskRecord, cfg: Config, params: dict,
                     rec.progress = max(rec.progress or 0, 0.93)
                     rec.stage = f"Processing ({name}) {status}".strip()
                     continue
+                m = _FORMATS_RE.search(line)
+                if m:
+                    # "Downloading 1 format(s): 137+140" -> two streams
+                    tracker.set_expected(m.group(1).count("+") + 1)
                 if line and not line.startswith("[download]"):
                     rec.add_log(line)
 
