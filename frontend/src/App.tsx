@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, CheckCircle2, ChevronDown, Combine, FileOutput, FilePlus2,
+  ChevronDown, Combine, FileOutput, FilePlus2,
   FileStack, FolderOutput, History as HistoryIcon, Images, LayoutDashboard, Moon,
-  Scissors, Search, Settings as SettingsIcon, ShieldCheck, Sun, Video, X, Zap,
+  Scissors, Search, Settings as SettingsIcon, Sun, Video, X, Zap,
 } from "lucide-react";
 import { NavContext, ToastContext, Toast, Route, useNav, useToast, PDF_ROUTES, ROUTE_META } from "./ctx";
 import { systemInfo } from "./api";
@@ -89,29 +89,38 @@ function useTheme() {
 }
 
 // ------------------------------------------------------------------ toasts
+const TOAST_PREFIX: Record<Toast["kind"], { text: string; cls: string }> = {
+  success: { text: "ok", cls: "text-accText" },
+  error: { text: "err", cls: "text-bad" },
+  info: { text: "info", cls: "text-info" },
+};
+
+/** Toasts are terminal-style lines. Only the container ignores the pointer, so
+ *  the text itself can be selected and copied (error details, paths). */
 function ToastHost({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: number) => void }) {
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-sm flex-col gap-2">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          role="alert"
-          className={`pointer-events-none flex items-start gap-2 rounded border bg-panel px-3.5 py-3 text-sm text-ink shadow-lg
-            ${t.kind === "error" ? "border-bad/50" : t.kind === "success" ? "border-acc/50" : "border-line"}`}
-        >
-          {t.kind === "error" ? <AlertTriangle size={16} className="mt-0.5 shrink-0 text-bad" />
-            : t.kind === "success" ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-accText" />
-            : <ShieldCheck size={16} className="mt-0.5 shrink-0 text-info" />}
-          <span className="whitespace-pre-wrap">{t.text}</span>
-          <button
-            onClick={() => dismiss(t.id)}
-            aria-label="Dismiss"
-            className="pointer-events-auto ml-auto shrink-0 rounded-sm p-0.5 text-ink3 hover:bg-elev hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+      {toasts.map((t) => {
+        const prefix = TOAST_PREFIX[t.kind];
+        return (
+          <div
+            key={t.id}
+            role="alert"
+            className={`flex select-text items-start gap-2 rounded border bg-panel px-3.5 py-3 font-mono text-[0.8125rem] text-ink shadow-lg
+              ${t.kind === "error" ? "border-bad/50" : t.kind === "success" ? "border-acc/50" : "border-line"}`}
           >
-            <X size={14} />
-          </button>
-        </div>
-      ))}
+            <span className={`shrink-0 font-semibold ${prefix.cls}`}>{prefix.text}:</span>
+            <span className="min-w-0 whitespace-pre-wrap break-words">{t.text}</span>
+            <button
+              onClick={() => dismiss(t.id)}
+              aria-label="Dismiss"
+              className="ml-auto shrink-0 rounded-sm p-0.5 text-ink3 hover:bg-elev hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

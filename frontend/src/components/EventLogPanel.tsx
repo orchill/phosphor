@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { AppEvent, EventSeverity, clearEvents, getEvents, subscribeEvents } from "../events";
 import { BTN_GHOST, CARD, DOT, SECTION_LABEL } from "../ui";
+import { EmptyState } from "./primitives";
 
 type Filter = "all" | "info" | "warning" | "error" | "tasks";
 
@@ -93,7 +94,7 @@ export default function EventLogPanel({ defaultOpen = false }: { defaultOpen?: b
             aria-label="Application events"
           >
             {filtered.length === 0 ? (
-              <p className="text-ink3">No {filter === "all" ? "" : `${filter} `}events this session.</p>
+              <EmptyState bare>no {filter === "all" ? "" : `${filter} `}events this session</EmptyState>
             ) : (
               <ol className="space-y-1">
                 {filtered.map((e) => (

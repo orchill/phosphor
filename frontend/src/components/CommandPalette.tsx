@@ -144,7 +144,9 @@ export default function CommandPalette({ open, onClose, toggleTheme, dark }: Pro
         </div>
         <div ref={listRef} id="command-palette-list" role="listbox" aria-label="Commands" className="max-h-80 overflow-y-auto p-2">
           {results.length === 0 && (
-            <p className="px-2 py-6 text-center font-mono text-[0.75rem] text-ink3">No matching commands.</p>
+            <p className="px-3 py-5 font-mono text-[0.75rem] text-ink3">
+              <span className="text-accText" aria-hidden>❯ </span>no matching commands<span className="text-accText" aria-hidden>_</span>
+            </p>
           )}
           {results.map((cmd, i) => {
             const showSection = cmd.section !== lastSection;
