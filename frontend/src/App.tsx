@@ -9,6 +9,9 @@ import { systemInfo } from "./api";
 import { SystemInfo } from "./types";
 import { BTN_GHOST } from "./ui";
 import { copyText, middleTruncate } from "./format";
+import { setBaseTitle } from "./title";
+import { TasksProvider } from "./tasks";
+import TaskTray from "./components/TaskTray";
 import { DENSITY_KEY, applyDensity, readTheme, saveTheme } from "./appearance";
 import CommandPalette from "./components/CommandPalette";
 import Onboarding from "./components/Onboarding";
@@ -67,13 +70,6 @@ function useDensity() {
     window.addEventListener(DENSITY_KEY, sync);
     return () => window.removeEventListener(DENSITY_KEY, sync);
   }, []);
-}
-
-// --------------------------------------------------------- document title
-let BASE_TITLE = "phosphor";
-function setBaseTitle(t: string) {
-  BASE_TITLE = t;
-  document.title = t;
 }
 
 // ------------------------------------------------------------------ theme
@@ -318,7 +314,7 @@ function Header({ dark, toggleTheme, openPalette, info }: {
         </span>
       </button>
       <div className="ml-auto flex items-center gap-1.5 sm:ml-0">
-        {/* F1: the active-tasks indicator renders here */}
+        <TaskTray />
         {info && (
           <button
             onClick={async () => {
@@ -433,6 +429,7 @@ export default function App() {
   return (
     <NavContext.Provider value={navCtx}>
       <ToastContext.Provider value={toastCtx}>
+        <TasksProvider>
         <div className="flex h-screen flex-col">
           <Header dark={dark} toggleTheme={toggle} openPalette={() => setPaletteOpen(true)} info={info} />
           <CommandPalette
@@ -459,6 +456,7 @@ export default function App() {
           </div>
           <ToastHost toasts={toasts} dismiss={dismiss} />
         </div>
+        </TasksProvider>
       </ToastContext.Provider>
     </NavContext.Provider>
   );

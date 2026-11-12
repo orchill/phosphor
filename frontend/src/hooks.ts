@@ -1,60 +1,16 @@
-import { useEffect, useRef, useState } from "react";
-import { ApiError, getTask } from "./api";
-import { TaskRecord, isTerminal } from "./types";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { TaskPoll, getTaskPoll, subscribeTask } from "./taskStore";
 
-/** Give up after this many consecutive 404s (task gone, e.g. server restart). */
-const MAX_NOT_FOUND = 3;
+export type { TaskPoll } from "./taskStore";
 
-export interface TaskPoll {
-  task: TaskRecord | null;
-  /** Set while polling is failing; cleared by the next successful poll. */
-  error: string | null;
-  /** True once polling has stopped for good (task not found). */
-  gone: boolean;
-}
-
-/** Poll a task by id until it reaches a terminal state or turns out not to exist. */
+/** Watch a task by id (shared poller, see taskStore.ts). Stops by itself once
+ *  the task is finished or turns out not to exist (B19). */
 export function useTask(taskId: string | null): TaskPoll {
-  const [state, setState] = useState<TaskPoll>({ task: null, error: null, gone: false });
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setState({ task: null, error: null, gone: false });
-    if (!taskId) return;
-    let stopped = false;
-    let notFound = 0;
-    let failures = 0;
-    const poll = async () => {
-      try {
-        const t = await getTask(taskId);
-        if (stopped) return;
-        notFound = 0;
-        failures = 0;
-        setState({ task: t, error: null, gone: false });
-        if (!isTerminal(t.status)) timer.current = setTimeout(poll, 800);
-      } catch (e) {
-        if (stopped) return;
-        const msg = e instanceof Error ? e.message : String(e);
-        if (e instanceof ApiError && e.status === 404) {
-          notFound += 1;
-          if (notFound >= MAX_NOT_FOUND) {
-            setState((prev) => ({ ...prev, error: msg, gone: true }));
-            return;
-          }
-        }
-        failures += 1;
-        setState((prev) => ({ ...prev, error: msg }));
-        // back off 2s -> 10s so a dead server is not hammered
-        timer.current = setTimeout(poll, Math.min(2000 * failures, 10000));
-      }
-    };
-    poll();
-    return () => {
-      stopped = true;
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [taskId]);
-  return state;
+  const subscribe = useCallback(
+    (listener: () => void) => (taskId ? subscribeTask(taskId, listener) : () => {}),
+    [taskId],
+  );
+  return useSyncExternalStore(subscribe, () => getTaskPoll(taskId));
 }
 
 /** Query parameters carried in the hash route, e.g. "#/history?task=ab12".

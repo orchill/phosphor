@@ -4,6 +4,7 @@ import { cancelTask, downloadUrl, getTaskLog, openOutputFolder } from "../api";
 import { emitEvent } from "../events";
 import { useToast } from "../ctx";
 import { useTask } from "../hooks";
+import { useTasks } from "../tasks";
 import { TaskRecord, humanSize } from "../types";
 import { BADGE, BTN_DANGER, BTN_GHOST, BTN_SECONDARY, CARD, DOT, SECTION_LABEL, STATUS_TONES } from "../ui";
 
@@ -119,7 +120,17 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
   onRetry?: () => void;
 }) {
   const { task, error: pollError, gone } = useTask(taskId);
+  const { track, untrack } = useTasks();
   const toast = useToast();
+
+  // every panel registers its task with the global tray (F1)
+  useEffect(() => {
+    if (taskId) track(taskId);
+  }, [taskId, track]);
+  // dismissing a panel also removes the task from the tray
+  const dismiss = onDismiss && taskId
+    ? () => { untrack(taskId); onDismiss(); }
+    : onDismiss;
   const [cancelling, setCancelling] = useState(false);
   const reportedStatus = useRef<string | null>(null);
 
@@ -140,8 +151,8 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
         <p className="min-w-0 flex-1 text-sm text-warn">
           This task no longer exists on the server (it was probably restarted). {pollError}
         </p>
-        {onDismiss && (
-          <button onClick={onDismiss} className={BTN_GHOST} aria-label="Dismiss panel"><X size={14} /></button>
+        {dismiss && (
+          <button onClick={dismiss} className={BTN_GHOST} aria-label="Dismiss panel"><X size={14} /></button>
         )}
       </div>
     );
@@ -190,8 +201,8 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
               <X size={14} /> cancel
             </button>
           )}
-          {onDismiss && !running && (
-            <button onClick={onDismiss} className={BTN_GHOST} aria-label="Dismiss panel"><X size={14} /></button>
+          {dismiss && !running && (
+            <button onClick={dismiss} className={BTN_GHOST} aria-label="Dismiss panel"><X size={14} /></button>
           )}
         </div>
       </div>
