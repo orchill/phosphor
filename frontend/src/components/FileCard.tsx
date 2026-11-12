@@ -6,7 +6,6 @@ interface Props {
   file: UploadedFile;
   onRemove?: () => void;
   draggable?: boolean;
-  index?: number;
   badge?: string;
   /** Reorder handlers (see useReorder). They live on the <li> itself so the
    *  parent <ul> only ever contains list items. */
@@ -16,14 +15,13 @@ interface Props {
 }
 
 export default function FileCard({
-  file, onRemove, draggable, index, badge, onDragStart, onDragOver, onDrop,
+  file, onRemove, draggable, badge, onDragStart, onDragOver, onDrop,
 }: Props) {
   return (
     <li
       draggable={draggable}
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = "move";
-        (e.currentTarget as HTMLElement).dataset.index = String(index);
         onDragStart?.();
       }}
       onDragOver={(e) => (onDragOver ?? ((ev) => ev.preventDefault()))(e)}

@@ -83,7 +83,7 @@ export default function Merge() {
           <ul className="space-y-2">
             {files.map((f, i) => (
               <FileCard
-                key={f.id} file={f} draggable index={i} badge={`#${i + 1}`}
+                key={f.id} file={f} draggable badge={`#${i + 1}`}
                 onRemove={() => remove(f)}
                 onDragStart={reorder.onDragStart(i)}
                 onDragOver={reorder.onDragOver}

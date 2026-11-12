@@ -1,8 +1,8 @@
-import { useNav } from "../ctx";
+import { Route, useNav } from "../ctx";
 import { CARD } from "../ui";
 
 interface Props {
-  id: string;
+  id: Route;
   icon: React.ElementType;
   title: string;
   desc: string;
@@ -13,7 +13,7 @@ export default function ToolCard({ id, icon: Icon, title, desc }: Props) {
   const { navigate } = useNav();
   return (
     <button
-      onClick={() => navigate(id as any)}
+      onClick={() => navigate(id)}
       className={`${CARD} group flex items-start gap-3 p-4 text-left transition-colors hover:border-acc/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc`}
     >
       <span
