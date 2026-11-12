@@ -35,7 +35,7 @@ function EngineRow({ name, detail, state }: { name: string; detail: string; stat
     return (
       <li className="flex items-center gap-2 font-mono text-[0.75rem]">
         <span className={`${DOT} bg-warn`} aria-hidden />
-        <span className="text-warn">{name}</span>
+        <span className="shrink-0 whitespace-nowrap text-warn">{name}</span>
         <span className="truncate text-ink3" title={detail}>
           {detail}
         </span>
@@ -51,7 +51,7 @@ function EngineRow({ name, detail, state }: { name: string; detail: string; stat
   return (
     <li className="flex items-center gap-2 font-mono text-[0.75rem]">
       <span className={`${DOT} ${state === "ok" ? "bg-ok" : "bg-ink3"}`} aria-hidden />
-      <span className="text-ink">{name}</span>
+      <span className="shrink-0 whitespace-nowrap text-ink">{name}</span>
       <span className="ml-auto truncate text-ink3" title={detail}>
         {detail}
       </span>
@@ -179,7 +179,7 @@ export default function Dashboard() {
       {/* engines: one compact line per dependency */}
       <section aria-label="System status" className={`${CARD} col-span-12 p-4 lg:col-span-5`}>
         <h3 className={`${SECTION_LABEL} mb-2.5 text-accText`}>engines</h3>
-        <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-1">
           <EngineRow name="PyMuPDF" detail={info?.deps.pymupdf ?? "…"} state={info ? "ok" : "loading"} />
           <EngineRow
             name="FFmpeg"
