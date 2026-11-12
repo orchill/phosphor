@@ -50,7 +50,9 @@ html {
 }
 
 body {
-  @apply bg-base text-ink font-sans antialiased;
+  @apply bg-base text-ink font-mono antialiased;
+  /* one typeface everywhere (JetBrains Mono); `font-sans` is opt-in for long prose */
+  font-variant-ligatures: none;
 }
 
 /* phosphor selection */

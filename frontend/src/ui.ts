@@ -2,7 +2,7 @@
  *
  *  Phosphor Terminal 2.0: squared-off corners (cards 4px, controls 2px),
  *  1px borders on tokenized surfaces, compact uppercase technical labels,
- *  monospace identity on controls/labels/metadata, sans for prose. Colors
+ *  one monospace typeface (JetBrains Mono) for everything; `font-sans` is opt-in. Colors
  *  come exclusively from the semantic tokens in index.css, so light and dark
  *  themes need no per-component dark: variants.
  */
