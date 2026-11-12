@@ -13,6 +13,7 @@
 import { expect, test as fixtureTest } from "./fixtures";
 import { test as rawTest } from "@playwright/test";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
@@ -43,8 +44,31 @@ const ROUTES: [string, string][] = [
 
 fs.mkdirSync(SHOTS, { recursive: true });
 
+/** Paths shown in place of the real ones, so shots never contain the local
+ *  username or checkout location and stay identical between machines (some of
+ *  them become the README screenshots). */
+const DISPLAY_OUTPUT_DIR = String.raw`C:\Users\you\phosphor\outputs`;
+const DISPLAY_HOME = String.raw`C:\Users\you`;
+
+async function maskLocalPaths(page: Page) {
+  const home = os.homedir();
+  for (const url of ["**/api/system/info", "**/api/settings"]) {
+    await page.route(url, async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const response = await route.fetch();
+      const json = await response.json();
+      for (const [k, v] of Object.entries(json ?? {})) {
+        if (typeof v === "string" && v.startsWith(home)) json[k] = DISPLAY_HOME + v.slice(home.length);
+      }
+      if (typeof json?.output_dir === "string") json.output_dir = DISPLAY_OUTPUT_DIR;
+      await route.fulfill({ response, json });
+    });
+  }
+}
+
 async function prepare(page: Page, vp: Viewport, theme: Theme, density: Density, onboarded = true) {
   await page.setViewportSize({ width: vp.w, height: vp.h });
+  await maskLocalPaths(page);
   await page.addInitScript(([t, d, seen]) => {
     localStorage.setItem("pms-theme", t as string);
     localStorage.setItem("pms-density", d as string);
