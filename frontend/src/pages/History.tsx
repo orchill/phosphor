@@ -143,10 +143,17 @@ export default function History() {
                   </span>
                   <span className="flex items-center gap-1.5">
                     {t.result?.outputs?.[0] && (
-                      <a href={downloadUrl(t.result.outputs[0].path)} download
-                        className={`${BTN_SECONDARY} px-2.5 py-1 text-xs`}>
-                        Download
-                      </a>
+                      t.result.outputs[0].exists === false ? (
+                        <span className="rounded-sm border border-line px-2 py-1 font-mono text-[0.6875rem] text-ink3"
+                          title="The file was moved or deleted from the output folder">
+                          file missing
+                        </span>
+                      ) : (
+                        <a href={downloadUrl(t.result.outputs[0].path)} download
+                          className={`${BTN_SECONDARY} px-2.5 py-1 text-xs`}>
+                          Download
+                        </a>
+                      )
                     )}
                     {t.status === "running" || t.status === "queued" ? (
                       <span className="font-mono text-[0.6875rem] text-accText">{t.stage}</span>

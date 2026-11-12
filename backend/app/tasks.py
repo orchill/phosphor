@@ -266,6 +266,27 @@ class TaskManager:
         return True
 
     # ---------------------------------------------------------------- list
+    @staticmethod
+    def annotate(entry: dict) -> dict:
+        """Copy of a task dict whose outputs say whether the file still exists.
+
+        History outlives the files (the user may delete or move them), so the
+        UI must not offer a dead download link. The stored entry is left
+        untouched: `exists` is a point-in-time fact and is never persisted.
+        """
+        result = entry.get("result")
+        outputs = result.get("outputs") if isinstance(result, dict) else None
+        if not outputs:
+            return entry
+        annotated = []
+        for o in outputs:
+            try:
+                exists = Path(o["path"]).is_file()
+            except (KeyError, TypeError, OSError, ValueError):
+                exists = False
+            annotated.append({**o, "exists": exists})
+        return {**entry, "result": {**result, "outputs": annotated}}
+
     def list_tasks(self, limit: int = 50, status: str | None = None,
                    kind: str | None = None) -> list[dict]:
         items: list[dict] = [r.public() for r in self.tasks.values()]
@@ -276,7 +297,7 @@ class TaskManager:
         if kind:
             items = [i for i in items if i["kind"] == kind]
         items.sort(key=lambda i: i.get("created_at") or "", reverse=True)
-        return items[: max(1, min(int(limit), 500))]
+        return [self.annotate(i) for i in items[: max(1, min(int(limit), 500))]]
 
     def get(self, task_id: str) -> TaskRecord | None:
         return self.tasks.get(task_id)

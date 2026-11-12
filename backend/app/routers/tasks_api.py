@@ -22,9 +22,9 @@ async def get_task(task_id: str, request: Request):
         # allow archived history entries to be fetched
         for entry in _tm(request).history:
             if entry.get("id") == task_id:
-                return entry
+                return _tm(request).annotate(entry)
         raise HTTPException(404, "Task not found")
-    return rec.public()
+    return _tm(request).annotate(rec.public())
 
 
 @router.get("/tasks/{task_id}/log")

@@ -5,6 +5,8 @@ export interface OutputFile {
   path: string;
   size: number;
   url: string;
+  /** Set by the API when listing/reading tasks; false once the file was deleted or moved. */
+  exists?: boolean;
 }
 
 export interface TaskRecord {

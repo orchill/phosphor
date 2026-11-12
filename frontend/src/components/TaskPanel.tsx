@@ -228,9 +228,13 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
               <li key={o.path} className="flex flex-wrap items-center gap-2 rounded-sm bg-elev/60 px-3 py-2">
                 <span className="min-w-0 flex-1 truncate font-mono text-[0.75rem] text-ink" title={o.name}>{o.name}</span>
                 <span className="font-mono text-[0.6875rem] text-ink3">{humanSize(o.size)}</span>
-                <a href={downloadUrl(o.path)} className={BTN_SECONDARY} download>
-                  Download
-                </a>
+                {o.exists === false ? (
+                  <span className="font-mono text-[0.6875rem] text-ink3">file missing</span>
+                ) : (
+                  <a href={downloadUrl(o.path)} className={BTN_SECONDARY} download>
+                    Download
+                  </a>
+                )}
               </li>
             ))}
           </ul>

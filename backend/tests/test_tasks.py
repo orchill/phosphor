@@ -327,3 +327,36 @@ def test_finished_records_are_trimmed_from_memory_but_stay_in_history(monkeypatc
         assert set(ids) <= listed, "trimmed tasks are still served from history"
 
     asyncio.run(scenario())
+
+
+def test_list_tasks_flags_outputs_whose_file_is_gone():
+    """B22: history outlives output files; the UI must not link to dead paths."""
+    tmp = Path(tempfile.mkdtemp(prefix="pms_tm_"))
+    kept = tmp / "kept.pdf"
+    kept.write_bytes(b"%PDF")
+    gone = tmp / "gone.pdf"
+    gone.write_bytes(b"%PDF")
+
+    async def scenario():
+        tm = _manager(tmp, concurrent=1)
+
+        async def work(rec):
+            return {"outputs": [
+                {"name": "kept.pdf", "path": str(kept), "size": 4},
+                {"name": "gone.pdf", "path": str(gone), "size": 4},
+            ]}
+
+        tid = tm.submit("t", "two outputs", work)
+        await _wait_terminal(tm, tid)
+        gone.unlink()
+
+        listed = next(t for t in tm.list_tasks() if t["id"] == tid)
+        flags = {o["name"]: o["exists"] for o in listed["result"]["outputs"]}
+        assert flags == {"kept.pdf": True, "gone.pdf": False}
+
+        # point-in-time only: the archived history entry is never mutated
+        assert all("exists" not in o for h in tm.history for o in h["result"]["outputs"])
+        # tasks without outputs pass through unchanged
+        assert tm.annotate({"id": "x", "result": {}}) == {"id": "x", "result": {}}
+
+    asyncio.run(scenario())
