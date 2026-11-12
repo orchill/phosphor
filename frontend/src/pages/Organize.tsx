@@ -7,7 +7,8 @@ import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opEditPages, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { UploadedFile } from "../types";
-import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 export default function Organize() {
   const [pdf, setPdf] = useState<UploadedFile | null>(null);
@@ -84,13 +85,13 @@ export default function Organize() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Organize Pages</h2>
-        <p className="mt-1 text-sm text-ink2">
+      <PageHeader
+        route="organize"
+        description={<>
           Drag pages to reorder, rotate or remove individual pages, or select several at once.
           Saving produces a new PDF; the source file stays untouched.
-        </p>
-      </div>
+        </>}
+      />
 
       {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF to organize" hint="Pages appear as thumbnails" disabled={busy} />}
 

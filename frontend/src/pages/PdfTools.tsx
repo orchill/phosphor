@@ -3,6 +3,7 @@ import {
 } from "lucide-react";
 import ToolCard from "../components/ToolCard";
 import { SECTION_TITLE } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 const CATEGORIES: { title: string; blurb: string; tools: { id: string; icon: React.ElementType; title: string; desc: string }[] }[] = [
   {
@@ -41,13 +42,10 @@ const CATEGORIES: { title: string; blurb: string; tools: { id: string; icon: Rea
 export default function PdfTools() {
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className={`${SECTION_TITLE} text-base`}>pdf tools</h2>
-        <p className="mt-1 text-sm text-ink2">
-          Every operation writes new files to your output folder - original documents are
-          never modified.
-        </p>
-      </div>
+      <PageHeader
+        route="pdftools"
+        description="Every operation writes new files to your output folder - original documents are never modified."
+      />
 
       {CATEGORIES.map((cat) => (
         <section key={cat.title}>

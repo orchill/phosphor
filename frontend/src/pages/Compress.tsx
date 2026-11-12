@@ -7,7 +7,8 @@ import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opCompress, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { UploadedFile, humanSize } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, CARD, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, CARD } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 const PRESETS = [
   { id: "high", label: "High quality", quality: 80, dpi: 150, desc: "Crisp images, moderate saving" },
@@ -60,13 +61,13 @@ export default function Compress() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Compress PDF</h2>
-        <p className="mt-1 text-sm text-ink2">
+      <PageHeader
+        route="compress"
+        description={<>
           Downscales oversized embedded images and re-encodes them as JPEG. The tool reports the
           real output size after processing; if the file is already optimized, the original is kept.
-        </p>
-      </div>
+        </>}
+      />
 
       {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF to compress" hint={pdf ? undefined : "Image-heavy documents shrink the most"} disabled={busy} />}
 

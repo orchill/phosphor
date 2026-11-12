@@ -7,7 +7,8 @@ import { deleteFile, opMerge, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { useReorder } from "../hooks";
 import { UploadedFile } from "../types";
-import { BTN_PRIMARY, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 export default function Merge() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -58,13 +59,13 @@ export default function Merge() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Merge PDFs</h2>
-        <p className="mt-1 text-sm text-ink2">
+      <PageHeader
+        route="merge"
+        description={<>
           Drop PDFs, drag to set the order, then merge. Outputs are written to your output folder -
           original files are never modified.
-        </p>
-      </div>
+        </>}
+      />
 
       {files.length === 0 && (
         <FileDrop

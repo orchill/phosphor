@@ -8,7 +8,8 @@ import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opSplit, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { SplitPayload, UploadedFile } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 type Mode = "extract" | "ranges" | "every_n";
 
@@ -82,13 +83,13 @@ export default function Split() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Split / Extract</h2>
-        <p className="mt-1 text-sm text-ink2">
+      <PageHeader
+        route="split"
+        description={<>
           Extract selected pages into a single document, or split a PDF into several files.
           Multiple outputs are delivered as a ZIP archive.
-        </p>
-      </div>
+        </>}
+      />
 
       {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF to split" hint="Click pages to select them" disabled={busy} />}
 

@@ -5,6 +5,7 @@ import { useToast } from "../ctx";
 import { Density, readDensity, saveDensity } from "../appearance";
 import { Settings, SystemInfo } from "../types";
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 function DepRow({ name, found, detail, hint }: { name: string; found: boolean; detail: string; hint?: string }) {
   return (
@@ -85,13 +86,13 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Settings</h2>
-        <p className="mt-1 text-sm text-ink2">
+      <PageHeader
+        route="settings"
+        description={<>
           Preferences are stored in <code className="font-mono text-xs">config.json</code>.
           Network changes need an application restart.
-        </p>
-      </div>
+        </>}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="space-y-4">

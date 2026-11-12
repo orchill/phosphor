@@ -37,8 +37,8 @@ test.describe("media downloader (stub yt-dlp, no network)", () => {
     await expect(page.getByText("Stub Channel")).toBeVisible();
     await expect(page.getByText(/12:12|0:12/)).toBeVisible(); // duration formatting
     await expect(page.getByText(/formats available/i)).toBeVisible();
-    await expect(page.getByRole("tab", { name: /Video \(MP4\)/ })).toBeVisible();
-    await expect(page.getByRole("tab", { name: /Audio \(MP3/ })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /video \(mp4\)/i })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /audio \(mp3/i })).toBeVisible();
     await expect(page.getByText("advanced options")).toBeVisible(); // progressive disclosure
   });
 

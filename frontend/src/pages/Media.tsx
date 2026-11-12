@@ -10,7 +10,8 @@ import { useToast } from "../ctx";
 import {
   CookieStatus, MediaFormat, MediaInfo, humanSize, fmtDuration,
 } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL } from "../ui";
+import { PageHeader, Tabs } from "../components/primitives";
 
 const HEIGHTS: [number, string][] = [
   [0, "Best available"],
@@ -117,9 +118,9 @@ const fetchInfo = async () => {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Media Downloader</h2>
-        <p className="mt-1 text-sm text-ink2">
+      <PageHeader
+        route="media"
+        description={<>
           Powered by yt-dlp + FFmpeg running locally. Paste a supported URL (YouTube and hundreds
 of other sites). Only download content you have the right to save - DRM and access
 controls are never bypassed. Hitting a bot check? Use the
@@ -127,8 +128,8 @@ controls are never bypassed. Hitting a bot check? Use the
             Cookies / Sign-in
 </button>
           tab.
-        </p>
-      </div>
+        </>}
+      />
 
       {needCookies && tab === "downloader" && (
         <div className={`${CARD} flex flex-col gap-2 border-warn/50 p-4 sm:flex-row sm:items-center `}>
@@ -146,33 +147,21 @@ fixes this - it takes about a minute.
       )}
 
       {/* top-level tabs: Downloader | Cookies / Sign-in */}
-      <div className="flex gap-2" role="tablist" aria-label="Downloader sections">
-        <button
-role="tab" aria-selected={tab === "downloader"}
-          onClick={() => setTab("downloader")}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium sm:flex-none sm:px-6 ${
-            tab === "downloader"
-              ? "border-acc bg-acc/10 text-accText"
-              : "border-line text-ink2"
-          }`}
-        >
-          <Download size={16} /> Downloader
-</button>
-        <button
-role="tab" aria-selected={tab === "cookies"}
-          onClick={() => setTab("cookies")}
-          className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium sm:flex-none sm:px-6 ${
-            tab === "cookies"
-              ? "border-acc bg-acc/10 text-accText"
-              : "border-line text-ink2"
-          }`}
-        >
-          <Cookie size={16} /> Cookies / Sign-in
-{cookieStatus && cookieStatus.source !== "none" && (
-            <span className="h-2 w-2 rounded-full bg-ok" title="Sign-in configured" />
-          )}
-        </button>
-      </div>
+      <Tabs
+        label="Downloader sections"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { id: "downloader", label: "downloader", icon: <Download size={14} aria-hidden /> },
+          {
+            id: "cookies",
+            label: "cookies / sign-in",
+            icon: <Cookie size={14} aria-hidden />,
+            trailing: cookieStatus && cookieStatus.source !== "none"
+              ? <span className="h-1.5 w-1.5 rounded-full bg-ok" title="Sign-in configured" /> : undefined,
+          },
+        ]}
+      />
 
       {tab === "cookies" && (
         <CookiesPanel status={cookieStatus} refresh={refreshCookies} />
@@ -238,17 +227,18 @@ src={info.thumbnail}
           </div>
 
           <div className={`${CARD} space-y-4 p-4`}>
-            <div className="flex gap-2" role="tablist" aria-label="Output type">
-              <button role="tab" aria-selected={mode === "video"} onClick={() => setMode("video")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium ${mode === "video" ? "border-acc bg-acc/10 text-accText" : "border-line text-ink2"}`}>
-                <Video size={16} /> Video (MP4)
-              </button>
-              <button role="tab" aria-selected={mode === "audio"}
-                onClick={() => { setMode("audio"); setVideoFmt(""); setHeight(0); }}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-medium ${mode === "audio" ? "border-acc bg-acc/10 text-accText" : "border-line text-ink2"}`}>
-                <Music size={16} /> Audio (MP3 / M4A)
-              </button>
-            </div>
+            <Tabs
+              label="Output type"
+              value={mode}
+              onChange={(m) => {
+                setMode(m);
+                if (m === "audio") { setVideoFmt(""); setHeight(0); }
+              }}
+              options={[
+                { id: "video", label: "video (mp4)", icon: <Video size={14} aria-hidden /> },
+                { id: "audio", label: "audio (mp3 / m4a)", icon: <Music size={14} aria-hidden /> },
+              ]}
+            />
 
             {mode === "video" ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

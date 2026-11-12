@@ -13,7 +13,7 @@ const HEADER_COOKIES = [
 test.describe("cookie sign-in", () => {
   test("paste import stores cookies without ever exposing values", async ({ page, request }) => {
     await page.goto("/#/media");
-    await page.getByRole("tab", { name: /Cookies \/ Sign-in/ }).click();
+    await page.getByRole("tab", { name: /cookies \/ sign-in/i }).click();
     await page.getByRole("radio", { name: "Paste cookies file" }).click();
     await page.locator("#cookietext").fill(HEADER_COOKIES);
     await page.getByRole("button", { name: "Save sign-in settings" }).click();
@@ -40,7 +40,7 @@ test.describe("cookie sign-in", () => {
 
   test("clear cookies removes the stored session", async ({ page, request }) => {
     await page.goto("/#/media");
-    await page.getByRole("tab", { name: /Cookies \/ Sign-in/ }).click();
+    await page.getByRole("tab", { name: /cookies \/ sign-in/i }).click();
     page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Clear cookies" }).click();
     await expect(page.locator('[data-testid="cookies-panel"]')).toContainText(

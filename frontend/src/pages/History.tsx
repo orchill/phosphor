@@ -4,7 +4,8 @@ import { StatusBadge } from "../components/TaskPanel";
 import { deleteTask, downloadUrl, listTasks, openOutputFolder } from "../api";
 import { useNav, useToast } from "../ctx";
 import { TaskRecord, TaskStatus, humanSize } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, CARD, DOT, SECTION_LABEL, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, CARD, SECTION_LABEL } from "../ui";
+import { EmptyState, PageHeader, Tabs } from "../components/primitives";
 
 /** Backend timestamps are UTC ISO-8601 ("...+00:00" or "...Z") - both parse
  *  directly; the old naive-"Z" append produced "Invalid Date". */
@@ -75,48 +76,44 @@ export default function History() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className={SECTION_TITLE}>Task History</h2>
-        <span className="text-xs text-ink3">outputs are kept in your output folder until you delete them</span>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
+      <PageHeader
+        route="history"
+        description="Outputs are kept in your output folder until you delete them."
+        actions={<>
           <button onClick={refresh} className={BTN_SECONDARY}>
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> refresh
           </button>
           <button onClick={async () => { try { await openOutputFolder(); } catch (e: any) { toast.push("error", e.message); } }} className={BTN_SECONDARY}>
-            <FolderOutput size={14} /> Output folder
+            <FolderOutput size={14} /> output folder
           </button>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* status filter chips */}
-      <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Filter by status">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            role="radio"
-            aria-checked={status === f}
-            onClick={() => setStatus(f)}
-            className={`inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 font-mono text-[11px] transition-colors ${
-              status === f ? "border-acc bg-acc/10 text-accText" : "border-line text-ink3 hover:border-ink3 hover:text-ink2"
-            }`}
-          >
-            {f !== "all" && <span className={`${DOT} ${f === "completed" ? "bg-ok" : f === "failed" ? "bg-bad" : f === "running" ? "bg-info" : f === "cancelled" ? "bg-ink3" : "bg-warn"}`} aria-hidden />}
-            {f}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        semantics="radio"
+        label="Filter by status"
+        value={status}
+        onChange={setStatus}
+        options={FILTERS.map((f) => ({
+          id: f,
+          label: f,
+          dot: f === "all" ? undefined
+            : f === "completed" ? "bg-ok" : f === "failed" ? "bg-bad"
+            : f === "running" ? "bg-info" : f === "cancelled" ? "bg-ink3" : "bg-warn",
+        }))}
+      />
 
       {tasks.length === 0 ? (
-        <div className={`${CARD} flex flex-col items-center gap-3 p-8 text-center`}>
-          <p className="text-sm text-ink2">
-            {status === "all" ? "No tasks recorded yet." : `No ${status} tasks.`}
-          </p>
-          {status === "all" && (
+        <EmptyState
+          action={status === "all" ? (
             <button onClick={() => navigate("merge")} className={BTN_PRIMARY}>
-              <Scissors size={15} aria-hidden /> Run your first merge
+              <Scissors size={15} aria-hidden /> run your first merge
             </button>
-          )}
-        </div>
+          ) : undefined}
+        >
+          {status === "all" ? "no tasks yet - run a tool to get started" : `no ${status} tasks`}
+        </EmptyState>
       ) : (
         groups.map((g) => (
           <section key={g.day}>
@@ -151,7 +148,7 @@ export default function History() {
                       ) : (
                         <a href={downloadUrl(t.result.outputs[0].path)} download
                           className={`${BTN_SECONDARY} px-2.5 py-1 text-xs`}>
-                          Download
+                          download
                         </a>
                       )
                     )}

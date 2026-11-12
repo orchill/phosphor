@@ -7,7 +7,8 @@ import TaskPanel from "../components/TaskPanel";
 import { deleteFile, opToImages, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { UploadedFile } from "../types";
-import { BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, BTN_SECONDARY, INPUT, LABEL } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 export default function PdfToImages() {
   const [pdf, setPdf] = useState<UploadedFile | null>(null);
@@ -63,13 +64,13 @@ export default function PdfToImages() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>PDF to Images</h2>
-        <p className="mt-1 text-sm text-ink2">
+      <PageHeader
+        route="toimages"
+        description={<>
           Render pages to PNG (lossless) or JPG at the chosen DPI. Select specific pages if you do
           not need the whole document; multiple outputs arrive as a ZIP.
-        </p>
-      </div>
+        </>}
+      />
 
       {!pdf && <FileDrop onFiles={load} accept=".pdf,application/pdf" multiple={false} label="Drop a PDF" disabled={busy} />}
 

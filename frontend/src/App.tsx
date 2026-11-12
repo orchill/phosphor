@@ -11,6 +11,7 @@ import { BTN_GHOST } from "./ui";
 import { DENSITY_KEY, applyDensity, readTheme, saveTheme } from "./appearance";
 import CommandPalette from "./components/CommandPalette";
 import Onboarding from "./components/Onboarding";
+import { Kbd } from "./components/primitives";
 import Dashboard from "./pages/Dashboard";
 import PdfTools from "./pages/PdfTools";
 import Merge from "./pages/Merge";
@@ -288,8 +289,7 @@ function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme
           title="Command palette (Ctrl+K)"
         >
           <Search size={14} aria-hidden />
-          <span className="hidden lg:inline">Ctrl</span>
-          <span className="hidden lg:inline">K</span>
+          <span className="hidden items-center gap-1 lg:inline-flex"><Kbd>Ctrl</Kbd><Kbd>K</Kbd></span>
         </button>
         <button
           onClick={toggleTheme}
@@ -378,9 +378,6 @@ export default function App() {
     settings: <SettingsPage />,
   }[route];
 
-  const meta = ROUTE_META[route];
-  const inPdfTools = PDF_ROUTES.includes(route) && route !== "pdftools";
-
   return (
     <NavContext.Provider value={navCtx}>
       <ToastContext.Provider value={toastCtx}>
@@ -404,24 +401,6 @@ export default function App() {
             <Sidebar />
             <main id="main" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto p-4 md:p-6 focus:outline-none">
               <div className="mx-auto max-w-4xl">
-                {route !== "dashboard" && (
-                  <nav aria-label="Breadcrumb" className="mb-4 flex items-center font-mono text-[0.6875rem] tracking-tight text-ink3">
-                    {inPdfTools ? (
-                      <>
-                        <button
-                          onClick={() => navigate("pdftools")}
-                          className="rounded-sm hover:text-accText focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
-                        >
-                          ~/pdf-tools
-                        </button>
-                        <span className="mx-1.5" aria-hidden>/</span>
-                        <span className="text-ink2">{meta.crumb.split("/").pop()}</span>
-                      </>
-                    ) : (
-                      <span>{meta.crumb}</span>
-                    )}
-                  </nav>
-                )}
                 {page}
               </div>
             </main>

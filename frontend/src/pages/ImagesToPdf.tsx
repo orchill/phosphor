@@ -6,7 +6,8 @@ import { deleteFile, opImagesToPdf, thumbUrl, uploadFiles } from "../api";
 import { useToast } from "../ctx";
 import { useReorder } from "../hooks";
 import { UploadedFile } from "../types";
-import { BTN_PRIMARY, INPUT, LABEL, SECTION_TITLE } from "../ui";
+import { BTN_PRIMARY, INPUT, LABEL } from "../ui";
+import { PageHeader } from "../components/primitives";
 
 const PAGE_SIZES = [
   ["a4", "A4 (210x297 mm)"],
@@ -75,13 +76,13 @@ export default function ImagesToPdf() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className={SECTION_TITLE}>Images to PDF</h2>
-        <p className="mt-1 text-sm text-ink2">
+      <PageHeader
+        route="images"
+        description={<>
           Choose page size, margins and orientation; drag thumbnails to reorder and rotate individual
           images. Original image data is embedded without recompression unless you opt into it.
-        </p>
-      </div>
+        </>}
+      />
 
       {images.length === 0 && (
         <FileDrop
