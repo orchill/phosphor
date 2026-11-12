@@ -76,13 +76,16 @@ def media_server():
         _make_wav(wav)  # metadata/cancel tests stay meaningful without ffmpeg
     if not big.exists():
         big.write_bytes(b"\x5a" * (48 * 1024 * 1024))  # 48 MB for cancel test
+    big2 = root / "bigfile2.mp4"
+    if not big2.exists():
+        big2.write_bytes(b"\xa5" * (24 * 1024 * 1024))  # second file, concurrent test
 
     port = _free_port()
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(root))
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
-    yield {"port": port, "root": root, "wav": wav, "mp4": mp4, "big": big}
+    yield {"port": port, "root": root, "wav": wav, "mp4": mp4, "big": big, "big2": big2}
     httpd.shutdown()
 
 
@@ -239,6 +242,56 @@ def test_download_cancel_cleans_part_files(media_server):
     leftovers = [p.name for p in out_dir.glob("*.part")]
     assert not leftovers, f"part files left behind: {leftovers}"
     assert not any(p.name.endswith(".part") for p in out_dir.iterdir())
+
+
+def test_concurrent_downloads_do_not_interfere(media_server):
+    """B3: each download has its own temp dir and reports its own output path.
+
+    Cancelling one download must neither delete the other's partial file nor
+    make the other pick up the wrong result file."""
+    cfg = _test_cfg("concurrent")
+    out_dir = cfg.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    port = media_server["port"]
+
+    def params(name: str) -> dict:
+        return {"url": f"http://127.0.0.1:{port}/{name}.mp4", "mode": "video",
+                "video_format": "best", "video_id": name, "title": name,
+                "merge": False}
+
+    async def go():
+        tm = TaskManager(cfg.history_path, 10, 2)
+
+        def submit(name: str) -> str:
+            async def runner(rec, _p=params(name)):
+                return await media_service.download_task(rec, cfg, _p)
+            return tm.submit("media_video", name, runner)
+
+        a, b = submit("bigfile"), submit("bigfile2")
+        rec_a, rec_b = tm.get(a), tm.get(b)
+        deadline = time.time() + 30
+        while time.time() < deadline and rec_a.status == "queued":
+            await asyncio.sleep(0.05)
+        tm.cancel(a)                       # may already be finished on fast disks
+        while (rec_a.status not in ("completed", "failed", "cancelled")
+               or rec_b.status not in ("completed", "failed", "cancelled")):
+            await asyncio.sleep(0.1)
+        return rec_a, rec_b
+
+    rec_a, rec_b = asyncio.run(go())
+    assert rec_b.status == "completed", (rec_b.status, rec_b.error, rec_b.log[-5:])
+    out_b = pathlib.Path(rec_b.result["outputs"][0]["path"])
+    assert "bigfile2" in out_b.name and out_b.is_file()
+    assert out_b.stat().st_size == media_server["big2"].stat().st_size
+    assert rec_a.status in ("cancelled", "completed"), (rec_a.status, rec_a.error)
+    if rec_a.status == "cancelled":
+        assert not [p.name for p in out_dir.iterdir()
+                    if p.name.startswith("bigfile [")], "cancelled download left a file"
+    else:
+        out_a = pathlib.Path(rec_a.result["outputs"][0]["path"])
+        assert out_a != out_b and "bigfile2" not in out_a.name
+    assert not list(out_dir.glob("*.part"))
+    assert not list(out_dir.glob("*.ytdl")) and not list(out_dir.glob("*.temp"))
 
 
 # ------------------------------------------------------ TaskManager unit

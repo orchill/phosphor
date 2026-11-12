@@ -4,8 +4,10 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import tempfile
 import threading
 import time
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -242,7 +244,12 @@ async def media_download(request: Request, body: MediaDownloadIn):
     }
     tm = _tm(request)
     kind = "media_audio" if body.mode == "audio" else "media_video"
+    # Private temp dir per download: partial/intermediate files never mix
+    # with other tasks'. The task manager removes it when the task ends.
+    cfg.ensure_dirs()
+    temp_dir = Path(tempfile.mkdtemp(prefix=f"{kind}-", dir=cfg.tmp_dir))
     task_id = tm.submit(kind, f"Download: {title or url[:60]}",
                         media_service.download_task_wrapper(cfg, params),
-                        meta={"mode": body.mode, "video_id": vid})
+                        meta={"mode": body.mode, "video_id": vid},
+                        temp_dir=temp_dir)
     return {"task_id": task_id}

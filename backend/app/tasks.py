@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-import shutil
 import threading
 import traceback
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
-from .utils import atomic_write_text, kill_process_tree, new_id, now_iso
+from .utils import atomic_write_text, kill_process_tree, new_id, now_iso, remove_tree
 
 TERMINAL = {"completed", "failed", "cancelled"}
 LOG_CAP = 400
@@ -191,9 +190,9 @@ class TaskManager:
             rec.finished_at = rec.finished_at or now_iso()
             rec.process = None
             rec.async_task = None
-            if rec.temp_dir:
-                shutil.rmtree(rec.temp_dir, ignore_errors=True)
             self._archive(rec)
+            if rec.temp_dir:
+                await remove_tree(rec.temp_dir)
 
     # -------------------------------------------------------------- cancel
     def cancel(self, task_id: str) -> bool:

@@ -14,14 +14,15 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from urllib.parse import quote
 
 from ..config import Config
-from ..security import ValidationError
+from ..security import ValidationError, ensure_within
 from ..tasks import TaskCancelled, TaskRecord
-from ..utils import kill_process_tree, popen_group_kwargs
+from ..utils import kill_process_tree, popen_group_kwargs, remove_tree
 
 # Stable public video ("Me at the zoo") used to verify cookie sign-in works.
 TEST_VIDEO_URL = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
@@ -358,7 +359,46 @@ def download_task_wrapper(cfg: Config, params: dict):
 
 
 async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
-    """Async runner executed by TaskManager for media downloads."""
+    """Async runner executed by TaskManager for media downloads.
+
+    Every download works in its own temp directory (yt-dlp `-P temp:`), so
+    concurrent downloads never see - or delete - each other's `.part` and
+    intermediate files. The router passes `rec.temp_dir` (removed by the task
+    manager); callers that did not (tests) get a private one that is removed
+    here.
+    """
+    own_temp = rec.temp_dir is None
+    temp_dir = rec.temp_dir
+    if temp_dir is None:
+        cfg.tmp_dir.mkdir(parents=True, exist_ok=True)
+        temp_dir = Path(tempfile.mkdtemp(prefix="media-", dir=cfg.tmp_dir))
+    else:
+        temp_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        return await _download_impl(rec, cfg, params, temp_dir)
+    finally:
+        if own_temp:
+            await remove_tree(temp_dir)
+
+
+def _read_final_path(marker: Path, out_dir: Path) -> Path | None:
+    """The file yt-dlp reported via `--print-to-file after_move:filepath`."""
+    try:
+        lines = [ln.strip() for ln in marker.read_text(encoding="utf-8").splitlines()
+                 if ln.strip()]
+    except OSError:
+        return None
+    if not lines:
+        return None
+    try:
+        path = ensure_within(Path(lines[-1]), out_dir, "Downloaded file")
+    except ValidationError:
+        return None
+    return path if path.is_file() else None
+
+
+async def _download_impl(rec: TaskRecord, cfg: Config, params: dict,
+                         temp_dir: Path) -> dict:
     from . import pdf_service  # noqa: F401  (import guard)
 
     url = params["url"]                      # pre-validated by the router
@@ -372,6 +412,7 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
     if needs_ffmpeg:
         require_ffmpeg(cfg, "Audio conversion" if mode == "audio" else "Video merging")
 
+    final_marker = temp_dir / "final.txt"
     base_args = resolve_ytdlp_cmd(cfg) + [
         "--newline", "--no-playlist", "--no-warnings", "--no-overwrites",
         "--trim-filenames", "150",
@@ -379,8 +420,14 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
         "--concurrent-fragments", "4",
         "--progress-template", "download:__P__%(progress.downloaded_bytes)s|%(progress.total_bytes)s|%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s",
         "--progress-template", "postprocess:__POST__%(progress.postprocessor)s|%(progress.status)s",
-        "-P", str(out_dir),
+        # --print-to-file may imply quiet mode in some yt-dlp versions; make
+        # sure the progress templates above are still emitted.
+        "--progress",
+        "-P", f"home:{out_dir}",
+        "-P", f"temp:{temp_dir}",
         "-o", "%(title).140B [%(id)s].%(ext)s",
+        # exact final path (after any merge/convert/move) -> no guessing
+        "--print-to-file", "after_move:filepath", str(final_marker).replace("%", "%%"),
     ]
     ffmpeg_path, _ = find_ffmpeg(cfg)
     if ffmpeg_path is not None:
@@ -403,11 +450,12 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
     while True:
         args = base_args + (cookies if use_cookies else []) + [url]
         started = time.time()
+        final_marker.unlink(missing_ok=True)
         rec.add_log("Command: " + " ".join(args[:6]) + " ... (URL omitted from log)")
         try:
             proc = await asyncio.create_subprocess_exec(
                 *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-                cwd=str(out_dir), **popen_group_kwargs())
+                cwd=str(temp_dir), **popen_group_kwargs())
         except OSError as exc:
             raise RuntimeError(f"Could not start yt-dlp: {exc}")
         rec.process = proc
@@ -492,20 +540,11 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
                 except (asyncio.CancelledError, Exception):
                     pass
             rec.process = None
-            # cleanup partial files for cancelled/failed downloads
+            # Partial files live in this task's private temp dir only. Wipe
+            # them now (the handle can linger a moment on Windows) so a
+            # failed attempt never leaks into a retry.
             if rec.cancel_event.is_set() or proc.returncode != 0:
-                for pf in out_dir.glob("*.part"):
-                    try:
-                        if pf.stat().st_mtime < started:
-                            continue
-                        for attempt in range(3):
-                            try:
-                                pf.unlink()
-                                break
-                            except PermissionError:
-                                await asyncio.sleep(0.05 * (attempt + 1))
-                    except OSError:
-                        pass
+                await remove_tree(temp_dir, keep_root=True)
 
         if rec.cancel_event.is_set():
             raise TaskCancelled("Cancelled by user")
@@ -525,11 +564,20 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
             msg += _BOT_TIP
         raise RuntimeError(msg)
 
-    # locate produced file(s): newest matching file written since start
-    for p in out_dir.iterdir():
-        if p.is_file() and p.stat().st_mtime >= started - 1 and not p.name.endswith(".part"):
-            produced.append(p)
-    produced.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    # The exact file yt-dlp wrote, as reported by --print-to-file.
+    final = _read_final_path(final_marker, out_dir)
+    if final is not None:
+        produced = [final]
+    else:
+        # Older yt-dlp without after_move printing: fall back to the newest
+        # file written since this attempt started whose name carries our id.
+        rec.add_log("yt-dlp did not report the output path; scanning the output folder")
+        for p in out_dir.iterdir():
+            if (p.is_file() and p.stat().st_mtime >= started - 1
+                    and not p.name.endswith((".part", ".ytdl", ".temp"))
+                    and (not vid or f"[{vid}]" in p.name)):
+                produced.append(p)
+        produced.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     if not produced:
         raise RuntimeError("Download finished but no output file was found")
     outputs = [{

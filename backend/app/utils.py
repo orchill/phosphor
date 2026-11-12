@@ -1,6 +1,7 @@
 """Small shared helpers: ids, timestamps, filename sanitation, formatting."""
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import shutil
@@ -115,6 +116,28 @@ def atomic_write_text(path: Path, text: str) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
+
+
+async def remove_tree(path: Path, keep_root: bool = False) -> None:
+    """Delete a directory tree, retrying briefly: on Windows a killed
+    process keeps its file handles for a moment."""
+    for attempt in range(6):
+        if keep_root and path.exists():
+            for child in path.iterdir():
+                try:
+                    if child.is_dir():
+                        shutil.rmtree(child, ignore_errors=True)
+                    else:
+                        child.unlink()
+                except OSError:
+                    pass
+            if not any(path.iterdir()):
+                return
+        else:
+            shutil.rmtree(path, ignore_errors=True)
+            if not path.exists():
+                return
+        await asyncio.sleep(0.05 * (attempt + 1))
 
 
 def popen_group_kwargs() -> dict:
