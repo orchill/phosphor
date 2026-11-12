@@ -8,6 +8,7 @@ import { NavContext, ToastContext, Toast, Route, useNav, PDF_ROUTES, ROUTE_META 
 import { systemInfo } from "./api";
 import { SystemInfo } from "./types";
 import { BTN_GHOST } from "./ui";
+import { DENSITY_KEY, applyDensity, readTheme, saveTheme } from "./appearance";
 import CommandPalette from "./components/CommandPalette";
 import Onboarding from "./components/Onboarding";
 import Dashboard from "./pages/Dashboard";
@@ -45,16 +46,12 @@ function routeFromHash(): Route {
 
 // ------------------------------------------------------------------ density
 // Interface density: root font-size scaling (rem-based layout follows).
-function applyDensity() {
-  const d = localStorage.getItem("pms-density") ?? "comfortable";
-  document.documentElement.style.fontSize = d === "compact" ? "100%" : "106.25%";
-}
-
 function useDensity() {
   useEffect(() => {
-    applyDensity();
-    window.addEventListener("pms-density", applyDensity);
-    return () => window.removeEventListener("pms-density", applyDensity);
+    const sync = () => applyDensity();
+    sync();
+    window.addEventListener(DENSITY_KEY, sync);
+    return () => window.removeEventListener(DENSITY_KEY, sync);
   }, []);
 }
 
@@ -66,16 +63,13 @@ function setBaseTitle(t: string) {
 }
 
 // ------------------------------------------------------------------ theme
-// Dark-first: the phosphor palette is the intended default experience.
+// Dark-first: the phosphor palette is the intended default experience. The
+// class is already set before first paint (main.tsx / theme-init.js); this
+// hook only keeps React state and storage in sync afterwards.
 function useTheme() {
-  const [dark, setDark] = useState<boolean>(() => {
-    const saved = localStorage.getItem("pms-theme");
-    if (saved) return saved === "dark";
-    return true;
-  });
+  const [dark, setDark] = useState<boolean>(() => readTheme() === "dark");
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("pms-theme", dark ? "dark" : "light");
+    saveTheme(dark ? "dark" : "light");
   }, [dark]);
   return { dark, toggle: () => setDark((d) => !d) };
 }

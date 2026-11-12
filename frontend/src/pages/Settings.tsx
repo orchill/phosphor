@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, FolderOutput, RefreshCw, Save, ShieldAlert, Trash2, XCircle } from "lucide-react";
 import { clearWorkspace, getSettings, openOutputFolder, saveSettings, systemInfo } from "../api";
 import { useToast } from "../ctx";
+import { Density, readDensity, saveDensity } from "../appearance";
 import { Settings, SystemInfo } from "../types";
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, SECTION_TITLE } from "../ui";
 
@@ -27,8 +28,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function SettingsPage() {
   const [cfg, setCfg] = useState<Settings | null>(null);
-  const [density, setDensity] = useState(
-    () => localStorage.getItem("pms-density") ?? "comfortable",
+  const [density, setDensity] = useState<Density>(
+    readDensity,
   );
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [saving, setSaving] = useState(false);
@@ -121,10 +122,9 @@ export default function SettingsPage() {
                   <button
                     key={id}
                     role="radio"
-                    aria-checked={(localStorage.getItem("pms-density") ?? "comfortable") === id}
+                    aria-checked={density === id}
                     onClick={() => {
-                      localStorage.setItem("pms-density", id);
-                      window.dispatchEvent(new Event("pms-density"));
+                      saveDensity(id);
                       setDensity(id);
                     }}
                     className={`flex-1 rounded-sm border px-3 py-2 text-left font-mono text-[12px] transition-colors ${
