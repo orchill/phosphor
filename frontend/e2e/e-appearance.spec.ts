@@ -37,4 +37,31 @@ test.describe("theme bootstrap (no flash)", () => {
       document.querySelector('meta[name="theme-color"]')?.getAttribute("content"));
     expect(color).toMatch(/^rgb\(\d+ \d+ \d+\)$/);
   });
+
+  test("accent and CRT are applied before the bundle runs", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("pms-accent", "amber");
+      localStorage.setItem("pms-crt", "subtle");
+    });
+    await page.route("**/assets/*.js", (route) => route.abort());
+    await page.goto("/");
+    expect(await page.evaluate(() => document.documentElement.dataset.accent)).toBe("amber");
+    expect(await page.evaluate(() => document.documentElement.dataset.crt)).toBe("subtle");
+  });
+
+  test("settings changes the accent token and can switch the CRT overlay off", async ({ page }) => {
+    await page.goto("/#/settings");
+    const acc = () => page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue("--c-acc").trim());
+    const before = await acc();
+    await page.getByRole("radio", { name: /p3 amber/i }).click();
+    expect(await acc()).not.toBe(before);
+    expect(await page.evaluate(() => localStorage.getItem("pms-accent"))).toBe("amber");
+    await page.getByRole("radio", { name: "subtle" }).click();
+    expect(await page.evaluate(() => document.documentElement.dataset.crt)).toBe("subtle");
+    await page.getByRole("radio", { name: "off" }).click();
+    expect(await page.evaluate(() => document.documentElement.dataset.crt)).toBeUndefined();
+    // restore the default so later specs see the normal palette
+    await page.getByRole("radio", { name: /p1 green/i }).click();
+  });
 });

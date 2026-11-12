@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, FolderOutput, RefreshCw, Save, ShieldAlert, Trash2, XCircle } from "lucide-react";
 import { clearWorkspace, getSettings, openOutputFolder, saveSettings, systemInfo } from "../api";
 import { useToast } from "../ctx";
-import { Density, readDensity, saveDensity } from "../appearance";
+import {
+  Accent, Crt, Density, readAccent, readCrt, readDensity, saveAccent, saveCrt, saveDensity,
+} from "../appearance";
 import { Settings, SystemInfo } from "../types";
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, LABEL, SECTION_TITLE } from "../ui";
-import { PageHeader } from "../components/primitives";
+import { Field, PageHeader, Tabs } from "../components/primitives";
 
 function DepRow({ name, found, detail, hint }: { name: string; found: boolean; detail: string; hint?: string }) {
   return (
@@ -29,6 +31,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function SettingsPage() {
   const [cfg, setCfg] = useState<Settings | null>(null);
+  const [accent, setAccent] = useState<Accent>(readAccent);
+  const [crt, setCrt] = useState<Crt>(readCrt);
   const [density, setDensity] = useState<Density>(
     readDensity,
   );
@@ -141,6 +145,30 @@ export default function SettingsPage() {
                 Applies immediately. Stored per browser, like the theme.
               </p>
             </div>
+            <Field label="accent" hint="Phosphor colour: P1 green, P3 amber, P4 ice. Applies immediately.">
+              <Tabs<Accent>
+                label="Accent colour"
+                semantics="radio"
+                value={accent}
+                onChange={(a) => { saveAccent(a); setAccent(a); }}
+                options={([
+                  ["green", "p1 green"], ["amber", "p3 amber"], ["ice", "p4 ice"],
+                ] as const).map(([id, label]) => ({
+                  id,
+                  label,
+                  icon: <span data-accent={id} className="inline-block h-2.5 w-2.5 rounded-[2px] bg-acc" aria-hidden />,
+                }))}
+              />
+            </Field>
+            <Field label="crt effect" hint="Faint scanlines and vignette. Switched off when your system asks for reduced motion.">
+              <Tabs<Crt>
+                label="CRT effect"
+                semantics="radio"
+                value={crt}
+                onChange={(c) => { saveCrt(c); setCrt(c); }}
+                options={[{ id: "off", label: "off" }, { id: "subtle", label: "subtle" }]}
+              />
+            </Field>
             <div>
               <p className={LABEL}>Onboarding</p>
               <button

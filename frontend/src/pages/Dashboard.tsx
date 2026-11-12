@@ -92,7 +92,7 @@ export default function Dashboard() {
           <span className="ml-auto hidden sm:block">~/.local/pdf-media-studio</span>
         </div>
         <h2 className="mt-3 font-mono text-lg font-semibold tracking-tight text-ink">
-          Your private PDF &amp; media toolbox<span className="animate-cursor-blink text-accText" aria-hidden>▮</span>
+          Your private PDF &amp; media toolbox
         </h2>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink2">
           Everything runs on this machine as a localhost service - merge, convert, organize

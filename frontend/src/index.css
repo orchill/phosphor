@@ -43,6 +43,39 @@
   --c-bad: 248 113 113;
 }
 
+/* ------------------------------------------------------------ accent presets
+   P1 green is the default palette above. P3 amber and P4 ice only swap the
+   four accent tokens, selected by data-accent on <html> (see appearance.ts).
+   Selectors also match nested elements so Settings can show swatches.
+   Every pair was checked for WCAG AA: accText on base/panel/elev >= 4.5:1,
+   onAcc on acc and accHi >= 4.5:1, acc as a UI colour >= 3:1. */
+[data-accent="amber"] {
+  --c-acc: 180 83 9;
+  --c-accHi: 146 64 14;
+  --c-accText: 146 64 14;
+  --c-onAcc: 255 255 255;
+}
+.dark [data-accent="amber"],
+.dark[data-accent="amber"] {
+  --c-acc: 251 191 36;
+  --c-accHi: 252 211 77;
+  --c-accText: 251 191 36;
+  --c-onAcc: 40 26 2;
+}
+[data-accent="ice"] {
+  --c-acc: 3 105 161;
+  --c-accHi: 7 89 133;
+  --c-accText: 3 105 161;
+  --c-onAcc: 255 255 255;
+}
+.dark [data-accent="ice"],
+.dark[data-accent="ice"] {
+  --c-acc: 186 230 253;
+  --c-accHi: 224 242 254;
+  --c-accText: 186 230 253;
+  --c-onAcc: 8 30 45;
+}
+
 html {
   scrollbar-gutter: stable;
   /* page background even before/behind <body> (overscroll, first paint) */
@@ -82,6 +115,56 @@ body {
 }
 *::-webkit-scrollbar-thumb:hover {
   background-color: rgb(var(--c-ink3));
+}
+
+/* ----------------------------------------------------------- phosphor glow
+   Dark theme only, and only on headings / the active nav item (`.glow`) -
+   never on body text. Static, so it needs no reduced-motion handling. */
+.dark .glow {
+  text-shadow: 0 0 8px rgb(var(--c-acc) / 0.35);
+}
+/* focus glow, only where the element has no Tailwind ring of its own (a rule
+   here would otherwise replace that ring's box-shadow) */
+.dark :focus-visible:not([class*="focus-visible:ring"]) {
+  box-shadow: 0 0 0 4px rgb(var(--c-acc) / 0.14);
+}
+
+/* -------------------------------------------------------------- CRT effect
+   Optional (Settings -> appearance). A fixed, click-through overlay on <html>
+   with 2px scanlines at ~4% and a very faint vignette. Off under
+   prefers-reduced-motion. */
+html[data-crt="subtle"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0.04) 0,
+      rgb(0 0 0 / 0.04) 1px,
+      transparent 1px,
+      transparent 2px
+    ),
+    radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / 0.1) 100%);
+}
+/* black lines vanish on a near-black page, so dark scanlines are phosphor-tinted */
+.dark[data-crt="subtle"]::after {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(var(--c-acc) / 0.04) 0,
+      rgb(var(--c-acc) / 0.04) 1px,
+      transparent 1px,
+      transparent 2px
+    ),
+    radial-gradient(ellipse at center, transparent 58%, rgb(0 0 0 / 0.28) 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-crt="subtle"]::after {
+    display: none;
+  }
 }
 
 /* subtle page enter */

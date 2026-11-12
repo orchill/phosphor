@@ -106,8 +106,8 @@ export function PageHeader({
         )}
       </nav>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h2 className="min-w-0 font-mono text-base font-semibold tracking-tight text-ink">
-          <span className="mr-2 text-accText" aria-hidden>❯</span>
+        <h2 className="glow min-w-0 font-mono text-base font-semibold tracking-tight text-ink">
+          <span className="glow mr-2 text-accText" aria-hidden>❯</span>
           {title ?? meta.title}
         </h2>
         {actions && <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>}

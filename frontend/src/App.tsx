@@ -123,7 +123,7 @@ function NavItem({ id, label, icon: Icon, active, onClick }: {
       aria-current={active ? "page" : undefined}
       className={`flex w-full items-center gap-2.5 rounded-sm border-l-2 px-2.5 py-1.5 font-mono text-sm transition-colors
         ${active
-          ? "border-acc bg-acc/10 text-accText"
+          ? "glow border-acc bg-acc/10 text-accText"
           : "border-transparent text-ink3 hover:bg-elev hover:text-ink"}`}
     >
       {Icon && <Icon size={15} className="shrink-0" aria-hidden />}
@@ -264,7 +264,7 @@ function Header({ dark, toggleTheme, openPalette }: { dark: boolean; toggleTheme
           ❯
         </div>
         <div>
-          <h1 className="font-mono text-sm font-semibold leading-tight tracking-tight text-ink">
+          <h1 className="glow font-mono text-sm font-semibold leading-tight tracking-tight text-ink">
             phosphor<span className="animate-cursor-blink text-accText" aria-hidden>▮</span>
           </h1>
           <p className="text-[0.6875rem] leading-tight text-ink3">
