@@ -367,21 +367,21 @@ function Header({
       >
         skip to content
       </a>
-      <div className="flex items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
         <div
-          className="flex h-7 w-7 items-center justify-center rounded-sm bg-acc font-mono text-[0.9375rem] font-bold leading-none text-onAcc"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm bg-acc font-mono text-[0.9375rem] font-bold leading-none text-onAcc"
           aria-hidden
         >
           ❯
         </div>
-        <div>
+        <div className="min-w-0">
           <h1 className="glow font-mono text-sm font-semibold leading-tight tracking-tight text-ink">
             phosphor
             <span className="animate-cursor-blink text-accText" aria-hidden>
               ▮
             </span>
           </h1>
-          <p className="text-[0.6875rem] leading-tight text-ink3">
+          <p className="truncate text-[0.6875rem] leading-tight text-ink3">
             local PDF &amp; media console - nothing leaves this computer
           </p>
         </div>
@@ -391,7 +391,7 @@ function Header({
         onClick={openPalette}
         aria-label="Open command palette"
         title="Command palette (Ctrl+K)"
-        className="ml-auto hidden w-full max-w-sm items-center gap-2 rounded-sm border border-line bg-base px-2.5 py-1.5 text-left font-mono text-[0.75rem] text-ink3 transition-colors hover:border-ink3 hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc sm:flex"
+        className="ml-auto hidden w-full min-w-[9rem] max-w-sm items-center gap-2 rounded-sm border border-line bg-base px-2.5 py-1.5 text-left font-mono text-[0.75rem] text-ink3 transition-colors hover:border-ink3 hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc sm:flex"
       >
         <Search size={14} className="shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate">search or run a command…</span>
@@ -400,7 +400,7 @@ function Header({
           <Kbd>K</Kbd>
         </span>
       </button>
-      <div className="ml-auto flex items-center gap-1.5 sm:ml-0">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:ml-0">
         <TaskTray />
         {info && (
           <button
@@ -413,7 +413,7 @@ function Header({
             }}
             title={`Output folder: ${info.output_dir} (click to copy path)`}
             aria-label={`Copy output folder path: ${info.output_dir}`}
-            className="hidden items-center gap-1.5 rounded-sm px-2.5 py-1.5 font-mono text-[0.6875rem] text-ink3 hover:bg-elev hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc xl:flex"
+            className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm px-2.5 py-1.5 font-mono text-[0.6875rem] text-ink3 hover:bg-elev hover:text-ink2 focus:outline-none focus-visible:ring-2 focus-visible:ring-acc xl:flex"
           >
             <FolderOutput size={13} aria-hidden /> {middleTruncate(info.output_dir, 28)}
           </button>

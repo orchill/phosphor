@@ -40,7 +40,7 @@ export default function TaskTray() {
             ? `${running} running task${running === 1 ? "" : "s"} - open task tray`
             : `${tasks.length} recent tasks - open task tray`
         }
-        className={`inline-flex items-center gap-2 rounded-sm border px-2.5 py-1.5 font-mono text-[0.6875rem] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
+        className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-sm border px-2.5 py-1.5 font-mono text-[0.6875rem] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-acc ${
           running > 0
             ? "border-info/40 bg-info/10 text-info hover:bg-info/20"
             : "border-line text-ink3 hover:border-ink3 hover:text-ink2"
