@@ -245,9 +245,9 @@ async def _thumbnail(file_id: str, page: int, width: int) -> Response:
     else:
         data = await asyncio.to_thread(pdf_service.image_thumbnail, path, width)
     try:
+        cache.parent.mkdir(parents=True, exist_ok=True)   # before the tmp write
         tmp = cache.with_name(cache.name + ".tmp")
         tmp.write_bytes(data)
-        cache.parent.mkdir(parents=True, exist_ok=True)
         os.replace(tmp, cache)
     except OSError:
         pass  # thumbnail caching is best-effort

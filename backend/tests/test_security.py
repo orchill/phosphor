@@ -195,3 +195,13 @@ def test_host_guard_unit():
     assert _host_allowed("[::1]:8756")                 # IPv6 loopback
     assert _host_allowed("my-machine:8756")            # LAN hostname
     assert _host_allowed("")                           # missing Host (HTTP/1.0)
+
+
+def test_format_page_ranges_is_compact_and_truthful():
+    """B15: a non-contiguous selection must not be labelled 'pages 1-9'."""
+    from backend.app.security import format_page_ranges
+    assert format_page_ranges([1, 5, 9]) == "1, 5, 9"
+    assert format_page_ranges([1, 2, 3, 5, 9, 10]) == "1-3, 5, 9-10"
+    assert format_page_ranges([4]) == "4"
+    assert format_page_ranges([3, 1, 2, 2]) == "1-3"
+    assert format_page_ranges([]) == ""
