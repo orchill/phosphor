@@ -21,12 +21,20 @@ interface Props {
   width?: number;
 }
 
+/** Thumbnail width to request: CSS width x device pixel ratio, so thumbnails
+ *  stay sharp on HiDPI screens (the backend caps it at 640). */
+export function thumbRequestWidth(cssWidth: number, dpr: number = 1): number {
+  return Math.min(640, Math.max(60, Math.round(cssWidth * Math.max(1, dpr))));
+}
+
 export default function PageGrid({
   fileId, pages, setPages, selection, setSelection,
   allowReorder, allowRotate, allowDelete, allowSelect, width = 210,
 }: Props) {
   const dragFrom = useRef<number | null>(null);
   const [announce, setAnnounce] = useState("");
+  const thumbWidth = thumbRequestWidth(
+    width, typeof window === "undefined" ? 1 : window.devicePixelRatio || 1);
 
   const toggleSelect = (page: number) => {
     const next = new Set(selection);
@@ -69,7 +77,7 @@ export default function PageGrid({
           const selected = selection.has(p.page);
           return (
             <li
-              key={`${p.page}-${idx}`}
+              key={p.page}
               draggable={allowReorder}
               onDragStart={() => { dragFrom.current = idx; }}
               onDragOver={(e) => e.preventDefault()}
@@ -104,13 +112,19 @@ export default function PageGrid({
                 aria-label={`Page ${p.page}${selected ? " (selected)" : ""}${allowReorder ? " - Ctrl+Arrow keys to move" : ""}`}
                 className="block w-full bg-elev focus:outline-none focus-visible:ring-2 focus-visible:ring-acc"
               >
-                <img
-                  src={pageThumbUrl(fileId, p.page, width)}
-                  alt={`Page ${p.page} thumbnail`}
-                  loading="lazy"
-                  className="pointer-events-none h-auto w-full"
-                  style={{ transform: `rotate(${p.rotation}deg)` }}
-                />
+                {/* Square, fixed-size tile: the grid never shifts while thumbnails
+                    load, and a page rotated by 90/270 degrees (portrait <-> landscape)
+                    still fits because the rotated box is square too. */}
+                <span className="relative flex aspect-square w-full items-center justify-center overflow-hidden">
+                  <img
+                    src={pageThumbUrl(fileId, p.page, thumbWidth)}
+                    alt={`Page ${p.page} thumbnail`}
+                    loading="lazy"
+                    decoding="async"
+                    className="pointer-events-none h-full w-full object-contain transition-transform duration-200"
+                    style={{ transform: `rotate(${p.rotation}deg)` }}
+                  />
+                </span>
               </button>
 
               <div className="flex items-center justify-between gap-0.5 px-2 py-1.5">
