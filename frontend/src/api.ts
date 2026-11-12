@@ -6,6 +6,16 @@ import type {
 } from "./types";
 import { emitEvent } from "./events";
 
+/** Error carrying the HTTP status so callers can tell 404 from a network blip. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const res = await fetch(path, init);
@@ -24,7 +34,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     } else if (!path.startsWith("/api/tasks")) {
       emitEvent("error", `${method} ${path.split("?")[0]} failed - ${detail}`);
     }
-    throw new Error(detail);
+    throw new ApiError(detail, res.status);
   }
   if (method !== "GET") {
     emitEvent("info", `${method} ${path.split("?")[0]}`);

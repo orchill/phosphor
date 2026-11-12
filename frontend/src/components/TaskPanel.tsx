@@ -113,7 +113,7 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
   onDismiss?: () => void;
   onRetry?: () => void;
 }) {
-  const task = useTask(taskId);
+  const { task, error: pollError, gone } = useTask(taskId);
   const toast = useToast();
   const [cancelling, setCancelling] = useState(false);
   const reportedStatus = useRef<string | null>(null);
@@ -128,7 +128,20 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
     else if (task.status === "cancelled") emitEvent("warning", `${task.title} - cancelled`, true);
   }, [task]);
 
-  if (!taskId || !task) return null;
+  if (!taskId) return null;
+  if (gone) {
+    return (
+      <div className={`${CARD} flex items-center gap-2 border-warn/50 p-4`} data-testid="task-gone" role="alert">
+        <p className="min-w-0 flex-1 text-sm text-warn">
+          This task no longer exists on the server (it was probably restarted). {pollError}
+        </p>
+        {onDismiss && (
+          <button onClick={onDismiss} className={BTN_GHOST} aria-label="Dismiss panel"><X size={14} /></button>
+        )}
+      </div>
+    );
+  }
+  if (!task) return null;
 
   const running = task.status === "running" || task.status === "queued";
   const indeterminate = task.status === "running" && task.progress == null;
@@ -177,6 +190,12 @@ export default function TaskPanel({ taskId, onDismiss, onRetry }: {
           )}
         </div>
       </div>
+
+      {pollError && (
+        <p className="mt-2 rounded-sm border border-warn/40 bg-warn/10 px-3 py-1.5 text-xs text-warn" role="status">
+          Lost contact with the server ({pollError}) - retrying...
+        </p>
+      )}
 
       {running && (
         <div className="mt-3">
