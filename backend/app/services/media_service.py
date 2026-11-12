@@ -21,6 +21,7 @@ from urllib.parse import quote
 from ..config import Config
 from ..security import ValidationError
 from ..tasks import TaskCancelled, TaskRecord
+from ..utils import kill_process_tree, popen_group_kwargs
 
 # Stable public video ("Me at the zoo") used to verify cookie sign-in works.
 TEST_VIDEO_URL = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
@@ -230,7 +231,8 @@ async def _run_ytdlp(args: list[str], timeout: float) -> tuple[int, bytes, bytes
     """Run yt-dlp and return (returncode, stdout, stderr)."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            **popen_group_kwargs())
     except OSError as exc:
         raise RuntimeError(f"Could not start yt-dlp: {exc}")
     try:
@@ -405,7 +407,7 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
         try:
             proc = await asyncio.create_subprocess_exec(
                 *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-                cwd=str(out_dir))
+                cwd=str(out_dir), **popen_group_kwargs())
         except OSError as exc:
             raise RuntimeError(f"Could not start yt-dlp: {exc}")
         rec.process = proc
@@ -473,10 +475,7 @@ async def download_task(rec: TaskRecord, cfg: Config, params: dict) -> dict:
         except asyncio.CancelledError:
             # user cancellation -> hard kill, then re-raise. Reap the process
             # afterwards: on Windows the .part file handle lingers until exit.
-            try:
-                proc.kill()
-            except Exception:
-                pass
+            kill_process_tree(proc)
             try:
                 await proc.wait()
             except Exception:

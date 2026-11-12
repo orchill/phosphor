@@ -54,34 +54,82 @@ def atomic_write_text(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+def popen_group_kwargs() -> dict:
+    """Spawn kwargs that make a child the leader of its own process group.
+
+    On POSIX this lets `kill_process_tree` signal the whole group (yt-dlp plus
+    the ffmpeg it spawns) with one `killpg`. Windows needs nothing: `taskkill
+    /T` walks the tree by parent pid.
+    """
+    return {} if sys.platform == "win32" else {"start_new_session": True}
+
+
+def _is_alive(proc) -> bool:
+    """True while `proc` has not exited.
+
+    Handles both `subprocess.Popen` (has `poll()`) and
+    `asyncio.subprocess.Process` (no `poll()`; `returncode` is None until the
+    loop has reaped it).
+    """
+    poll = getattr(proc, "poll", None)
+    if callable(poll):
+        return poll() is None
+    return getattr(proc, "returncode", None) is None
+
+
+def _signal_posix_tree(proc, sig: int) -> None:
+    """Signal the process group when `proc` leads one, else just `proc`."""
+    import os as _os
+    try:
+        pgid = _os.getpgid(proc.pid)
+    except OSError:
+        return  # already gone
+    # Never signal our own group: only a child started with a new session
+    # (see `popen_group_kwargs`) is its own leader.
+    if pgid == proc.pid and pgid != _os.getpgrp():
+        try:
+            _os.killpg(pgid, sig)
+        except OSError:
+            pass
+    else:
+        try:
+            _os.kill(proc.pid, sig)
+        except OSError:
+            pass
+
+
 def kill_process_tree(proc) -> None:
     """Terminate a spawned subprocess together with its children.
 
     Media tools nest: yt-dlp (a python process) spawns ffmpeg. Killing only
-    the parent would leave the child running. On Windows `taskkill /T`
-    handles the whole tree; on POSIX the plain terminate/kill pair is kept
-    (no process group is created for children today).
+    the parent would leave the child running and holding file locks.
+    - Windows: `taskkill /T /F` handles the whole tree.
+    - POSIX: the child is started in its own session (`popen_group_kwargs`),
+      so the whole process group gets SIGTERM and then SIGKILL.
+    Works for `subprocess.Popen` and `asyncio.subprocess.Process` alike.
     """
     if proc is None:
         return
     try:
-        if proc.poll() is None:
-            if sys.platform == "win32":
-                try:
-                    subprocess.run(
-                        ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
-                        capture_output=True, timeout=10, check=False)
-                except (OSError, subprocess.TimeoutExpired):
-                    pass
-            else:
-                try:
-                    proc.terminate()
-                except OSError:
-                    pass
+        if not _is_alive(proc):
+            return
     except Exception:
-        pass
+        return
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                ["taskkill", "/T", "/F", "/PID", str(proc.pid)],
+                capture_output=True, timeout=10, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    else:
+        import signal
+        _signal_posix_tree(proc, signal.SIGTERM)
+        # No grace period: this runs on the event loop and the task's output
+        # is discarded anyway, so go straight on to SIGKILL for the group.
+        _signal_posix_tree(proc, signal.SIGKILL)
     try:
-        if proc.poll() is None:
+        if _is_alive(proc):
             proc.kill()
     except Exception:
         pass
