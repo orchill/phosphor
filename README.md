@@ -99,7 +99,7 @@ be edited live in **Settings** (host/port need a restart):
 ```bat
 .venv\Scripts\python.exe -m pytest      :: backend (~106 tests)
 cd frontend && npm run build            :: type-check + production build
-cd frontend && npm run e2e              :: Playwright, real browser (32 tests, offline)
+cd frontend && npm run e2e              :: Playwright, real browser (35 tests, offline)
 ```
 
 E2E details: [frontend/e2e/README.md](frontend/e2e/README.md).
@@ -108,9 +108,6 @@ E2E details: [frontend/e2e/README.md](frontend/e2e/README.md).
 cd frontend && npm run shots            :: screenshot harness -> frontend/e2e/.shots/ (not part of e2e)
 cd frontend && npm run format           :: Prettier (format:check to verify)
 ```
-
-> The images in `docs/screenshots/` predate the 1.3.0 visual overhaul; re-run
-> `npm run shots` and replace them to refresh.
 
 ## Known limitations
 
